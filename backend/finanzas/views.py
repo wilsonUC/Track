@@ -1,7 +1,14 @@
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Category, Transaction 
-from .serializers import CategorySerializer, TransactionSerializer
+from .serializers import ( 
+    CategorySerializer, 
+    TransactionSerializer, 
+    RegistroSerializer,
+)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """
@@ -39,3 +46,23 @@ class TransactionViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
+
+
+class RegistroView(APIView):
+    """
+    POST /api/registro/ — crear cuenta. Público (sin token).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RegistroSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                "mensaje": "Usuario creado correctamente",
+                "username": user.username,
+                "email": user.email,
+            },
+            status=status.HTTP_201_CREATED,
+        )     

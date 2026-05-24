@@ -6,7 +6,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import CategoryViewSet, TransactionViewSet
+from .views import CategoryViewSet, RegistroView, TransactionViewSet
 
 # Router: registra cada ViewSet bajo un prefijo.
 router = DefaultRouter()
@@ -15,5 +15,6 @@ router.register(r"transacciones", TransactionViewSet, basename="transaccion")
 
 urlpatterns = [
     # Todas las rutas del router van debajo de lo que pongas en config/urls (p. ej. "api/")
+    path("registro/", RegistroView.as_view(), name="registro"),
     path("", include(router.urls)),
 ]

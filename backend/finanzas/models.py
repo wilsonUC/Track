@@ -69,3 +69,18 @@ class Transaction(models.Model):
         return f"{self.get_tipo_display()} - S/ {self.monto} - {self.fecha}"
 
 
+class PerfilUsuario(models.Model):
+    """Datos extra del usuario (teléfono, etc.). Un registro por usuario."""
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete = models.CASCADE,
+        related_name = "perfil",
+    )
+    telefono = models.CharField(max_length=15, unique=True)
+
+    class Meta: 
+        verbose_name = "Perfil de Usuario"
+        verbose_name_plural = "Perfiles de Usuarios"
+
+    def __str__(self):  
+        return f"{self.usuario.username} - {self.telefono}"

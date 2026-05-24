@@ -1,8 +1,11 @@
 # Aquí se prepara lo que entra y sale por la API: leer datos del usuario,
 # comprobar que tengan sentido y pasarlos a la base de datos (o al revés).
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Category, Transaction
+from .models import Category, PerfilUsuario, Transaction
+
+User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -108,3 +111,39 @@ class TransactionSerializer(serializers.ModelSerializer):
                 {"tipo": "El tipo debe coincidir con el de la categoría (ingreso/gasto)."}
             )
         return attrs
+
+
+class RegistroSerializer(serializers.Serializer):
+    """
+    Registro: campos del formulario Figma.
+    No es ModelSerializer: creamos User + PerfilUsuario a mano en create().
+    """
+
+    username = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    email = serializers.EmailField()
+    telefono = serializers.CharField(max_length=15)
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Ese usuario ya existe.")
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Ese correo ya está registrado.")
+        return value
+
+    def validate_telefono(self, value):
+        if PerfilUsuario.objects.filter(telefono=value).exists():
+            raise serializers.ValidationError("Ese teléfono ya está registrado.")
+        return value
+
+    def create(self, validated_data):
+        telefono = validated_data.pop("telefono")
+        password = validated_data.pop("password")
+        user = User.objects.create_user(password=password, **validated_data)
+        PerfilUsuario.objects.create(usuario=user, telefono=telefono)
+        return user    

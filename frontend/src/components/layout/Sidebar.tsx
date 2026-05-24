@@ -5,9 +5,10 @@ import { NavIcon } from './navIcons'
 type SidebarProps = {
   section: Section
   onNavigate: (section: Section) => void
+  onLogout: () => void
 }
 
-export function Sidebar({ section, onNavigate }: SidebarProps) {
+export function Sidebar({ section, onNavigate, onLogout }: SidebarProps) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-indigo-700 p-4 text-indigo-50 md:flex md:min-h-screen">
       <div className="flex min-h-0 flex-1 flex-col">
@@ -49,6 +50,13 @@ export function Sidebar({ section, onNavigate }: SidebarProps) {
         <div className="mt-4 shrink-0 rounded-lg border border-indigo-600/80 bg-indigo-800/40 p-3 text-xs leading-snug text-indigo-200">
           Datos de ejemplo. Conecta el backend para ver movimientos reales.
         </div>
+        <button
+          type="button"
+          onClick = {onLogout}
+          className = "mt-3 w-full rounded-lg border border-indigo-500/80 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-600"
+          >
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   )
