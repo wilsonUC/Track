@@ -1,10 +1,6 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../api/auth'
-
-type RegisterPageProps = {
-  onGoLogin: () => void
-  onRegistered: () => void
-}
 
 function formatRegisterError(raw: string): string {
   try {
@@ -24,7 +20,8 @@ function formatRegisterError(raw: string): string {
   return 'No se pudo crear la cuenta. Revisa los datos.'
 }
 
-export function RegisterPage({ onGoLogin, onRegistered }: RegisterPageProps) {
+export function RegisterPage() {
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -47,7 +44,10 @@ export function RegisterPage({ onGoLogin, onRegistered }: RegisterPageProps) {
         telefono,
         password,
       })
-      onRegistered()
+      navigate('/login', {
+        replace: true,
+        state: { message: 'Cuenta creada. Inicia sesión con tu usuario y contraseña.' },
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
       setError(formatRegisterError(message))
@@ -60,9 +60,7 @@ export function RegisterPage({ onGoLogin, onRegistered }: RegisterPageProps) {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-8">
       <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl">
         <h1 className="text-xl font-bold text-slate-900">Registro de usuario</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Completa el formulario para crear tu cuenta
-        </p>
+        <p className="mt-1 text-sm text-slate-500">Completa el formulario para crear tu cuenta</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
@@ -147,13 +145,9 @@ export function RegisterPage({ onGoLogin, onRegistered }: RegisterPageProps) {
 
         <p className="mt-6 text-center text-sm text-slate-600">
           ¿Ya tienes cuenta?{' '}
-          <button
-            type="button"
-            onClick={onGoLogin}
-            className="font-semibold text-emerald-600 hover:text-emerald-700"
-          >
+          <Link to="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
             Inicia sesión
-          </button>
+          </Link>
         </p>
       </div>
     </div>

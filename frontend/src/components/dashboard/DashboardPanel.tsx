@@ -1,17 +1,26 @@
-import { AmountCard } from './AmountCard'
+import { DashboardChartsSection } from './DashboardChartsSection'
+import { DashboardMonthCard } from './DashboardMonthCard'
+import { DashboardRecentTransactions } from './DashboardRecentTransactions'
+import { DashboardSummaryCard } from './DashboardSummaryCard'
 
 export function DashboardPanel() {
   return (
-    <section className="space-y-4">
-      <p className="text-sm text-slate-600">
-        Indicadores del mes. Los valores se actualizarán cuando conectes datos reales.
-      </p>
-      <div className="grid gap-4 md:grid-cols-4">
-        <AmountCard title="Balance" amount="S/ 0.00" accent="text-blue-600" />
-        <AmountCard title="Ingresos" amount="S/ 0.00" accent="text-emerald-600" />
-        <AmountCard title="Gastos" amount="-S/ 0.00" accent="text-rose-600" />
-        <AmountCard title="Ahorro" amount="0%" accent="text-indigo-600" />
+    <section className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardSummaryCard title="Balance" amount="S/ 0.00" subtitle="Vas bien 💪" variant="balance" />
+        <DashboardSummaryCard title="Ingresos" amount="S/ 0.00" variant="income" />
+        <DashboardSummaryCard title="Gastos" amount="S/ 0.00" variant="expense" />
+        <DashboardSummaryCard title="Ahorro" amount="0%" subtitle="Meta: 20%" variant="savings" />
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DashboardMonthCard variant="income" />
+        <DashboardMonthCard variant="expense" />
+      </div>
+
+      <DashboardChartsSection />
+
+      <DashboardRecentTransactions />
     </section>
   )
 }

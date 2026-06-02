@@ -11,20 +11,12 @@ from .serializers import (
 )
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    """
-    Categorías del usuario logueado.
-    ModelViewSet ya incluye: listar, ver una, crear, editar y borrar.
-    """
+    """Categorías globales: todos los usuarios ven la misma lista."""
 
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        # Solo filas de la base que son de quien hizo la petición
-        return Category.objects.filter(usuario=self.request.user)
-
-    def perform_create(self, serializer):
-        # Al crear: guardar y poner dueño (el cliente no manda "usuario")
-        serializer.save(usuario=self.request.user)
+        return Category.objects.all()
 
     def get_serializer_context(self):
 

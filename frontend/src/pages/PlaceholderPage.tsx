@@ -1,11 +1,11 @@
-import { sectionSubtitle, sectionTitle } from '../../constants/sectionLabels'
-import type { Section } from '../../types/finance'
+import { sectionSubtitle, sectionTitle } from '../constants/sectionLabels'
+import type { Section } from '../types/finance'
 
-type PlaceholderPanelProps = {
+type PlaceholderPageProps = {
   section: Section
 }
 
-export function PlaceholderPanel({ section }: PlaceholderPanelProps) {
+export function PlaceholderPage({ section }: PlaceholderPageProps) {
   return (
     <section className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
       <div className="mx-auto max-w-md">

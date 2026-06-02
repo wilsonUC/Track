@@ -9,7 +9,7 @@ export type MenuItem = {
 }
 
 export const menuItems: readonly MenuItem[] = [
-  { id: 'dashboard', label: 'Resumen', shortLabel: 'Inicio' },
+  { id: 'dashboard', label: 'Dashboard', shortLabel: 'Inicio' },
   { id: 'ingresos', label: 'Ingresos' },
   { id: 'gastos', label: 'Gastos' },
   { id: 'presupuestos', label: 'Presupuestos', shortLabel: 'Presup.' },

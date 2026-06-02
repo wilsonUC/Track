@@ -5,17 +5,12 @@ from django.db import models
 # Create your models here.
 
 class Category(models.Model):
-    """categoria de ingresos o de gastos, por usuario """
+    """Categoría global de ingresos o gastos (compartida por todos los usuarios)."""
 
     class Tipo(models.TextChoices):
         INGRESO = "income", "Ingreso"
         GASTO = "expense", "Gasto"
 
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete = models.CASCADE,
-        related_name = "categorias",
-    )
 
     nombre = models.CharField(max_length = 120)
     tipo = models.CharField(max_length = 10, choices = Tipo.choices)
@@ -23,8 +18,8 @@ class Category(models.Model):
     class Meta: 
         constraints = [
             models.UniqueConstraint(
-                fields = ["usuario", "nombre", "tipo"],
-                name = "uniq_finanzas_category_usuario_nombre_tipo",
+                fields = ["nombre", "tipo"],
+                name = "uniq_finanzas_category_nombre_tipo",
             ),
         ]
 
