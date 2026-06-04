@@ -1,3 +1,4 @@
+import { Download, Plus } from 'lucide-react'
 import { sectionSubtitle, sectionTitle } from '../../constants/sectionLabels'
 import type { Section } from '../../types/finance'
 
@@ -43,13 +44,7 @@ export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
             type="button"
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-              />
-            </svg>
+            <Download className="h-4 w-4" aria-hidden />
             Exportar
           </button>
         )}
@@ -62,9 +57,7 @@ export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
+          <Plus className="h-4 w-4" aria-hidden />
           Nueva transacción
         </button>
       </div>

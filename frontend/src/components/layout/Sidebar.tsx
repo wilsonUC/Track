@@ -1,3 +1,4 @@
+import { LogOut, CircleDollarSign } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { menuItems } from '../../constants/navigation'
 import { sectionPaths } from '../../constants/routes'
@@ -21,9 +22,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <div className="shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <CircleDollarSign className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0">
               <div className="text-lg font-bold leading-snug tracking-tight text-white">FinanzasTrack</div>
@@ -66,8 +65,9 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <button
           type="button"
           onClick={onLogout}
-          className="mt-3 w-full rounded-lg border border-indigo-500/80 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-600"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-500/80 px-3 py-2 text-sm font-medium text-indigo-100 transition hover:bg-indigo-600"
         >
+          <LogOut className="h-4 w-4" aria-hidden />
           Cerrar sesión
         </button>
       </div>

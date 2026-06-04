@@ -1,53 +1,41 @@
+import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+
 type DashboardSummaryCardProps = {
   title: string
   amount: string
   subtitle?: string
   variant: 'balance' | 'income' | 'expense' | 'savings'
+  isActive?: boolean
+  onClick?: () => void
 }
 
 function CardIcon({ variant }: { variant: DashboardSummaryCardProps['variant'] }) {
-  const className = 'h-5 w-5'
-  if (variant === 'balance') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" />
-      </svg>
-    )
-  }
-  if (variant === 'income') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-6-15-6v4.5L19.5 12 4.5 15v4.5z" />
-      </svg>
-    )
-  }
-  if (variant === 'expense') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 4.5l-15 6 15 6v-4.5L4.5 12 19.5 9V4.5z" />
-      </svg>
-    )
-  }
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.172-.879-1.172-2.303 0-3.182C10.536 7.88 11.304 7.66 12 7.66c.768 0 1.536.22 2.121.659l.879.659" />
-    </svg>
-  )
+  const cls = 'h-5 w-5'
+  if (variant === 'balance') return <Wallet className={cls} aria-hidden />
+  if (variant === 'income')  return <TrendingUp className={cls} aria-hidden />
+  if (variant === 'expense') return <TrendingDown className={cls} aria-hidden />
+  return <PiggyBank className={cls} aria-hidden />
 }
 
-export function DashboardSummaryCard({ title, amount, subtitle, variant }: DashboardSummaryCardProps) {
-  if (variant === 'balance') {
+export function DashboardSummaryCard({ title, amount, subtitle, variant, isActive, onClick }: DashboardSummaryCardProps) {
+  if (isActive) {
+    let activeGradient = 'from-indigo-600 via-violet-600 to-indigo-700'
+    if (variant === 'income')  activeGradient = 'from-emerald-600 via-teal-600 to-emerald-700'
+    if (variant === 'expense') activeGradient = 'from-rose-600 via-pink-600 to-rose-700'
+    if (variant === 'savings') activeGradient = 'from-indigo-600 via-fuchsia-600 to-violet-700'
+
     return (
-      <article className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-700 p-5 text-white shadow-md">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-100">{title}</p>
-            <p className="mt-2 text-3xl font-bold tabular-nums sm:text-4xl">{amount}</p>
-            {subtitle && <p className="mt-1 text-sm text-indigo-100">{subtitle}</p>}
-          </div>
-          <div className="rounded-xl bg-white/15 p-2.5 text-white">
-            <CardIcon variant={variant} />
-          </div>
+      <article
+        onClick={onClick}
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150`}
+      >
+        <div className="absolute top-4 right-4 rounded-xl bg-white/15 p-2.5 text-white">
+          <CardIcon variant={variant} />
+        </div>
+        <div className="pr-12">
+          <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{title}</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums">{amount}</p>
+          {subtitle && <p className="mt-1 text-sm text-white/80 truncate">{subtitle}</p>}
         </div>
       </article>
     )
@@ -55,29 +43,30 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant }: Dashb
 
   const iconBg =
     variant === 'income'
-      ? 'bg-emerald-50 text-emerald-600'
+      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
       : variant === 'expense'
-        ? 'bg-rose-50 text-rose-600'
-        : 'bg-indigo-50 text-indigo-600'
+        ? 'bg-rose-50 text-rose-600 border border-rose-100/50'
+        : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
 
   const amountColor =
     variant === 'income'
       ? 'text-emerald-600'
       : variant === 'expense'
         ? 'text-rose-600'
-        : 'text-indigo-700'
+        : 'text-slate-800'
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-          <p className={`mt-2 text-3xl font-bold tabular-nums ${amountColor}`}>{amount}</p>
-          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
-        </div>
-        <div className={`shrink-0 rounded-xl p-2.5 ${iconBg}`}>
-          <CardIcon variant={variant} />
-        </div>
+    <article
+      onClick={onClick}
+      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01]"
+    >
+      <div className={`absolute top-4 right-4 rounded-xl p-2.5 ${iconBg}`}>
+        <CardIcon variant={variant} />
+      </div>
+      <div className="pr-12">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className={`mt-2 text-2xl font-bold tabular-nums ${amountColor}`}>{amount}</p>
+        {subtitle && <p className="mt-1 text-sm text-slate-500 truncate">{subtitle}</p>}
       </div>
     </article>
   )
