@@ -57,8 +57,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
               G
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">GrLaz</p>
-              <p className="truncate text-xs text-indigo-200">gr.laz@hotmail.com</p>
+              <p className="truncate text-sm font-semibold text-white">Wilson</p>
+              <p className="truncate text-xs text-indigo-200">wilson@gmail.com</p>
             </div>
           </div>
         </div>

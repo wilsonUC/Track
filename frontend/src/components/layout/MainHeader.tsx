@@ -1,6 +1,7 @@
 import { Download, Plus } from 'lucide-react'
 import { sectionSubtitle, sectionTitle } from '../../constants/sectionLabels'
 import type { Section } from '../../types/finance'
+import { formatMonthYear } from '../../utils/financeFormat'
 
 type MainHeaderProps = {
   section: Section
@@ -8,10 +9,11 @@ type MainHeaderProps = {
 }
 
 /** Nombre de ejemplo hasta conectar perfil del usuario */
-const DISPLAY_NAME = 'GrLaz'
+const DISPLAY_NAME = 'wilson'
 
 export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
   const isDashboard = section === 'dashboard'
+  const monthLabel = formatMonthYear(new Date())
 
   return (
     <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -21,7 +23,7 @@ export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               ¡Hola, {DISPLAY_NAME}!
             </h2>
-            <p className="text-sm text-slate-500">Resumen de marzo 2026</p>
+            <p className="text-sm text-slate-500">Resumen de {monthLabel.toLowerCase()}</p>
           </>
         ) : (
           <>
@@ -30,7 +32,7 @@ export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
                 {sectionTitle[section]}
               </h2>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
-                Marzo 2026
+                {monthLabel}
               </span>
             </div>
             <p className="text-sm text-slate-500">{sectionSubtitle[section]}</p>
