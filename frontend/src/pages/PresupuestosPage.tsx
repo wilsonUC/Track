@@ -4,7 +4,6 @@ import {
   Plus, 
   X, 
   AlertTriangle, 
-  CheckCircle2, 
   Sparkles, 
   BookOpen, 
   ShieldAlert 

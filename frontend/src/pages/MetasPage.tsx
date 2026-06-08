@@ -6,7 +6,6 @@ import {
   Layers,
   CheckCircle2,
   X,
-  TrendingUp
 } from 'lucide-react';
 
 interface Meta {

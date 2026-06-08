@@ -1,21 +1,7 @@
-import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  PieChart, 
-  TrendingDown, 
-  TrendingUp, 
-  Calendar, 
-  Download, 
-  DollarSign, 
-  Percent, 
-  CalendarDays,
-  ArrowUpRight,
-  ArrowDownRight
-} from 'lucide-react';
+import { useState } from 'react';
+import { BarChart3, PieChart, Download } from 'lucide-react';
 
 export default function ReportesPage() {
-  const [filtroTiempo, setFiltroTiempo] = useState('este_mes');
-  
   // 1. Estado para controlar qué pestaña está activa (visto en image_5ce01f.png)
   const [tipoReporte, setTipoReporte] = useState<'todos' | 'ingresos' | 'gastos'>('todos');
 
