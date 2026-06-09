@@ -4,8 +4,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Category, Transaction
+from .ia_service import chat_with_groq
 from .serializers import (
     CategorySerializer,
+    IaChatSerializer,
     TransactionSerializer,
     RegistroSerializer,
     perfil_desde_usuario,
@@ -39,6 +41,25 @@ class TransactionViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
+
+
+class IaChatView(APIView):
+    """POST /api/ia/chat/ — asistente financiero con contexto real del usuario."""
+
+    def post(self, request):
+        serializer = IaChatSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            respuesta = chat_with_groq(
+                user=request.user,
+                mensaje=serializer.validated_data["mensaje"],
+                historial=serializer.validated_data.get("historial", []),
+            )
+        except RuntimeError as exc:
+            return Response({"detalle": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({"respuesta": respuesta})
 
 
 class PerfilView(APIView):

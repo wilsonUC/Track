@@ -1,3 +1,5 @@
+import { clearIaChatStorage } from '../utils/iaChatStorage'
+
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
 
 export type LoginResponse = {
@@ -80,6 +82,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   }
 
   export function logout() {
+    clearIaChatStorage()
     localStorage.removeItem('access')
     localStorage.removeItem('refresh')
   }

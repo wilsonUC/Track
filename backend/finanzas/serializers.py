@@ -23,6 +23,16 @@ def perfil_desde_usuario(user):
 User = get_user_model()
 
 
+class IaHistorialItemSerializer(serializers.Serializer):
+    rol = serializers.ChoiceField(choices=["user", "assistant"])
+    contenido = serializers.CharField(max_length=4000)
+
+
+class IaChatSerializer(serializers.Serializer):
+    mensaje = serializers.CharField(min_length=1, max_length=2000)
+    historial = IaHistorialItemSerializer(many=True, required=False, default=list)
+
+
 class CategorySerializer(serializers.ModelSerializer):
     """Categoría global: nombre y si es ingreso o gasto."""
 

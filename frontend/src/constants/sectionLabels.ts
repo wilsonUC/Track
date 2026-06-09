@@ -22,6 +22,6 @@ export const sectionSubtitle: Record<Section, string> = {
   recurrentes: 'Suscripciones, alquiler y otros cargos que se repiten.',
   reportes: 'Historial de 6 meses, distribución por categoría y exportación.',
   consejos: 'Ideas para optimizar gastos y mejorar hábitos.',
-  ia: 'Pregunta y obtén ayuda contextual sobre tus finanzas.',
+  ia: 'Asistente con Groq usando tus transacciones reales.',
   configuracion: 'Cuenta, moneda, notificaciones y preferencias.',
 }
