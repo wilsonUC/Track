@@ -113,7 +113,7 @@ export function MetasPage() {
       {/* HEADER CON ACCIÓN PARA ABRIR EL MODAL */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Metas de Ahorro</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Metas de Ahorro</h1>
           <p className="text-sm text-slate-500 mt-1">Prueba interactiva del sistema de objetivos financieros.</p>
         </div>
         

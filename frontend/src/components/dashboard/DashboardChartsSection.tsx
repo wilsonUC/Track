@@ -16,14 +16,14 @@ export function DashboardChartsSection({ categoryExpenses, monthlyChart, loading
     <div className="grid gap-4 lg:grid-cols-2">
       <article className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between">
         <div>
-          <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
               <PieChart className="h-5 w-5" aria-hidden />
             </div>
             <h3 className="font-semibold text-slate-800">Gastos por categoría</h3>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div className="space-y-4 p-4 sm:p-6">
             {loading && <p className="py-12 text-center text-sm text-slate-500">Cargando…</p>}
 
             {!loading && categoryExpenses.length === 0 && (

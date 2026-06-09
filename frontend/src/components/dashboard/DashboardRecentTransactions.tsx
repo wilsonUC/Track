@@ -10,14 +10,14 @@ type DashboardRecentTransactionsProps = {
 export function DashboardRecentTransactions({ transactions, loading }: DashboardRecentTransactionsProps) {
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
           <History className="h-5 w-5" aria-hidden />
         </div>
         <h3 className="font-semibold text-slate-800">Todas las transacciones recientes</h3>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         {loading && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}
 
         {!loading && transactions.length === 0 && (

@@ -104,7 +104,7 @@ export function PresupuestosPage() {
       {/* HEADER PRINCIPAL */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Presupuestos Mensuales</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Presupuestos Mensuales</h1>
           <p className="text-sm text-slate-500 mt-1">Controla tus límites de gasto para no salirte del plan.</p>
         </div>
         

@@ -49,7 +49,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm transition">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${activeBgColor}`}>
             <ChartColumn className="h-5 w-5" aria-hidden />

@@ -118,7 +118,7 @@ export function RecurrentesPage() {
       {/* HEADER DE LA PÁGINA */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Transacciones Recurrentes</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Transacciones Recurrentes</h1>
           <p className="text-sm text-slate-500 mt-1">Gestiona tus pagos fijos y membresías mensuales.</p>
         </div>
         

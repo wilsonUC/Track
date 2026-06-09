@@ -69,7 +69,7 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
         }`}
       >
         <div
-          className={`flex items-center justify-between gap-3 border-b px-5 py-4 ${
+          className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4 ${
             isIncome ? 'border-emerald-100 bg-emerald-50/10' : 'border-rose-100 bg-rose-50/10'
           }`}
         >
@@ -103,7 +103,7 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
             <History className="h-5 w-5" aria-hidden />
           </div>

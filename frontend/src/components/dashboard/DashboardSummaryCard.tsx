@@ -27,14 +27,14 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
     return (
       <article
         onClick={onClick}
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150`}
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-4 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150 sm:p-5`}
       >
         <div className="absolute top-4 right-4 rounded-xl bg-white/15 p-2.5 text-white">
           <CardIcon variant={variant} />
         </div>
         <div className="pr-12">
           <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{title}</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums">{amount}</p>
+          <p className="mt-2 text-xl font-bold tabular-nums sm:text-2xl">{amount}</p>
           {subtitle && <p className="mt-1 text-sm text-white/80 truncate">{subtitle}</p>}
         </div>
       </article>
@@ -58,14 +58,14 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
   return (
     <article
       onClick={onClick}
-      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01]"
+      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01] sm:p-5"
     >
       <div className={`absolute top-4 right-4 rounded-xl p-2.5 ${iconBg}`}>
         <CardIcon variant={variant} />
       </div>
       <div className="pr-12">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-        <p className={`mt-2 text-2xl font-bold tabular-nums ${amountColor}`}>{amount}</p>
+        <p className={`mt-2 text-xl font-bold tabular-nums sm:text-2xl ${amountColor}`}>{amount}</p>
         {subtitle && <p className="mt-1 text-sm text-slate-500 truncate">{subtitle}</p>}
       </div>
     </article>

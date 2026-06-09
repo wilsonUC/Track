@@ -20,7 +20,7 @@ export function DashboardMonthCard({ variant, transactions, loading }: Dashboard
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md duration-200">
       <div
-        className={`flex items-center justify-between gap-3 border-b px-5 py-4 ${
+        className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4 ${
           isIncome ? 'border-emerald-100 bg-emerald-50/10' : 'border-rose-100 bg-rose-50/10'
         }`}
       >
@@ -38,7 +38,7 @@ export function DashboardMonthCard({ variant, transactions, loading }: Dashboard
           </div>
           <h3 className="font-semibold text-slate-800">{title}</h3>
         </div>
-        <p className={`text-lg font-bold tabular-nums ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <p className={`text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
           {formattedTotal}
         </p>
       </div>
