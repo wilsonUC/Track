@@ -99,7 +99,7 @@ export function PresupuestosPage() {
   const porcentajeGlobal = totalLimite > 0 ? Math.round((totalGastado / totalLimite) * 100) : 0;
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen text-slate-800 relative">
+    <section className="space-y-6 text-slate-800">
       
       {/* HEADER PRINCIPAL */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
@@ -277,6 +277,6 @@ export function PresupuestosPage() {
         </div>
       )}
 
-    </div>
+    </section>
   );
 }

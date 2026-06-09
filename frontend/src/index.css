@@ -54,7 +54,7 @@
 
 /* App a pantalla completa: el template de Vite centraba #root a 1126px y dejaba márgenes blancos */
 #root {
-  min-height: 100svh;
+  min-height: 100dvh;
   width: 100%;
   margin: 0;
   padding: 0;
@@ -72,30 +72,15 @@ body {
   padding: 0;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  /* Sin color global: si no, tapa utilidades Tailwind (text-violet-700, etc.) */
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+/* La app usa Tailwind para títulos; los estilos globales del template Vite rompían el layout. */
+#root h1,
+#root h2,
+#root h3 {
+  font-size: unset;
+  margin: 0;
+  letter-spacing: unset;
+  line-height: unset;
+  font-weight: unset;
 }
 p {
   margin: 0;

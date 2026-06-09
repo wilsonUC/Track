@@ -56,7 +56,7 @@ export function AppLayout() {
   const userEmail = profile?.email ?? ''
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900">
+    <div className="h-dvh overflow-hidden bg-slate-100 text-slate-900">
       <Sidebar
         onLogout={handleLogout}
         displayName={displayName}
@@ -64,8 +64,8 @@ export function AppLayout() {
         initial={userInitial}
       />
 
-      <div className="flex h-full flex-col md:pl-64">
-        <main className="flex-1 overflow-y-auto px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
+      <div className="flex h-full min-h-0 flex-col md:pl-64">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
           <div className="mx-auto max-w-6xl">
             <MainHeader
               section={section}
