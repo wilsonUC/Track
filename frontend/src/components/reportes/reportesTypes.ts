@@ -13,6 +13,6 @@ export type MonthlyBarData = {
   mes: string
   ing: number
   gas: number
-  hIng: string
-  hGas: string
+  ingPercent: number
+  gasPercent: number
 }

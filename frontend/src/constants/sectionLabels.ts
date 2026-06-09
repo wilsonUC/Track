@@ -20,7 +20,7 @@ export const sectionSubtitle: Record<Section, string> = {
   presupuestos: 'Planifica límites por categoría y sigue el avance.',
   metas: 'Define objetivos de ahorro o deuda y monitorea el progreso.',
   recurrentes: 'Suscripciones, alquiler y otros cargos que se repiten.',
-  reportes: 'Exporta y analiza tus movimientos en el tiempo.',
+  reportes: 'Historial de 6 meses, distribución por categoría y exportación.',
   consejos: 'Ideas para optimizar gastos y mejorar hábitos.',
   ia: 'Pregunta y obtén ayuda contextual sobre tus finanzas.',
   configuracion: 'Cuenta, moneda, notificaciones y preferencias.',

@@ -11,7 +11,9 @@ type MainHeaderProps = {
 
 export function MainHeader({ section, displayName, onOpenNewTransaction }: MainHeaderProps) {
   const isDashboard = section === 'dashboard'
+  const isReportes = section === 'reportes'
   const monthLabel = formatMonthYear(new Date())
+  const sectionBadge = isReportes ? 'Últimos 6 meses' : monthLabel
 
   return (
     <header className="mb-5 flex flex-col gap-4 sm:mb-6 lg:flex-row lg:items-start lg:justify-between">
@@ -30,7 +32,7 @@ export function MainHeader({ section, displayName, onOpenNewTransaction }: MainH
                 {sectionTitle[section]}
               </h2>
               <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
-                {monthLabel}
+                {sectionBadge}
               </span>
             </div>
             <p className="text-sm text-slate-500">{sectionSubtitle[section]}</p>
