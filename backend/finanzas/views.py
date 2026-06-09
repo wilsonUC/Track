@@ -3,11 +3,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Category, Transaction 
-from .serializers import ( 
-    CategorySerializer, 
-    TransactionSerializer, 
+from .models import Category, Transaction
+from .serializers import (
+    CategorySerializer,
+    TransactionSerializer,
     RegistroSerializer,
+    perfil_desde_usuario,
 )
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -38,6 +39,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
+
+
+class PerfilView(APIView):
+    """GET /api/perfil/ — datos del usuario logueado (nombre, correo, teléfono)."""
+
+    def get(self, request):
+        return Response(perfil_desde_usuario(request.user))
 
 
 class RegistroView(APIView):

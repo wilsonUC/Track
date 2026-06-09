@@ -5,13 +5,11 @@ import { formatMonthYear } from '../../utils/financeFormat'
 
 type MainHeaderProps = {
   section: Section
+  displayName: string
   onOpenNewTransaction: () => void
 }
 
-/** Nombre de ejemplo hasta conectar perfil del usuario */
-const DISPLAY_NAME = 'wilson'
-
-export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
+export function MainHeader({ section, displayName, onOpenNewTransaction }: MainHeaderProps) {
   const isDashboard = section === 'dashboard'
   const monthLabel = formatMonthYear(new Date())
 
@@ -21,7 +19,7 @@ export function MainHeader({ section, onOpenNewTransaction }: MainHeaderProps) {
         {isDashboard ? (
           <>
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              ¡Hola, {DISPLAY_NAME}!
+              ¡Hola, {displayName}!
             </h2>
             <p className="text-sm text-slate-500">Resumen de {monthLabel.toLowerCase()}</p>
           </>

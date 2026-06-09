@@ -5,6 +5,21 @@ from rest_framework import serializers
 
 from .models import Category, PerfilUsuario, Transaction
 
+
+def perfil_desde_usuario(user):
+    """Datos del usuario logueado para mostrar en la app."""
+    try:
+        telefono = user.perfil.telefono
+    except PerfilUsuario.DoesNotExist:
+        telefono = ""
+    return {
+        "username": user.username,
+        "first_name": user.first_name or "",
+        "last_name": user.last_name or "",
+        "email": user.email,
+        "telefono": telefono,
+    }
+
 User = get_user_model()
 
 

@@ -1,4 +1,5 @@
 import type { ApiCategory, ApiTransaction } from '../api/finanzas'
+import { getCategoryChartColors } from './categoryDisplay'
 import { formatChartMonth, isSameMonth, parseTransactionDate } from './financeFormat'
 
 export type EnrichedTransaction = ApiTransaction & {
@@ -19,15 +20,6 @@ export type CategoryExpenseRow = {
   colorBg: string
   colorLight: string
 }
-
-const EXPENSE_BAR_COLORS = [
-  { colorBg: 'bg-rose-500', colorLight: 'bg-rose-50 text-rose-600' },
-  { colorBg: 'bg-violet-500', colorLight: 'bg-violet-50 text-violet-600' },
-  { colorBg: 'bg-amber-500', colorLight: 'bg-amber-50 text-amber-600' },
-  { colorBg: 'bg-sky-500', colorLight: 'bg-sky-50 text-sky-600' },
-  { colorBg: 'bg-emerald-500', colorLight: 'bg-emerald-50 text-emerald-600' },
-  { colorBg: 'bg-indigo-500', colorLight: 'bg-indigo-50 text-indigo-600' },
-] as const
 
 const SAVINGS_GOAL_PERCENT = 20
 
@@ -115,15 +107,12 @@ export function buildCategoryExpenses(expenseTransactions: EnrichedTransaction[]
 
   return [...totalsByCategory.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([categoria, monto], index) => {
-      const colors = EXPENSE_BAR_COLORS[index % EXPENSE_BAR_COLORS.length]
-      return {
-        categoria,
-        monto,
-        porcentaje: Math.round((monto / totalExpenses) * 1000) / 10,
-        ...colors,
-      }
-    })
+    .map(([categoria, monto]) => ({
+      categoria,
+      monto,
+      porcentaje: Math.round((monto / totalExpenses) * 1000) / 10,
+      ...getCategoryChartColors(categoria),
+    }))
 }
 
 export function getTopCategoryInsight(rows: CategoryExpenseRow[]) {

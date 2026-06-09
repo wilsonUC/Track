@@ -1,3 +1,4 @@
+import { PieChart } from 'lucide-react'
 import { getTopCategoryInsight, type CategoryExpenseRow, type MonthChartPoint } from '../../utils/dashboardMetrics'
 import { formatSoles } from '../../utils/financeFormat'
 import { DashboardMonthlyChart } from './DashboardMonthlyChart'
@@ -17,10 +18,7 @@ export function DashboardChartsSection({ categoryExpenses, monthlyChart, loading
         <div>
           <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
-              </svg>
+              <PieChart className="h-5 w-5" aria-hidden />
             </div>
             <h3 className="font-semibold text-slate-800">Gastos por categoría</h3>
           </div>

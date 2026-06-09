@@ -7,6 +7,9 @@ import { NavIcon } from './navIcons'
 
 type SidebarProps = {
   onLogout: () => void
+  displayName: string
+  email: string
+  initial: string
 }
 
 function navClassName(isActive: boolean) {
@@ -15,10 +18,10 @@ function navClassName(isActive: boolean) {
   }`
 }
 
-export function Sidebar({ onLogout }: SidebarProps) {
+export function Sidebar({ onLogout, displayName, email, initial }: SidebarProps) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col bg-indigo-700 p-4 text-indigo-50 md:flex md:min-h-screen">
-      <div className="flex min-h-0 flex-1 flex-col">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden h-screen w-64 flex-col bg-indigo-700 p-4 text-indigo-50 md:flex">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
@@ -54,11 +57,11 @@ export function Sidebar({ onLogout }: SidebarProps) {
         <div className="mt-4 shrink-0 rounded-lg border border-indigo-600/80 bg-indigo-800/40 p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
-              G
+              {initial}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">Wilson</p>
-              <p className="truncate text-xs text-indigo-200">wilson@gmail.com</p>
+              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+              <p className="truncate text-xs text-indigo-200">{email || '—'}</p>
             </div>
           </div>
         </div>

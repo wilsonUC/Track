@@ -1,3 +1,4 @@
+import { ChartColumn } from 'lucide-react'
 import { useState } from 'react'
 import type { MonthChartPoint } from '../../utils/dashboardMetrics'
 import { formatSoles } from '../../utils/financeFormat'
@@ -51,13 +52,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${activeBgColor}`}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
-              />
-            </svg>
+            <ChartColumn className="h-5 w-5" aria-hidden />
           </div>
           <h3 className="font-semibold text-slate-800">Resumen mensual</h3>
         </div>

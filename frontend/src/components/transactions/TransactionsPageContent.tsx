@@ -1,6 +1,15 @@
+import { History, TrendingDown, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { fetchTransactions, type ApiTransaction } from '../../api/finanzas'
+import { fetchCategories, fetchTransactions } from '../../api/finanzas'
+import { getCategoryDisplay } from '../../utils/categoryDisplay'
+import {
+  buildCategoryMap,
+  enrichTransactions,
+  sortByDateDesc,
+  type EnrichedTransaction,
+} from '../../utils/dashboardMetrics'
+import { formatShortDate, formatSignedSoles } from '../../utils/financeFormat'
 
 type TransactionsPageContentProps = {
   variant: 'income' | 'expense'
@@ -10,77 +19,151 @@ type OutletContext = {
   transactionsVersion: number
 }
 
-function formatMoney(value: number, isIncome: boolean) {
-  const formatted = value.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  return isIncome ? `+S/ ${formatted}` : `-S/ ${formatted}`
-}
-
 export function TransactionsPageContent({ variant }: TransactionsPageContentProps) {
   const { transactionsVersion } = useOutletContext<OutletContext>()
   const isIncome = variant === 'income'
-  const apiTipo = variant
 
-  const [transactions, setTransactions] = useState<ApiTransaction[]>([])
+  const [transactions, setTransactions] = useState<EnrichedTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError('')
-    fetchTransactions()
-      .then((data) => setTransactions(data.filter((t) => t.tipo === apiTipo)))
-      .catch(() => setError('No se pudieron cargar las transacciones.'))
-      .finally(() => setLoading(false))
-  }, [apiTipo, transactionsVersion])
+
+    Promise.all([fetchTransactions(), fetchCategories()])
+      .then(([data, categories]) => {
+        if (cancelled) return
+        const categoryMap = buildCategoryMap(categories)
+        const enriched = enrichTransactions(data, categoryMap)
+        const filtered = enriched.filter((t) => t.tipo === variant)
+        setTransactions(sortByDateDesc(filtered))
+      })
+      .catch(() => {
+        if (!cancelled) setError('No se pudieron cargar las transacciones.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [variant, transactionsVersion])
 
   const total = useMemo(
-    () => transactions.reduce((sum, t) => sum + Number(t.monto), 0),
+    () => transactions.reduce((sum, t) => sum + t.montoNum, 0),
     [transactions],
   )
 
-  const monthLabel = isIncome ? 'Ingresos de marzo 2026' : 'Gastos de marzo 2026'
+  const summaryLabel = isIncome ? 'Total de ingresos' : 'Total de gastos'
   const historyTitle = isIncome ? 'Historial de ingresos' : 'Historial de gastos'
+  const emptyText = isIncome ? 'No hay ingresos para mostrar' : 'No hay gastos para mostrar'
 
   return (
     <section className="space-y-4">
-      <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-500">{monthLabel}</p>
-        <p
-          className={`mt-2 text-4xl font-bold tabular-nums ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}
+      <article
+        className={`rounded-2xl border bg-white shadow-sm ${
+          isIncome ? 'border-emerald-100' : 'border-rose-100'
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between gap-3 border-b px-5 py-4 ${
+            isIncome ? 'border-emerald-100 bg-emerald-50/10' : 'border-rose-100 bg-rose-50/10'
+          }`}
         >
-          {formatMoney(total, isIncome)}
-        </p>
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+              }`}
+            >
+              {isIncome ? (
+                <TrendingUp className="h-5 w-5" aria-hidden />
+              ) : (
+                <TrendingDown className="h-5 w-5" aria-hidden />
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">{summaryLabel}</p>
+              <p className="text-xs text-slate-400">
+                {transactions.length} {transactions.length === 1 ? 'movimiento' : 'movimientos'}
+              </p>
+            </div>
+          </div>
+          <p
+            className={`text-2xl font-bold tabular-nums sm:text-3xl ${
+              isIncome ? 'text-emerald-600' : 'text-rose-600'
+            }`}
+          >
+            {formatSignedSoles(total, isIncome)}
+          </p>
+        </div>
       </article>
 
-      <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-base font-medium text-slate-600">{historyTitle}</p>
+      <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <History className="h-5 w-5" aria-hidden />
+          </div>
+          <h3 className="font-semibold text-slate-800">{historyTitle}</h3>
+        </div>
 
-        {loading && <p className="mt-4 text-center text-sm text-slate-500">Cargando…</p>}
-        {error && <p className="mt-4 text-center text-sm text-red-600">{error}</p>}
+        <div className="p-4">
+          {loading && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}
+          {error && <p className="py-8 text-center text-sm text-red-600">{error}</p>}
 
-        {!loading && !error && transactions.length === 0 && (
-          <p className="mt-4 text-center text-sm text-slate-500">No hay transacciones para mostrar</p>
-        )}
+          {!loading && !error && transactions.length === 0 && (
+            <div className="flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80">
+              <p className="text-sm text-slate-500">{emptyText}</p>
+            </div>
+          )}
 
-        {!loading && !error && transactions.length > 0 && (
-          <ul className="mt-4 divide-y divide-slate-100">
-            {transactions.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-800">
-                    {t.descripcion || 'Sin descripción'}
-                  </p>
-                  <p className="text-xs text-slate-500">{t.fecha}</p>
-                </div>
-                <p
-                  className={`shrink-0 font-semibold tabular-nums ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}
-                >
-                  {formatMoney(Number(t.monto), isIncome)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+          {!loading && !error && transactions.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {transactions.map((t) => {
+                const catInfo = getCategoryDisplay(t.categoriaNombre)
+                return (
+                  <li
+                    key={t.id}
+                    className="flex items-center justify-between gap-3 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50/80"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${catInfo.bg}`}
+                      >
+                        {catInfo.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-700">
+                          {t.descripcion || 'Sin descripción'}
+                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span
+                            className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${catInfo.badge}`}
+                          >
+                            {t.categoriaNombre}
+                          </span>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {formatShortDate(t.fecha)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <p
+                      className={`shrink-0 text-sm font-bold tabular-nums ${
+                        isIncome ? 'text-emerald-600' : 'text-rose-600'
+                      }`}
+                    >
+                      {formatSignedSoles(t.montoNum, isIncome)}
+                    </p>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </article>
     </section>
   )

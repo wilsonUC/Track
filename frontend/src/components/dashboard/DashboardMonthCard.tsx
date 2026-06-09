@@ -1,3 +1,4 @@
+import { TrendingDown, TrendingUp } from 'lucide-react'
 import type { MovementType } from '../../types/finance'
 import type { EnrichedTransaction } from '../../utils/dashboardMetrics'
 import { getCategoryDisplay } from '../../utils/categoryDisplay'
@@ -29,13 +30,11 @@ export function DashboardMonthCard({ variant, transactions, loading }: Dashboard
               isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
             }`}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-              {isIncome ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9.75 12 2.25 6v4.5L12 12 2.25 15V18z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 18l-7.5-6 7.5-6v4.5L12 12l9.75 3V18z" />
-              )}
-            </svg>
+            {isIncome ? (
+              <TrendingUp className="h-5 w-5" aria-hidden />
+            ) : (
+              <TrendingDown className="h-5 w-5" aria-hidden />
+            )}
           </div>
           <h3 className="font-semibold text-slate-800">{title}</h3>
         </div>

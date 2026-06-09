@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import { logout } from '../api/auth'
+import { fetchProfile, logout, profileDisplayName, profileInitial, type UserProfile } from '../api/auth'
 import { sectionFromPath } from '../constants/routes'
 import { MainHeader } from '../components/layout/MainHeader'
 import { MobileNav } from '../components/layout/MobileNav'
@@ -25,6 +25,21 @@ export function AppLayout() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [transactionsVersion, setTransactionsVersion] = useState(0)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchProfile()
+      .then((data) => {
+        if (!cancelled) setProfile(data)
+      })
+      .catch(() => {
+        if (!cancelled) setProfile(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleOpenNewTransaction() {
     setMovementType(defaultMovementType(pathname))
@@ -36,20 +51,31 @@ export function AppLayout() {
     window.location.href = '/login'
   }
 
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="flex min-h-screen items-stretch">
-        <Sidebar onLogout={handleLogout} />
+  const displayName = profile ? profileDisplayName(profile) : '…'
+  const userInitial = profile ? profileInitial(profile) : '…'
+  const userEmail = profile?.email ?? ''
 
-        <div className="flex min-h-screen flex-1 flex-col">
-          <main className="flex-1 px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
-            <div className="mx-auto max-w-6xl">
-              <MainHeader section={section} onOpenNewTransaction={handleOpenNewTransaction} />
-              <Outlet context={{ transactionsVersion }} />
-            </div>
-          </main>
-          <MobileNav />
-        </div>
+  return (
+    <div className="h-screen overflow-hidden bg-slate-100 text-slate-900">
+      <Sidebar
+        onLogout={handleLogout}
+        displayName={displayName}
+        email={userEmail}
+        initial={userInitial}
+      />
+
+      <div className="flex h-full flex-col md:pl-64">
+        <main className="flex-1 overflow-y-auto px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
+          <div className="mx-auto max-w-6xl">
+            <MainHeader
+              section={section}
+              displayName={displayName}
+              onOpenNewTransaction={handleOpenNewTransaction}
+            />
+            <Outlet context={{ transactionsVersion }} />
+          </div>
+        </main>
+        <MobileNav />
       </div>
 
       <NewTransactionModal

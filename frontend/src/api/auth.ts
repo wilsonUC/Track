@@ -5,6 +5,39 @@ export type LoginResponse = {
     refresh: string
 }
 
+export type UserProfile = {
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  telefono: string
+}
+
+export function profileDisplayName(profile: UserProfile) {
+  const first = profile.first_name.trim()
+  if (first) return first
+  return profile.username
+}
+
+export function profileInitial(profile: UserProfile) {
+  const name = profileDisplayName(profile)
+  return name.charAt(0).toUpperCase()
+}
+
+export async function fetchProfile(): Promise<UserProfile> {
+  const token = getAccessToken()
+  if (!token) throw new Error('No hay sesión')
+
+  const res = await fetch(`${API}/api/perfil/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  })
+  if (!res.ok) throw new Error('No se pudo cargar el perfil')
+  return res.json()
+}
+
 export type RegisterPayload = {
   username: string
   first_name: string
