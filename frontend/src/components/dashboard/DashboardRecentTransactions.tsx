@@ -50,9 +50,19 @@ export function DashboardRecentTransactions({ transactions, loading }: Dashboard
                           {t.descripcion || 'Sin descripción'}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                            {t.categoriaNombre}
-                          </span>
+                          {t.esPresupuesto ? (
+                            <span className="inline-block rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                              Presupuesto · {t.presupuestoNombre}
+                            </span>
+                          ) : t.esRecurrente ? (
+                            <span className="inline-block rounded bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                              Recurrente · {t.recurrenteNombre}
+                            </span>
+                          ) : (
+                            <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                              {t.categoriaNombre}
+                            </span>
+                          )}
                           <span className="text-[10px] text-slate-400">{formatShortDate(t.fecha)}</span>
                         </div>
                       </div>

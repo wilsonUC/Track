@@ -72,7 +72,7 @@ export function AppLayout() {
               displayName={displayName}
               onOpenNewTransaction={handleOpenNewTransaction}
             />
-            <Outlet context={{ transactionsVersion }} />
+            <Outlet context={{ transactionsVersion, bumpTransactions: () => setTransactionsVersion((v) => v + 1) }} />
           </div>
         </main>
         <MobileNav />

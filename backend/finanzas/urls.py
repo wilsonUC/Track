@@ -6,12 +6,22 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import CategoryViewSet, IaChatView, PerfilView, RegistroView, TransactionViewSet
+from .views import (
+    CategoryViewSet,
+    IaChatView,
+    PerfilView,
+    PresupuestoViewSet,
+    RecurrenteViewSet,
+    RegistroView,
+    TransactionViewSet,
+)
 
 # Router: registra cada ViewSet bajo un prefijo.
 router = DefaultRouter()
 router.register(r"categorias", CategoryViewSet, basename="categoria")
 router.register(r"transacciones", TransactionViewSet, basename="transaccion")
+router.register(r"presupuestos", PresupuestoViewSet, basename="presupuesto")
+router.register(r"recurrentes", RecurrenteViewSet, basename="recurrente")
 
 urlpatterns = [
     # Todas las rutas del router van debajo de lo que pongas en config/urls (p. ej. "api/")

@@ -123,7 +123,12 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
           {!loading && !error && transactions.length > 0 && (
             <ul className="flex flex-col gap-1.5">
               {transactions.map((t) => {
-                const catInfo = getCategoryDisplay(t.categoriaNombre)
+                const displayName = t.esPresupuesto
+                  ? (t.presupuestoNombre ?? 'Presupuesto')
+                  : t.esRecurrente
+                    ? (t.recurrenteNombre ?? 'Recurrente')
+                    : t.categoriaNombre
+                const catInfo = getCategoryDisplay(displayName)
                 return (
                   <li
                     key={t.id}
@@ -140,11 +145,21 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
                           {t.descripcion || 'Sin descripción'}
                         </p>
                         <div className="mt-1 flex items-center gap-2">
-                          <span
-                            className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${catInfo.badge}`}
-                          >
-                            {t.categoriaNombre}
-                          </span>
+                          {t.esPresupuesto ? (
+                            <span className="inline-block rounded-md border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                              Presupuesto · {t.presupuestoNombre}
+                            </span>
+                          ) : t.esRecurrente ? (
+                            <span className="inline-block rounded-md border border-violet-100 bg-violet-50/70 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                              Recurrente · {t.recurrenteNombre}
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${catInfo.badge}`}
+                            >
+                              {t.categoriaNombre}
+                            </span>
+                          )}
                           <span className="text-[10px] font-medium text-slate-400">
                             {formatShortDate(t.fecha)}
                           </span>

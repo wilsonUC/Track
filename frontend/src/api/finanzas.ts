@@ -19,7 +19,11 @@ export type ApiCategory = {
 
 export type ApiTransaction = {
   id: number
-  categoria: number
+  categoria: number | null
+  presupuesto: number | null
+  presupuesto_nombre: string | null
+  recurrente: number | null
+  recurrente_nombre: string | null
   tipo: 'income' | 'expense'
   monto: string
   fecha: string
@@ -41,7 +45,8 @@ export async function fetchTransactions(): Promise<ApiTransaction[]> {
 }
 
 export async function createTransaction(data: {
-  categoria: number
+  categoria?: number | null
+  presupuesto?: number | null
   tipo: 'income' | 'expense'
   monto: string
   fecha: string

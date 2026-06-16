@@ -11,7 +11,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Sum
 
-from .models import Transaction
+from .models import Presupuesto, Recurrente, Transaction
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
@@ -39,9 +39,12 @@ def build_financial_context(user) -> str:
 
     recent = (
         Transaction.objects.filter(usuario=user)
-        .select_related("categoria")
+        .select_related("categoria", "presupuesto", "recurrente")
         .order_by("-fecha", "-creado_en")[:MAX_RECENT_TX]
     )
+
+    presupuestos = Presupuesto.objects.filter(usuario=user, activo=True).order_by("nombre")
+    recurrentes = Recurrente.objects.filter(usuario=user, activo=True).select_related("categoria")
 
     lines = [
         f"Usuario: {user.first_name or user.username}",
@@ -50,8 +53,43 @@ def build_financial_context(user) -> str:
         f"- Gastos: S/ {expense:.2f}",
         f"- Balance del mes: S/ {balance:.2f}",
         "",
-        "Últimas transacciones (más recientes primero):",
+        "Presupuestos activos (límite mensual):",
     ]
+
+    if not presupuestos:
+        lines.append("- Sin presupuestos configurados.")
+    else:
+        from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
+
+        for p in presupuestos:
+            gastado = calcular_gastado_mes(p, today)
+            pct = calcular_porcentaje(gastado, p.limite)
+            estado = calcular_estado(gastado, p.limite)
+            lines.append(
+                f"- {p.nombre}: gastado S/ {gastado:.2f} / límite S/ {p.limite:.2f} ({pct}%, {estado})"
+            )
+
+    lines.extend(["", "Recurrentes activos (mes actual):"])
+
+    if not recurrentes:
+        lines.append("- Sin recurrentes configurados.")
+    else:
+        from .recurrentes_service import calcular_estado_recurrente
+
+        for r in recurrentes:
+            estado = calcular_estado_recurrente(r, today)
+            tipo = "Ingreso" if r.tipo == Transaction.Tipo.INGRESO else "Gasto"
+            if estado["registrado_mes"]:
+                situacion = "registrado"
+            elif estado["vencido"]:
+                situacion = "vencido"
+            else:
+                situacion = "pendiente"
+            lines.append(
+                f"- [{tipo}] {r.nombre}: S/ {r.monto:.2f}, día {r.dia_pago}, {situacion}"
+            )
+
+    lines.extend(["", "Últimas transacciones (más recientes primero):"])
 
     if not recent:
         lines.append("- Sin transacciones registradas.")
@@ -59,9 +97,13 @@ def build_financial_context(user) -> str:
         for tx in recent:
             tipo = "Ingreso" if tx.tipo == Transaction.Tipo.INGRESO else "Gasto"
             desc = tx.descripcion.strip() or "Sin descripción"
-            lines.append(
-                f"- {tx.fecha} | {tipo} | {tx.categoria.nombre} | S/ {tx.monto} | {desc}"
-            )
+            if tx.presupuesto_id:
+                origen = f"Presupuesto: {tx.presupuesto.nombre}"
+            elif tx.recurrente_id:
+                origen = f"Recurrente: {tx.recurrente.nombre}"
+            else:
+                origen = tx.categoria.nombre if tx.categoria_id else "Sin categoría"
+            lines.append(f"- {tx.fecha} | {tipo} | {origen} | S/ {tx.monto} | {desc}")
 
     return "\n".join(lines)
 

@@ -5,6 +5,11 @@ import { formatChartMonth, isSameMonth, parseTransactionDate } from './financeFo
 export type EnrichedTransaction = ApiTransaction & {
   montoNum: number
   categoriaNombre: string
+  presupuestoNombre: string | null
+  recurrenteNombre: string | null
+  esPresupuesto: boolean
+  esRecurrente: boolean
+  etiquetaOrigen: string
 }
 
 export type MonthChartPoint = {
@@ -31,11 +36,27 @@ export function enrichTransactions(
   transactions: ApiTransaction[],
   categoryMap: Map<number, string>,
 ): EnrichedTransaction[] {
-  return transactions.map((t) => ({
-    ...t,
-    montoNum: Number(t.monto),
-    categoriaNombre: categoryMap.get(t.categoria) ?? 'Sin categoría',
-  }))
+  return transactions.map((t) => {
+    const esPresupuesto = t.presupuesto != null
+    const esRecurrente = t.recurrente != null
+    const presupuestoNombre = t.presupuesto_nombre ?? null
+    const recurrenteNombre = t.recurrente_nombre ?? null
+    const categoriaNombre = t.categoria ? (categoryMap.get(t.categoria) ?? 'Sin categoría') : ''
+    let etiquetaOrigen = categoriaNombre
+    if (esPresupuesto) etiquetaOrigen = `Presupuesto: ${presupuestoNombre ?? 'Sin nombre'}`
+    else if (esRecurrente) etiquetaOrigen = `Recurrente: ${recurrenteNombre ?? 'Sin nombre'}`
+
+    return {
+      ...t,
+      montoNum: Number(t.monto),
+      categoriaNombre,
+      presupuestoNombre,
+      recurrenteNombre,
+      esPresupuesto,
+      esRecurrente,
+      etiquetaOrigen,
+    }
+  })
 }
 
 export function filterByMonth(transactions: EnrichedTransaction[], reference: Date) {
@@ -99,7 +120,8 @@ export function buildCategoryExpenses(expenseTransactions: EnrichedTransaction[]
   const totalsByCategory = new Map<string, number>()
 
   for (const t of expenseTransactions) {
-    totalsByCategory.set(t.categoriaNombre, (totalsByCategory.get(t.categoriaNombre) ?? 0) + t.montoNum)
+    const label = t.esPresupuesto || t.esRecurrente ? t.etiquetaOrigen : t.categoriaNombre
+    totalsByCategory.set(label, (totalsByCategory.get(label) ?? 0) + t.montoNum)
   }
 
   const totalExpenses = [...totalsByCategory.values()].reduce((sum, value) => sum + value, 0)
