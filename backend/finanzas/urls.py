@@ -8,6 +8,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     CategoryViewSet,
+    CambioPasswordView,
     IaChatView,
     PerfilView,
     PresupuestoViewSet,
@@ -27,6 +28,7 @@ urlpatterns = [
     # Todas las rutas del router van debajo de lo que pongas en config/urls (p. ej. "api/")
     path("ia/chat/", IaChatView.as_view(), name="ia-chat"),
     path("perfil/", PerfilView.as_view(), name="perfil"),
+    path("perfil/cambiar-password/", CambioPasswordView.as_view(), name="perfil-cambiar-password"),
     path("registro/", RegistroView.as_view(), name="registro"),
     path("", include(router.urls)),
 ]

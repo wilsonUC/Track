@@ -1,5 +1,7 @@
 import type { ApiCategory, ApiTransaction } from '../api/finanzas'
 import { getCategoryChartColors } from './categoryDisplay'
+import type { DateRange } from './dateFilters'
+import { isDateInRange } from './dateFilters'
 import { formatChartMonth, isSameMonth, parseTransactionDate } from './financeFormat'
 
 export type EnrichedTransaction = ApiTransaction & {
@@ -63,6 +65,11 @@ export function filterByMonth(transactions: EnrichedTransaction[], reference: Da
   return transactions.filter((t) => isSameMonth(t.fecha, reference))
 }
 
+export function filterByDateRange(transactions: EnrichedTransaction[], range: DateRange) {
+  if (range.start === null && range.end === null) return transactions
+  return transactions.filter((t) => isDateInRange(t.fecha, range))
+}
+
 export function sumByType(transactions: EnrichedTransaction[]) {
   return transactions.reduce(
     (acc, t) => {
@@ -82,7 +89,7 @@ export function computeSavingsPercent(income: number, expense: number) {
 export function getBalanceSubtitle(balance: number) {
   if (balance > 0) return '¡Excelente balance! 💰'
   if (balance === 0) return 'Ingresos y gastos equilibrados'
-  return 'Gastos superan ingresos este mes'
+  return 'Gastos superan ingresos en el período'
 }
 
 export function getSavingsSubtitle(savingsPercent: number) {

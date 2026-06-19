@@ -27,6 +27,15 @@ export function AppLayout() {
   const [transactionsVersion, setTransactionsVersion] = useState(0)
   const [profile, setProfile] = useState<UserProfile | null>(null)
 
+  async function refreshProfile() {
+    try {
+      const data = await fetchProfile()
+      setProfile(data)
+    } catch {
+      setProfile(null)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     fetchProfile()
@@ -72,7 +81,13 @@ export function AppLayout() {
               displayName={displayName}
               onOpenNewTransaction={handleOpenNewTransaction}
             />
-            <Outlet context={{ transactionsVersion, bumpTransactions: () => setTransactionsVersion((v) => v + 1) }} />
+            <Outlet
+              context={{
+                transactionsVersion,
+                bumpTransactions: () => setTransactionsVersion((v) => v + 1),
+                refreshProfile,
+              }}
+            />
           </div>
         </main>
         <MobileNav />

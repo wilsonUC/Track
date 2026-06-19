@@ -1,24 +1,10 @@
+import { AtSign, Lock, Mail, Phone, User } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../api/auth'
-
-function formatRegisterError(raw: string): string {
-  try {
-    const data = JSON.parse(raw) as Record<string, string[] | string>
-    const parts: string[] = []
-    for (const [key, value] of Object.entries(data)) {
-      if (Array.isArray(value)) {
-        parts.push(`${key}: ${value.join(' ')}`)
-      } else if (typeof value === 'string') {
-        parts.push(value)
-      }
-    }
-    if (parts.length > 0) return parts.join(' · ')
-  } catch {
-    /* texto plano */
-  }
-  return 'No se pudo crear la cuenta. Revisa los datos.'
-}
+import { AuthField } from '../components/auth/AuthField'
+import { AuthSplitCard } from '../components/auth/AuthLayout'
+import { formatApiError } from '../utils/apiErrors'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -28,12 +14,25 @@ export function RegisterPage() {
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+
+    if (!acceptTerms) {
+      setError('Debes aceptar los términos y condiciones.')
+      return
+    }
+
     setLoading(true)
     try {
       await register({
@@ -50,106 +49,141 @@ export function RegisterPage() {
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
-      setError(formatRegisterError(message))
+      setError(formatApiError(message, 'No se pudo crear la cuenta. Revisa los datos.'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl">
-        <h1 className="text-xl font-bold text-slate-900">Registro de usuario</h1>
-        <p className="mt-1 text-sm text-slate-500">Completa el formulario para crear tu cuenta</p>
+    <AuthSplitCard
+      accent="register"
+      tagline="Únete a nuestra plataforma y gestiona tus finanzas de manera inteligente y segura."
+    >
+      <div className="mx-auto w-full max-w-xl">
+        <h1 className="text-3xl font-bold tracking-tight text-[#0f2d6e]">Crear Cuenta</h1>
+        <p className="mt-2 text-sm text-[#3b5f9a]">Complete el formulario para registrarse.</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700">Usuario</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <AuthField
+              id="register-first-name"
+              label="NOMBRE"
+              value={firstName}
+              onChange={setFirstName}
+              icon={User}
+              placeholder="Nombre"
               required
+              autoComplete="given-name"
+            />
+            <AuthField
+              id="register-last-name"
+              label="APELLIDOS"
+              value={lastName}
+              onChange={setLastName}
+              icon={User}
+              placeholder="Apellidos"
+              required
+              autoComplete="family-name"
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-slate-700">Nombre</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Apellido</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                required
-              />
-            </div>
-          </div>
+          <AuthField
+            id="register-username"
+            label="USUARIO"
+            value={username}
+            onChange={setUsername}
+            icon={AtSign}
+            placeholder="Nombre de usuario"
+            required
+            autoComplete="username"
+          />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              required
-            />
-          </div>
+          <AuthField
+            id="register-email"
+            label="CORREO ELECTRÓNICO"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            icon={Mail}
+            placeholder="correo@ejemplo.com"
+            required
+            autoComplete="email"
+          />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">Teléfono</label>
-            <input
-              type="tel"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              required
-            />
-          </div>
+          <AuthField
+            id="register-telefono"
+            label="TELÉFONO"
+            type="tel"
+            value={telefono}
+            onChange={setTelefono}
+            icon={Phone}
+            placeholder="Número de teléfono"
+            required
+            autoComplete="tel"
+          />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">Contraseña</label>
-            <input
+          <div className="grid gap-5 sm:grid-cols-2">
+            <AuthField
+              id="register-password"
+              label="CONTRASEÑA"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              onChange={setPassword}
+              icon={Lock}
+              placeholder="Mínimo 8 caracteres"
               required
+              minLength={8}
+              autoComplete="new-password"
             />
-            <p className="mt-1 text-xs text-slate-500">Mínimo 8 caracteres</p>
+            <AuthField
+              id="register-confirm-password"
+              label="CONFIRMAR"
+              type="password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              icon={Lock}
+              placeholder="Repita la contraseña"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#0f2d6e] focus:ring-[#2563eb]/30"
+            />
+            <span>
+              Acepto los{' '}
+              <span className="font-semibold text-[#2563eb]">Términos y Condiciones</span> y la{' '}
+              <span className="font-semibold text-[#2563eb]">Política de Privacidad</span>.
+            </span>
+          </label>
+
+          {error && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-emerald-600 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="w-full rounded-xl bg-[#0f2d6e] py-3.5 text-sm font-bold tracking-wide text-white shadow-lg shadow-[#0f2d6e]/25 transition hover:bg-[#1a3d7c] disabled:opacity-60"
           >
-            {loading ? 'Creando cuenta…' : 'Crear usuario'}
+            {loading ? 'CREANDO CUENTA…' : 'CREAR CUENTA'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
-            Inicia sesión
+        <p className="mt-6 text-center text-sm text-slate-500">
+          ¿Ya tiene una cuenta?{' '}
+          <Link to="/login" className="font-semibold text-[#2563eb] hover:text-[#1d4ed8]">
+            Inicie sesión
           </Link>
         </p>
       </div>
-    </div>
+    </AuthSplitCard>
   )
 }

@@ -13,6 +13,7 @@ import { MetasPage } from '../pages/MetasPage'
 import { PresupuestosPage } from '../pages/PresupuestosPage'
 import { RecurrentesPage } from '../pages/RecurrentesPage'
 import { ConsejosPage } from '../pages/ConsejosPage'
+import { CuentaPage } from '../pages/CuentaPage'
 import { IaFinanzasPage } from '../pages/IaFinanzasPage'
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -65,6 +66,7 @@ export function AppRoutes() {
         <Route path="reportes" element={<ReportesPage />} />
         <Route path="consejos" element={<ConsejosPage />} />
         <Route path="ia" element={<IaFinanzasPage />} />
+        <Route path="cuenta" element={<CuentaPage />} />
         <Route path="configuracion" element={<PlaceholderPage section="configuracion" />} />
       </Route>
 

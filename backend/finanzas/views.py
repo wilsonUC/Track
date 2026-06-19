@@ -20,6 +20,8 @@ from .serializers import (
     RecurrenteSerializer,
     TransactionSerializer,
     RegistroSerializer,
+    CambioPasswordSerializer,
+    PerfilUpdateSerializer,
     perfil_desde_usuario,
 )
 
@@ -191,10 +193,33 @@ class IaChatView(APIView):
 
 
 class PerfilView(APIView):
-    """GET /api/perfil/ — datos del usuario logueado (nombre, correo, teléfono)."""
+    """GET/PATCH /api/perfil/ — datos y actualización del usuario logueado."""
 
     def get(self, request):
         return Response(perfil_desde_usuario(request.user))
+
+    def patch(self, request):
+        serializer = PerfilUpdateSerializer(
+            data=request.data,
+            partial=True,
+            context={"user": request.user},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(perfil_desde_usuario(request.user))
+
+
+class CambioPasswordView(APIView):
+    """POST /api/perfil/cambiar-password/ — cambiar contraseña del usuario logueado."""
+
+    def post(self, request):
+        serializer = CambioPasswordSerializer(
+            data=request.data,
+            context={"user": request.user},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"mensaje": "Contraseña actualizada correctamente."})
 
 
 class RegistroView(APIView):

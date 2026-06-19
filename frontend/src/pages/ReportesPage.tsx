@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { fetchCategories, fetchTransactions } from '../api/finanzas'
+import { DateFilterToolbar } from '../components/filters/DateFilterToolbar'
 import { ReportesCategoryTable } from '../components/reportes/ReportesCategoryTable'
 import { ReportesDonutChart } from '../components/reportes/ReportesDonutChart'
 import { ReportesHeader } from '../components/reportes/ReportesHeader'
 import { ReportesMonthlyChart } from '../components/reportes/ReportesMonthlyChart'
 import type { ReportFilter } from '../components/reportes/reportesTypes'
+import { useDateFilter } from '../hooks/useDateFilter'
 import {
   buildDonutSegments,
   downloadReportCsv,
   filterReportCategories,
   prepareReportData,
 } from '../utils/reportesMetrics'
+import { buildCategoryMap, enrichTransactions, filterByDateRange } from '../utils/dashboardMetrics'
 
 type OutletContext = {
   transactionsVersion: number
@@ -19,9 +22,11 @@ type OutletContext = {
 
 export function ReportesPage() {
   const { transactionsVersion } = useOutletContext<OutletContext>()
-  const [filter, setFilter] = useState<ReportFilter>('todos')
+  const [typeFilter, setTypeFilter] = useState<ReportFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const dateFilter = useDateFilter({ defaultPreset: 'total' })
 
   const [categoryRows, setCategoryRows] = useState<ReturnType<typeof prepareReportData>['categoryRows']>([])
   const [monthlyBars, setMonthlyBars] = useState<ReturnType<typeof prepareReportData>['monthlyBars']>([])
@@ -34,7 +39,10 @@ export function ReportesPage() {
     Promise.all([fetchTransactions(), fetchCategories()])
       .then(([transactions, categories]) => {
         if (cancelled) return
-        const data = prepareReportData(transactions, categories)
+        const categoryMap = buildCategoryMap(categories)
+        const enriched = enrichTransactions(transactions, categoryMap)
+        const filtered = filterByDateRange(enriched, dateFilter.range)
+        const data = prepareReportData(filtered)
         setCategoryRows(data.categoryRows)
         setMonthlyBars(data.monthlyBars)
       })
@@ -48,11 +56,11 @@ export function ReportesPage() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion])
+  }, [transactionsVersion, dateFilter.range])
 
   const filteredCategories = useMemo(
-    () => filterReportCategories(categoryRows, filter),
-    [categoryRows, filter],
+    () => filterReportCategories(categoryRows, typeFilter),
+    [categoryRows, typeFilter],
   )
 
   const donutSegments = useMemo(
@@ -61,7 +69,7 @@ export function ReportesPage() {
   )
 
   function handleExport() {
-    downloadReportCsv(filteredCategories, monthlyBars, filter)
+    downloadReportCsv(filteredCategories, monthlyBars, typeFilter, dateFilter.label)
   }
 
   if (error) {
@@ -74,14 +82,23 @@ export function ReportesPage() {
 
   return (
     <section className="space-y-5">
-      <ReportesHeader filter={filter} onFilterChange={setFilter} onExport={handleExport} />
+      <DateFilterToolbar
+        preset={dateFilter.preset}
+        onPresetChange={dateFilter.setPreset}
+        customStart={dateFilter.customStart}
+        customEnd={dateFilter.customEnd}
+        onCustomStartChange={dateFilter.setCustomStart}
+        onCustomEndChange={dateFilter.setCustomEnd}
+      />
+
+      <ReportesHeader filter={typeFilter} onFilterChange={setTypeFilter} onExport={handleExport} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <ReportesMonthlyChart filter={filter} data={monthlyBars} loading={loading} />
-        <ReportesDonutChart filter={filter} segments={donutSegments} loading={loading} />
+        <ReportesMonthlyChart filter={typeFilter} data={monthlyBars} loading={loading} />
+        <ReportesDonutChart filter={typeFilter} segments={donutSegments} loading={loading} />
       </div>
 
-      <ReportesCategoryTable filter={filter} categories={filteredCategories} loading={loading} />
+      <ReportesCategoryTable filter={typeFilter} categories={filteredCategories} loading={loading} />
     </section>
   )
 }

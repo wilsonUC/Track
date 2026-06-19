@@ -1,5 +1,8 @@
 import type { Section } from '../types/finance'
 
+/** Ruta de la página Mi Cuenta (no aparece en el menú principal) */
+export const cuentaPath = '/cuenta'
+
 /** Ruta URL de cada sección del menú */
 export const sectionPaths: Record<Section, string> = {
   dashboard: '/',

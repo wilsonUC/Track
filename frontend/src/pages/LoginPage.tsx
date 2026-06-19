@@ -1,6 +1,9 @@
+import { Lock, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login, saveTokens } from '../api/auth'
+import { AuthField } from '../components/auth/AuthField'
+import { AuthSplitCard } from '../components/auth/AuthLayout'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -28,53 +31,64 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <h1 className="text-xl font-bold text-slate-900">Bienvenido de nuevo</h1>
-        <p className="mt-1 text-sm text-slate-500">Inicia sesión con tu usuario y contraseña</p>
+    <AuthSplitCard tagline="Sistema inteligente de gestión financiera personal para el control eficiente de ingresos, gastos y metas de ahorro.">
+      <div className="mx-auto w-full max-w-md">
+        <h1 className="text-3xl font-bold tracking-tight text-[#0f2d6e]">Bienvenido</h1>
+        <p className="mt-2 text-sm text-[#3b5f9a]">Ingrese sus credenciales para acceder al panel.</p>
 
         {successMessage && (
-          <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{successMessage}</p>
+          <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {successMessage}
+          </p>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700">Usuario</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-              required
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <AuthField
+            id="login-username"
+            label="USUARIO"
+            value={username}
+            onChange={setUsername}
+            icon={Mail}
+            placeholder="Ingrese su usuario"
+            required
+            autoComplete="username"
+          />
+          <AuthField
+            id="login-password"
+            label="CONTRASEÑA"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            icon={Lock}
+            placeholder="Ingrese su contraseña"
+            required
+            autoComplete="current-password"
+          />
+
+          {error && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+          )}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-emerald-600 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="mt-2 w-full rounded-xl bg-[#0f2d6e] py-3.5 text-sm font-bold tracking-wide text-white shadow-lg shadow-[#0f2d6e]/25 transition hover:bg-[#1a3d7c] disabled:opacity-60"
           >
-            {loading ? 'Entrando…' : 'Iniciar sesión'}
+            {loading ? 'ENTRANDO…' : 'INICIAR SESIÓN'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          ¿No tienes cuenta?{' '}
-          <Link to="/register" className="font-semibold text-emerald-600 hover:text-emerald-700">
-            Regístrate
+        <p className="mt-6 text-center text-sm text-slate-500">
+          ¿No tiene una cuenta?{' '}
+          <Link to="/register" className="font-semibold text-[#2563eb] hover:text-[#1d4ed8]">
+            Regístrese aquí
           </Link>
         </p>
+
+        <p className="mt-10 text-center text-[10px] font-medium tracking-[0.2em] text-slate-400">
+          SOLO PERSONAL AUTORIZADO
+        </p>
       </div>
-    </div>
+    </AuthSplitCard>
   )
 }

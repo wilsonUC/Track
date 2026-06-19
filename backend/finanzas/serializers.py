@@ -323,4 +323,70 @@ class RegistroSerializer(serializers.Serializer):
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
         PerfilUsuario.objects.create(usuario=user, telefono=telefono)
-        return user    
+        return user
+
+
+class PerfilUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False)
+    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        user = self.context["user"]
+        if User.objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Ese correo ya está registrado.")
+        return value
+
+    def validate_telefono(self, value):
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("El teléfono es obligatorio.")
+        user = self.context["user"]
+        if PerfilUsuario.objects.filter(telefono=value).exclude(usuario=user).exists():
+            raise serializers.ValidationError("Ese teléfono ya está registrado.")
+        return value
+
+    def save(self):
+        user = self.context["user"]
+        data = self.validated_data
+        telefono = data.pop("telefono", None)
+
+        for field in ("first_name", "last_name", "email"):
+            if field in data:
+                setattr(user, field, data[field])
+        user.save()
+
+        if telefono is not None:
+            perfil, created = PerfilUsuario.objects.get_or_create(
+                usuario=user,
+                defaults={"telefono": telefono},
+            )
+            if not created and perfil.telefono != telefono:
+                perfil.telefono = telefono
+                perfil.save()
+
+        return user
+
+
+class CambioPasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Las contraseñas no coinciden."}
+            )
+        user = self.context["user"]
+        if not user.check_password(attrs["current_password"]):
+            raise serializers.ValidationError(
+                {"current_password": "La contraseña actual no es correcta."}
+            )
+        return attrs
+
+    def save(self):
+        user = self.context["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save()
+        return user

@@ -1,13 +1,7 @@
 import type { MonthlyBarData, ReportCategoryRow, ReportFilter } from '../components/reportes/reportesTypes'
 import { getCategoryChartColors } from './categoryDisplay'
-import {
-  buildCategoryMap,
-  buildLast6MonthsChart,
-  enrichTransactions,
-  type EnrichedTransaction,
-} from './dashboardMetrics'
+import { buildLast6MonthsChart, type EnrichedTransaction } from './dashboardMetrics'
 import { formatSoles } from './financeFormat'
-import type { ApiCategory, ApiTransaction } from '../api/finanzas'
 
 export type DonutSegment = {
   nombre: string
@@ -15,7 +9,6 @@ export type DonutSegment = {
   porcentaje: number
   colorHex: string
 }
-
 const BAR_HEX: Record<string, string> = {
   'bg-slate-500': '#64748b',
   'bg-orange-500': '#f97316',
@@ -124,26 +117,26 @@ export function buildDonutSegments(categories: ReportCategoryRow[]): DonutSegmen
   }))
 }
 
-export function prepareReportData(transactions: ApiTransaction[], categories: ApiCategory[]) {
-  const categoryMap = buildCategoryMap(categories)
-  const enriched = enrichTransactions(transactions, categoryMap)
+export function prepareReportData(transactions: EnrichedTransaction[]) {
   const reference = new Date()
 
-  const categoryRows = buildReportCategoryRows(enriched)
-  const monthlyBars = buildMonthlyBarData(enriched, reference)
+  const categoryRows = buildReportCategoryRows(transactions)
+  const monthlyBars = buildMonthlyBarData(transactions, reference)
 
-  return { enriched, categoryRows, monthlyBars }
+  return { enriched: transactions, categoryRows, monthlyBars }
 }
 
 export function downloadReportCsv(
   categories: ReportCategoryRow[],
   monthlyBars: MonthlyBarData[],
   filter: ReportFilter,
+  dateLabel?: string,
 ) {
   const filterLabel = filter === 'todos' ? 'Todo' : filter === 'ingresos' ? 'Ingresos' : 'Gastos'
   const lines = [
     'Reporte FinanzasTrack',
-    `Filtro: ${filterLabel}`,
+    `Filtro tipo: ${filterLabel}`,
+    dateLabel ? `Período: ${dateLabel}` : 'Período: Total',
     `Generado: ${new Date().toLocaleString('es-PE')}`,
     '',
     'Historial mensual (últimos 6 meses)',

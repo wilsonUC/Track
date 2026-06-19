@@ -8,14 +8,15 @@ type DashboardMonthCardProps = {
   variant: MovementType
   transactions: EnrichedTransaction[]
   loading?: boolean
+  periodLabel?: string
 }
 
-export function DashboardMonthCard({ variant, transactions, loading }: DashboardMonthCardProps) {
+export function DashboardMonthCard({ variant, transactions, loading, periodLabel }: DashboardMonthCardProps) {
   const isIncome = variant === 'income'
-  const title = isIncome ? 'Ingresos del mes' : 'Gastos del mes'
+  const title = isIncome ? 'Ingresos' : 'Gastos'
   const totalAmount = transactions.reduce((sum, item) => sum + item.montoNum, 0)
   const formattedTotal = formatSignedSoles(totalAmount, isIncome)
-  const emptyText = isIncome ? 'Sin ingresos este mes' : 'Sin gastos este mes'
+  const emptyText = isIncome ? 'Sin ingresos en el período' : 'Sin gastos en el período'
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md duration-200">
@@ -36,7 +37,10 @@ export function DashboardMonthCard({ variant, transactions, loading }: Dashboard
               <TrendingDown className="h-5 w-5" aria-hidden />
             )}
           </div>
-          <h3 className="font-semibold text-slate-800">{title}</h3>
+          <div>
+            <h3 className="font-semibold text-slate-800">{title}</h3>
+            {periodLabel && <p className="text-xs text-slate-400">{periodLabel}</p>}
+          </div>
         </div>
         <p className={`text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
           {formattedTotal}

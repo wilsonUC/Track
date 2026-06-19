@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { fetchCategories, fetchTransactions } from '../../api/finanzas'
+import { DateFilterToolbar } from '../filters/DateFilterToolbar'
+import { useDateFilter } from '../../hooks/useDateFilter'
 import {
   buildCategoryExpenses,
   buildCategoryMap,
   buildLast6MonthsChart,
   computeSavingsPercent,
   enrichTransactions,
-  filterByMonth,
+  filterByDateRange,
   getBalanceSubtitle,
   getSavingsSubtitle,
   sortByDateDesc,
   sumByType,
+  type EnrichedTransaction,
 } from '../../utils/dashboardMetrics'
-import { formatMonthYear, formatSoles } from '../../utils/financeFormat'
+import { formatSoles } from '../../utils/financeFormat'
 import { DashboardChartsSection } from './DashboardChartsSection'
 import { DashboardMonthCard } from './DashboardMonthCard'
 import { DashboardRecentTransactions } from './DashboardRecentTransactions'
@@ -28,18 +31,9 @@ export function DashboardPanel() {
   const [activeCard, setActiveCard] = useState<'balance' | 'income' | 'expense' | 'savings'>('balance')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [allTransactions, setAllTransactions] = useState<EnrichedTransaction[]>([])
 
-  const now = useMemo(() => new Date(), [])
-  const monthLabel = formatMonthYear(now)
-
-  const [monthIncome, setMonthIncome] = useState<ReturnType<typeof sortByDateDesc>>([])
-  const [monthExpense, setMonthExpense] = useState<ReturnType<typeof sortByDateDesc>>([])
-  const [totals, setTotals] = useState({ income: 0, expense: 0 })
-  const [balance, setBalance] = useState(0)
-  const [savingsPercent, setSavingsPercent] = useState(0)
-  const [categoryExpenses, setCategoryExpenses] = useState<ReturnType<typeof buildCategoryExpenses>>([])
-  const [monthlyChart, setMonthlyChart] = useState<ReturnType<typeof buildLast6MonthsChart>>([])
-  const [recent, setRecent] = useState<ReturnType<typeof sortByDateDesc>>([])
+  const dateFilter = useDateFilter({ defaultPreset: 'month' })
 
   useEffect(() => {
     let cancelled = false
@@ -49,21 +43,8 @@ export function DashboardPanel() {
     Promise.all([fetchTransactions(), fetchCategories()])
       .then(([transactions, categories]) => {
         if (cancelled) return
-
         const categoryMap = buildCategoryMap(categories)
-        const enriched = enrichTransactions(transactions, categoryMap)
-        const monthTransactions = filterByMonth(enriched, now)
-        const monthTotals = sumByType(monthTransactions)
-        const monthBalance = monthTotals.income - monthTotals.expense
-
-        setMonthIncome(sortByDateDesc(monthTransactions.filter((t) => t.tipo === 'income')))
-        setMonthExpense(sortByDateDesc(monthTransactions.filter((t) => t.tipo === 'expense')))
-        setTotals(monthTotals)
-        setBalance(monthBalance)
-        setSavingsPercent(computeSavingsPercent(monthTotals.income, monthTotals.expense))
-        setCategoryExpenses(buildCategoryExpenses(monthTransactions.filter((t) => t.tipo === 'expense')))
-        setMonthlyChart(buildLast6MonthsChart(enriched, now))
-        setRecent(sortByDateDesc(enriched).slice(0, 8))
+        setAllTransactions(enrichTransactions(transactions, categoryMap))
       })
       .catch(() => {
         if (!cancelled) setError('No se pudieron cargar los datos del dashboard.')
@@ -75,7 +56,37 @@ export function DashboardPanel() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion, now])
+  }, [transactionsVersion])
+
+  const filtered = useMemo(
+    () => filterByDateRange(allTransactions, dateFilter.range),
+    [allTransactions, dateFilter.range],
+  )
+
+  const periodTotals = useMemo(() => sumByType(filtered), [filtered])
+  const balance = periodTotals.income - periodTotals.expense
+  const savingsPercent = useMemo(
+    () => computeSavingsPercent(periodTotals.income, periodTotals.expense),
+    [periodTotals],
+  )
+
+  const periodIncome = useMemo(
+    () => sortByDateDesc(filtered.filter((t) => t.tipo === 'income')),
+    [filtered],
+  )
+  const periodExpense = useMemo(
+    () => sortByDateDesc(filtered.filter((t) => t.tipo === 'expense')),
+    [filtered],
+  )
+  const categoryExpenses = useMemo(
+    () => buildCategoryExpenses(periodExpense),
+    [periodExpense],
+  )
+  const monthlyChart = useMemo(
+    () => buildLast6MonthsChart(filtered, new Date()),
+    [filtered],
+  )
+  const recent = useMemo(() => sortByDateDesc(filtered).slice(0, 8), [filtered])
 
   if (error) {
     return (
@@ -87,6 +98,15 @@ export function DashboardPanel() {
 
   return (
     <section className="space-y-6">
+      <DateFilterToolbar
+        preset={dateFilter.preset}
+        onPresetChange={dateFilter.setPreset}
+        customStart={dateFilter.customStart}
+        customEnd={dateFilter.customEnd}
+        onCustomStartChange={dateFilter.setCustomStart}
+        onCustomEndChange={dateFilter.setCustomEnd}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <DashboardSummaryCard
           title="Balance"
@@ -98,16 +118,16 @@ export function DashboardPanel() {
         />
         <DashboardSummaryCard
           title="Ingresos"
-          amount={formatSoles(totals.income)}
-          subtitle={monthLabel}
+          amount={formatSoles(periodTotals.income)}
+          subtitle={dateFilter.label}
           variant="income"
           isActive={activeCard === 'income'}
           onClick={() => setActiveCard('income')}
         />
         <DashboardSummaryCard
           title="Gastos"
-          amount={formatSoles(totals.expense)}
-          subtitle={monthLabel}
+          amount={formatSoles(periodTotals.expense)}
+          subtitle={dateFilter.label}
           variant="expense"
           isActive={activeCard === 'expense'}
           onClick={() => setActiveCard('expense')}
@@ -123,8 +143,18 @@ export function DashboardPanel() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardMonthCard variant="income" transactions={monthIncome} loading={loading} />
-        <DashboardMonthCard variant="expense" transactions={monthExpense} loading={loading} />
+        <DashboardMonthCard
+          variant="income"
+          transactions={periodIncome}
+          loading={loading}
+          periodLabel={dateFilter.label}
+        />
+        <DashboardMonthCard
+          variant="expense"
+          transactions={periodExpense}
+          loading={loading}
+          periodLabel={dateFilter.label}
+        />
       </div>
 
       <DashboardChartsSection

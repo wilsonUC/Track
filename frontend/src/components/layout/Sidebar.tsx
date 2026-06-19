@@ -1,7 +1,7 @@
 import { LogOut, CircleDollarSign } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { menuItems } from '../../constants/navigation'
-import { sectionPaths } from '../../constants/routes'
+import { cuentaPath, sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
 import { NavIcon } from './navIcons'
 
@@ -54,7 +54,17 @@ export function Sidebar({ onLogout, displayName, email, initial }: SidebarProps)
           ))}
         </nav>
 
-        <div className="mt-4 shrink-0 rounded-lg border border-indigo-600/80 bg-indigo-800/40 p-3">
+        <NavLink
+          to={cuentaPath}
+          className={({ isActive }) =>
+            `mt-4 block shrink-0 rounded-lg border p-3 transition ${
+              isActive
+                ? 'border-indigo-400 bg-indigo-600/80 ring-1 ring-indigo-300/50'
+                : 'border-indigo-600/80 bg-indigo-800/40 hover:bg-indigo-800/70'
+            }`
+          }
+          aria-label="Mi cuenta"
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
               {initial}
@@ -64,7 +74,7 @@ export function Sidebar({ onLogout, displayName, email, initial }: SidebarProps)
               <p className="truncate text-xs text-indigo-200">{email || '—'}</p>
             </div>
           </div>
-        </div>
+        </NavLink>
         <button
           type="button"
           onClick={onLogout}
