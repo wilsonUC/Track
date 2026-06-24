@@ -1,15 +1,4 @@
-import { getAccessToken } from './auth'
-
-const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
-
-function authHeaders() {
-  const token = getAccessToken()
-  if (!token) throw new Error('No hay sesión')
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { authFetch } from './auth'
 
 export type ApiRecurrente = {
   id: number
@@ -29,7 +18,7 @@ export type ApiRecurrente = {
 }
 
 export async function fetchRecurrentes(): Promise<ApiRecurrente[]> {
-  const res = await fetch(`${API}/api/recurrentes/`, { headers: authHeaders() })
+  const res = await authFetch('/api/recurrentes/')
   if (!res.ok) throw new Error('No se pudieron cargar los recurrentes')
   return res.json()
 }
@@ -41,9 +30,8 @@ export async function createRecurrente(data: {
   dia_pago: number
   categoria: number
 }): Promise<ApiRecurrente> {
-  const res = await fetch(`${API}/api/recurrentes/`, {
+  const res = await authFetch('/api/recurrentes/', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -63,9 +51,8 @@ export async function updateRecurrente(
     categoria?: number
   },
 ): Promise<ApiRecurrente> {
-  const res = await fetch(`${API}/api/recurrentes/${id}/`, {
+  const res = await authFetch(`/api/recurrentes/${id}/`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -79,9 +66,8 @@ export async function registrarPagoRecurrente(
   id: number,
   monto?: string,
 ): Promise<ApiRecurrente> {
-  const res = await fetch(`${API}/api/recurrentes/${id}/registrar-pago/`, {
+  const res = await authFetch(`/api/recurrentes/${id}/registrar-pago/`, {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(monto ? { monto } : {}),
   })
   if (!res.ok) {
@@ -92,9 +78,8 @@ export async function registrarPagoRecurrente(
 }
 
 export async function desmarcarPagoRecurrente(id: number): Promise<ApiRecurrente> {
-  const res = await fetch(`${API}/api/recurrentes/${id}/desmarcar-pago/`, {
+  const res = await authFetch(`/api/recurrentes/${id}/desmarcar-pago/`, {
     method: 'POST',
-    headers: authHeaders(),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

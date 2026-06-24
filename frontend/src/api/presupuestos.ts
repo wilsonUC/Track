@@ -1,15 +1,4 @@
-import { getAccessToken } from './auth'
-
-const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
-
-function authHeaders() {
-  const token = getAccessToken()
-  if (!token) throw new Error('No hay sesión')
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { authFetch } from './auth'
 
 export type PresupuestoEstado = 'ok' | 'alerta' | 'excedido'
 
@@ -29,7 +18,7 @@ export type ApiPresupuesto = {
 }
 
 export async function fetchPresupuestos(): Promise<ApiPresupuesto[]> {
-  const res = await fetch(`${API}/api/presupuestos/`, { headers: authHeaders() })
+  const res = await authFetch('/api/presupuestos/')
   if (!res.ok) throw new Error('No se pudieron cargar los presupuestos')
   return res.json()
 }
@@ -40,9 +29,8 @@ export async function createPresupuesto(data: {
   monto_rapido: string
   categoria_referencia?: number | null
 }): Promise<ApiPresupuesto> {
-  const res = await fetch(`${API}/api/presupuestos/`, {
+  const res = await authFetch('/api/presupuestos/', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -61,9 +49,8 @@ export async function updatePresupuesto(
     categoria_referencia?: number | null
   },
 ): Promise<ApiPresupuesto> {
-  const res = await fetch(`${API}/api/presupuestos/${id}/`, {
+  const res = await authFetch(`/api/presupuestos/${id}/`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -74,9 +61,8 @@ export async function updatePresupuesto(
 }
 
 export async function registrarGastoRapido(presupuestoId: number): Promise<ApiPresupuesto> {
-  const res = await fetch(`${API}/api/presupuestos/${presupuestoId}/gasto-rapido/`, {
+  const res = await authFetch(`/api/presupuestos/${presupuestoId}/gasto-rapido/`, {
     method: 'POST',
-    headers: authHeaders(),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

@@ -34,17 +34,83 @@ export function profileInitial(profile: UserProfile) {
   return name.charAt(0).toUpperCase()
 }
 
-function authHeaders() {
+function buildAuthHeaders(token: string, initHeaders?: HeadersInit, body?: BodyInit | null) {
+  const headers = new Headers(initHeaders)
+  headers.set('Authorization', `Bearer ${token}`)
+  if (!headers.has('Content-Type') && !(body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+  return headers
+}
+
+let refreshTokenPromise: Promise<string> | null = null
+
+async function refreshAccessToken(): Promise<string> {
+  if (!refreshTokenPromise) {
+    refreshTokenPromise = requestNewAccessToken().finally(() => {
+      refreshTokenPromise = null
+    })
+  }
+  return refreshTokenPromise
+}
+
+async function requestNewAccessToken(): Promise<string> {
+  const refresh = getRefreshToken()
+  if (!refresh) throw new Error('No hay sesión')
+
+  const res = await fetch(`${API}/api/token/refresh/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh }),
+  })
+
+  if (!res.ok) {
+    logout()
+    throw new Error('Sesión expirada')
+  }
+
+  const data = (await res.json()) as { access?: string }
+  if (!data.access) {
+    logout()
+    throw new Error('Sesión expirada')
+  }
+
+  localStorage.setItem('access', data.access)
+  return data.access
+}
+
+function redirectToLogin() {
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
+}
+
+export async function authFetch(path: string, init: RequestInit = {}) {
   const token = getAccessToken()
   if (!token) throw new Error('No hay sesión')
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
+
+  const url = path.startsWith('http') ? path : `${API}${path}`
+  const request = (accessToken: string) =>
+    fetch(url, {
+      ...init,
+      headers: buildAuthHeaders(accessToken, init.headers, init.body),
+    })
+
+  const res = await request(token)
+  if (res.status !== 401) return res
+
+  try {
+    const newAccess = await refreshAccessToken()
+    return request(newAccess)
+  } catch (error) {
+    logout()
+    redirectToLogin()
+    throw error
   }
 }
 
 export async function fetchProfile(): Promise<UserProfile> {
-  const res = await fetch(`${API}/api/perfil/`, { headers: authHeaders() })
+  const res = await authFetch('/api/perfil/')
   if (!res.ok) throw new Error('No se pudo cargar el perfil')
   return res.json()
 }
@@ -57,9 +123,8 @@ export type ProfileUpdatePayload = {
 }
 
 export async function updateProfile(data: ProfileUpdatePayload): Promise<UserProfile> {
-  const res = await fetch(`${API}/api/perfil/`, {
+  const res = await authFetch('/api/perfil/', {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -76,9 +141,8 @@ export type ChangePasswordPayload = {
 }
 
 export async function changePassword(data: ChangePasswordPayload): Promise<void> {
-  const res = await fetch(`${API}/api/perfil/cambiar-password/`, {
+  const res = await authFetch('/api/perfil/cambiar-password/', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
@@ -132,6 +196,10 @@ export async function login(username: string, password: string): Promise<LoginRe
     return localStorage.getItem('access')
   }
 
+  export function getRefreshToken(): string | null {
+    return localStorage.getItem('refresh')
+  }
+
   export function logout() {
     clearIaChatStorage()
     localStorage.removeItem('access')
@@ -163,15 +231,14 @@ export type AdminUserUpdatePayload = {
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {
-  const res = await fetch(`${API}/api/admin/usuarios/`, { headers: authHeaders() })
+  const res = await authFetch('/api/admin/usuarios/')
   if (!res.ok) throw new Error('No se pudo cargar la lista de usuarios')
   return res.json()
 }
 
 export async function updateAdminUser(id: number, data: AdminUserUpdatePayload): Promise<AdminUser> {
-  const res = await fetch(`${API}/api/admin/usuarios/${id}/`, {
+  const res = await authFetch(`/api/admin/usuarios/${id}/`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {

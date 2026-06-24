@@ -1,5 +1,6 @@
-import { LogOut, CircleDollarSign } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import brandLogo from '../../assets/brand/v4.svg'
 import { menuItems } from '../../constants/navigation'
 import { cuentaPath, sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
@@ -27,9 +28,7 @@ export function Sidebar({ onLogout, displayName, email, initial, isStaff }: Side
       <div className="flex h-full min-h-0 flex-col">
         <div className="shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-              <CircleDollarSign className="h-5 w-5" aria-hidden />
-            </div>
+            <img src={brandLogo} alt="" className="h-10 w-10 shrink-0 object-contain" aria-hidden />
             <div className="min-w-0">
               <div className="text-lg font-bold leading-snug tracking-tight text-white">FinanzasTrack</div>
               <p className="text-xs text-indigo-200">Panel principal</p>

@@ -1,15 +1,4 @@
-import { getAccessToken } from './auth'
-
-const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
-
-function authHeaders() {
-  const token = getAccessToken()
-  if (!token) throw new Error('No hay sesión')
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { authFetch } from './auth'
 
 export type ApiCategory = {
   id: number
@@ -33,13 +22,13 @@ export type ApiTransaction = {
 }
 
 export async function fetchCategories(): Promise<ApiCategory[]> {
-  const res = await fetch(`${API}/api/categorias/`, { headers: authHeaders() })
+  const res = await authFetch('/api/categorias/')
   if (!res.ok) throw new Error('No se pudieron cargar categorías')
   return res.json()
 }
 
 export async function fetchTransactions(): Promise<ApiTransaction[]> {
-  const res = await fetch(`${API}/api/transacciones/`, { headers: authHeaders() })
+  const res = await authFetch('/api/transacciones/')
   if (!res.ok) throw new Error('No se pudieron cargar transacciones')
   return res.json()
 }
@@ -52,9 +41,8 @@ export async function createTransaction(data: {
   fecha: string
   descripcion: string
 }): Promise<ApiTransaction> {
-  const res = await fetch(`${API}/api/transacciones/`, {
+  const res = await authFetch('/api/transacciones/', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify(data),
   })
   if (!res.ok) {
