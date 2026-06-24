@@ -45,7 +45,7 @@ export function RegisterPage() {
       })
       navigate('/login', {
         replace: true,
-        state: { message: 'Cuenta creada. Inicia sesión con tu usuario y contraseña.' },
+        state: { message: 'Cuenta creada. Tu acceso quedará habilitado cuando un administrador apruebe la cuenta.' },
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : ''

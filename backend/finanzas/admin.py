@@ -19,4 +19,6 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(PerfilUsuario)
 class PerfilUsuarioAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'telefono')
+    list_display = ('usuario', 'telefono', 'estado_cuenta')
+    list_filter = ('estado_cuenta',)
+    search_fields = ('usuario__username', 'usuario__email', 'telefono')

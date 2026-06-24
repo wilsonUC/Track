@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { fetchProfile, logout, profileDisplayName, profileInitial, type UserProfile } from '../api/auth'
 import { sectionFromPath } from '../constants/routes'
 import { MainHeader } from '../components/layout/MainHeader'
@@ -26,6 +26,7 @@ export function AppLayout() {
   const [description, setDescription] = useState('')
   const [transactionsVersion, setTransactionsVersion] = useState(0)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
 
   async function refreshProfile() {
     try {
@@ -45,6 +46,9 @@ export function AppLayout() {
       .catch(() => {
         if (!cancelled) setProfile(null)
       })
+      .finally(() => {
+        if (!cancelled) setProfileLoaded(true)
+      })
     return () => {
       cancelled = true
     }
@@ -63,6 +67,20 @@ export function AppLayout() {
   const displayName = profile ? profileDisplayName(profile) : '…'
   const userInitial = profile ? profileInitial(profile) : '…'
   const userEmail = profile?.email ?? ''
+  const isStaff = profile?.is_staff ?? false
+  const isAdminPath = pathname.startsWith('/admin')
+
+  if (isAdminPath && !profileLoaded) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Verificando permisos…
+      </div>
+    )
+  }
+
+  if (isAdminPath && !isStaff) {
+    return <Navigate to="/" replace />
+  }
 
   return (
     <div className="h-dvh overflow-hidden bg-slate-100 text-slate-900">
@@ -71,6 +89,7 @@ export function AppLayout() {
         displayName={displayName}
         email={userEmail}
         initial={userInitial}
+        isStaff={isStaff}
       />
 
       <div className="flex h-full min-h-0 flex-col md:pl-64">
@@ -90,7 +109,7 @@ export function AppLayout() {
             />
           </div>
         </main>
-        <MobileNav />
+        <MobileNav isStaff={isStaff} />
       </div>
 
       <NewTransactionModal

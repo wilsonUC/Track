@@ -23,8 +23,8 @@ export function LoginPage() {
       const data = await login(username, password)
       saveTokens(data.access, data.refresh)
       navigate('/', { replace: true })
-    } catch {
-      setError('Usuario o contraseña incorrectos')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Usuario o contraseña incorrectos')
     } finally {
       setLoading(false)
     }

@@ -1,20 +1,25 @@
 from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth import get_user_model
 from django.db.models import DecimalField, Q, Sum
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import Category, Presupuesto, Recurrente, Transaction
 from .ia_service import chat_with_groq
 from .recurrentes_service import transacciones_mes_actual
 from .serializers import (
     CategorySerializer,
+    FinanzasTokenObtainPairSerializer,
     IaChatSerializer,
+    AdminUsuarioSerializer,
+    AdminUsuarioUpdateSerializer,
     PresupuestoSerializer,
     RecurrenteRegistrarPagoSerializer,
     RecurrenteSerializer,
@@ -24,6 +29,13 @@ from .serializers import (
     PerfilUpdateSerializer,
     perfil_desde_usuario,
 )
+
+User = get_user_model()
+
+
+class FinanzasTokenObtainPairView(TokenObtainPairView):
+    serializer_class = FinanzasTokenObtainPairSerializer
+
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """Categorías globales: todos los usuarios ven la misma lista."""
@@ -220,6 +232,50 @@ class CambioPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"mensaje": "Contraseña actualizada correctamente."})
+
+
+class AdminUsuariosView(APIView):
+    """GET /api/admin/usuarios/ — lista usuarios para el panel administrativo."""
+
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        usuarios = User.objects.select_related("perfil").order_by("-date_joined")
+        serializer = AdminUsuarioSerializer(usuarios, many=True)
+        return Response(serializer.data)
+
+
+class AdminUsuarioDetalleView(APIView):
+    """PATCH /api/admin/usuarios/<id>/ — editar datos o estado de un usuario."""
+
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, user_id):
+        try:
+            user = User.objects.select_related("perfil").get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detalle": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_superuser and not request.user.is_superuser:
+            return Response(
+                {"detalle": "Solo un superusuario puede editar a otro superusuario."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if user.pk == request.user.pk and request.data.get("estado_cuenta"):
+            return Response(
+                {"detalle": "No puedes cambiar el estado de tu propia cuenta desde este panel."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = AdminUsuarioUpdateSerializer(
+            data=request.data,
+            partial=True,
+            context={"user": user},
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_user = serializer.save()
+        updated_user = User.objects.select_related("perfil").get(pk=updated_user.pk)
+        return Response(AdminUsuarioSerializer(updated_user).data)
 
 
 class RegistroView(APIView):

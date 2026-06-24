@@ -2,6 +2,8 @@
 # comprobar que tengan sentido y pasarlos a la base de datos (o al revés).
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import Category, PerfilUsuario, Presupuesto, Recurrente, Transaction
 from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
@@ -11,18 +13,46 @@ from .recurrentes_service import calcular_estado_recurrente
 def perfil_desde_usuario(user):
     """Datos del usuario logueado para mostrar en la app."""
     try:
-        telefono = user.perfil.telefono
+        perfil = user.perfil
+        telefono = perfil.telefono
+        estado_cuenta = perfil.estado_cuenta
     except PerfilUsuario.DoesNotExist:
         telefono = ""
+        estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA if user.is_staff else PerfilUsuario.EstadoCuenta.PENDIENTE
     return {
         "username": user.username,
         "first_name": user.first_name or "",
         "last_name": user.last_name or "",
         "email": user.email,
         "telefono": telefono,
+        "estado_cuenta": estado_cuenta,
+        "is_staff": user.is_staff,
     }
 
 User = get_user_model()
+
+
+class FinanzasTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Login JWT con control de aprobación/bloqueo para usuarios normales."""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        user = self.user
+
+        if user.is_staff or user.is_superuser:
+            return data
+
+        try:
+            estado_cuenta = user.perfil.estado_cuenta
+        except PerfilUsuario.DoesNotExist:
+            estado_cuenta = PerfilUsuario.EstadoCuenta.PENDIENTE
+
+        if estado_cuenta == PerfilUsuario.EstadoCuenta.PENDIENTE:
+            raise AuthenticationFailed("Tu cuenta está pendiente de aprobación.")
+        if estado_cuenta == PerfilUsuario.EstadoCuenta.BLOQUEADA:
+            raise AuthenticationFailed("Tu cuenta está bloqueada. Contacta al administrador.")
+
+        return data
 
 
 class IaHistorialItemSerializer(serializers.Serializer):
@@ -322,7 +352,92 @@ class RegistroSerializer(serializers.Serializer):
         telefono = validated_data.pop("telefono")
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
-        PerfilUsuario.objects.create(usuario=user, telefono=telefono)
+        PerfilUsuario.objects.create(
+            usuario=user,
+            telefono=telefono,
+            estado_cuenta=PerfilUsuario.EstadoCuenta.PENDIENTE,
+        )
+        return user
+
+
+class AdminUsuarioSerializer(serializers.ModelSerializer):
+    telefono = serializers.CharField(source="perfil.telefono", default="")
+    estado_cuenta = serializers.CharField(source="perfil.estado_cuenta", default=PerfilUsuario.EstadoCuenta.PENDIENTE)
+    estado_cuenta_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "telefono",
+            "estado_cuenta",
+            "estado_cuenta_label",
+            "is_staff",
+            "date_joined",
+            "last_login",
+        ]
+        read_only_fields = fields
+
+    def get_estado_cuenta_label(self, obj):
+        try:
+            return obj.perfil.get_estado_cuenta_display()
+        except PerfilUsuario.DoesNotExist:
+            return "Pendiente"
+
+
+class AdminUsuarioUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False)
+    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    estado_cuenta = serializers.ChoiceField(
+        choices=PerfilUsuario.EstadoCuenta.choices,
+        required=False,
+    )
+
+    def validate_email(self, value):
+        user = self.context["user"]
+        if User.objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Ese correo ya está registrado.")
+        return value
+
+    def validate_telefono(self, value):
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("El teléfono es obligatorio.")
+        user = self.context["user"]
+        if PerfilUsuario.objects.filter(telefono=value).exclude(usuario=user).exists():
+            raise serializers.ValidationError("Ese teléfono ya está registrado.")
+        return value
+
+    def save(self):
+        user = self.context["user"]
+        data = self.validated_data
+        telefono = data.pop("telefono", None)
+        estado_cuenta = data.pop("estado_cuenta", None)
+
+        for field in ("first_name", "last_name", "email"):
+            if field in data:
+                setattr(user, field, data[field])
+        user.save()
+
+        if telefono is not None or estado_cuenta is not None:
+            perfil, _ = PerfilUsuario.objects.get_or_create(
+                usuario=user,
+                defaults={
+                    "telefono": telefono or "",
+                    "estado_cuenta": estado_cuenta or PerfilUsuario.EstadoCuenta.PENDIENTE,
+                },
+            )
+            if telefono is not None:
+                perfil.telefono = telefono
+            if estado_cuenta is not None:
+                perfil.estado_cuenta = estado_cuenta
+            perfil.save()
+
         return user
 
 

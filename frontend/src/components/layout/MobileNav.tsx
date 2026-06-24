@@ -4,7 +4,13 @@ import { sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
 import { NavIcon } from './navIcons'
 
-export function MobileNav() {
+type MobileNavProps = {
+  isStaff: boolean
+}
+
+export function MobileNav({ isStaff }: MobileNavProps) {
+  const visibleMenuItems = menuItems.filter((item) => !item.adminOnly || isStaff)
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white py-2 shadow-sm md:hidden"
@@ -12,7 +18,7 @@ export function MobileNav() {
       aria-label="Navegación principal"
     >
       <div className="flex gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const label = item.shortLabel ?? item.label
           return (
             <NavLink

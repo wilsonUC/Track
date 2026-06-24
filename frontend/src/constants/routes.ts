@@ -14,6 +14,7 @@ export const sectionPaths: Record<Section, string> = {
   reportes: '/reportes',
   consejos: '/consejos',
   ia: '/ia',
+  admin: '/admin/usuarios',
   configuracion: '/configuracion',
 }
 

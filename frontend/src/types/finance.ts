@@ -8,6 +8,7 @@ export type Section =
   | 'reportes'
   | 'consejos'
   | 'ia'
+  | 'admin'
   | 'configuracion'
 
 export type MovementType = 'income' | 'expense'

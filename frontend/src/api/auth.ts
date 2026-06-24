@@ -13,6 +13,8 @@ export type UserProfile = {
   last_name: string
   email: string
   telefono: string
+  estado_cuenta: 'pending' | 'active' | 'blocked'
+  is_staff: boolean
 }
 
 export function profileDisplayName(profile: UserProfile) {
@@ -100,7 +102,11 @@ export async function login(username: string, password: string): Promise<LoginRe
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     })
-    if (!res.ok) throw new Error('Usuario o contraseña incorrectos')
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      if (typeof err.detail === 'string') throw new Error(err.detail)
+      throw new Error('Usuario o contraseña incorrectos')
+    }
     return res.json()
   }
 
@@ -131,3 +137,46 @@ export async function login(username: string, password: string): Promise<LoginRe
     localStorage.removeItem('access')
     localStorage.removeItem('refresh')
   }
+
+export type AdminAccountStatus = 'pending' | 'active' | 'blocked'
+
+export type AdminUser = {
+  id: number
+  username: string
+  first_name: string
+  last_name: string
+  email: string
+  telefono: string
+  estado_cuenta: AdminAccountStatus
+  estado_cuenta_label: string
+  is_staff: boolean
+  date_joined: string
+  last_login: string | null
+}
+
+export type AdminUserUpdatePayload = {
+  first_name?: string
+  last_name?: string
+  email?: string
+  telefono?: string
+  estado_cuenta?: AdminAccountStatus
+}
+
+export async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const res = await fetch(`${API}/api/admin/usuarios/`, { headers: authHeaders() })
+  if (!res.ok) throw new Error('No se pudo cargar la lista de usuarios')
+  return res.json()
+}
+
+export async function updateAdminUser(id: number, data: AdminUserUpdatePayload): Promise<AdminUser> {
+  const res = await fetch(`${API}/api/admin/usuarios/${id}/`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(JSON.stringify(err))
+  }
+  return res.json()
+}

@@ -184,12 +184,23 @@ class Transaction(models.Model):
 
 class PerfilUsuario(models.Model):
     """Datos extra del usuario (teléfono, etc.). Un registro por usuario."""
+
+    class EstadoCuenta(models.TextChoices):
+        PENDIENTE = "pending", "Pendiente"
+        ACTIVA = "active", "Activa"
+        BLOQUEADA = "blocked", "Bloqueada"
+
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete = models.CASCADE,
         related_name = "perfil",
     )
     telefono = models.CharField(max_length=15, unique=True)
+    estado_cuenta = models.CharField(
+        max_length=10,
+        choices=EstadoCuenta.choices,
+        default=EstadoCuenta.ACTIVA,
+    )
 
     class Meta: 
         verbose_name = "Perfil de Usuario"

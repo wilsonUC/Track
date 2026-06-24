@@ -6,6 +6,8 @@ export type MenuItem = {
   label: string
   /** Texto corto en barra inferior móvil */
   shortLabel?: string
+  /** Solo visible para usuarios administradores */
+  adminOnly?: boolean
 }
 
 export const menuItems: readonly MenuItem[] = [
@@ -18,5 +20,6 @@ export const menuItems: readonly MenuItem[] = [
   { id: 'reportes', label: 'Reportes' },
   { id: 'consejos', label: 'Consejos' },
   { id: 'ia', label: 'IA de FinanzasTrack', shortLabel: 'IA' },
+  { id: 'admin', label: 'Administración', shortLabel: 'Admin', adminOnly: true },
   { id: 'configuracion', label: 'Configuración', shortLabel: 'Ajustes' },
 ]

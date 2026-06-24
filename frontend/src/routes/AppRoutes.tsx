@@ -15,6 +15,7 @@ import { RecurrentesPage } from '../pages/RecurrentesPage'
 import { ConsejosPage } from '../pages/ConsejosPage'
 import { CuentaPage } from '../pages/CuentaPage'
 import { IaFinanzasPage } from '../pages/IaFinanzasPage'
+import { AdminUsuariosPage } from '../pages/AdminUsuariosPage'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   if (!getAccessToken()) {
@@ -66,6 +67,8 @@ export function AppRoutes() {
         <Route path="reportes" element={<ReportesPage />} />
         <Route path="consejos" element={<ConsejosPage />} />
         <Route path="ia" element={<IaFinanzasPage />} />
+        <Route path="admin" element={<Navigate to="/admin/usuarios" replace />} />
+        <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
         <Route path="cuenta" element={<CuentaPage />} />
         <Route path="configuracion" element={<PlaceholderPage section="configuracion" />} />
       </Route>

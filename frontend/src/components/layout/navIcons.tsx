@@ -7,6 +7,7 @@ import {
   RefreshCcw,
   FileBarChart,
   Lightbulb,
+  ShieldCheck,
   Sparkles,
   Settings,
 } from 'lucide-react'
@@ -34,6 +35,8 @@ export function NavIcon({ section }: { section: Section }) {
       return <Lightbulb className={iconClass} aria-hidden />
     case 'ia':
       return <Sparkles className={iconClass} aria-hidden />
+    case 'admin':
+      return <ShieldCheck className={iconClass} aria-hidden />
     case 'configuracion':
       return <Settings className={iconClass} aria-hidden />
   }

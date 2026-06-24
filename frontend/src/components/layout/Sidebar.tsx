@@ -10,6 +10,7 @@ type SidebarProps = {
   displayName: string
   email: string
   initial: string
+  isStaff: boolean
 }
 
 function navClassName(isActive: boolean) {
@@ -18,7 +19,9 @@ function navClassName(isActive: boolean) {
   }`
 }
 
-export function Sidebar({ onLogout, displayName, email, initial }: SidebarProps) {
+export function Sidebar({ onLogout, displayName, email, initial, isStaff }: SidebarProps) {
+  const visibleMenuItems = menuItems.filter((item) => !item.adminOnly || isStaff)
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 flex-col bg-indigo-700 p-4 text-indigo-50 md:flex">
       <div className="flex h-full min-h-0 flex-col">
@@ -35,7 +38,7 @@ export function Sidebar({ onLogout, displayName, email, initial }: SidebarProps)
         </div>
 
         <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pr-0.5" aria-label="Secciones">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <NavLink
               key={item.id}
               to={sectionPaths[item.id as Section]}
