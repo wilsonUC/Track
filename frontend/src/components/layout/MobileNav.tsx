@@ -17,16 +17,32 @@ export function MobileNav({ isStaff }: MobileNavProps) {
       style={{ paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >
-      <div className="flex gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="scrollbar-none flex gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {visibleMenuItems.map((item) => {
           const label = item.shortLabel ?? item.label
+          if (item.disabled) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled
+                className="flex min-w-17 max-w-23 shrink-0 cursor-not-allowed flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight text-slate-300"
+                title="Sección bloqueada por ahora"
+              >
+                <span className="text-slate-300">
+                  <NavIcon section={item.id} />
+                </span>
+                <span className="line-clamp-2 w-full text-center">{label}</span>
+              </button>
+            )
+          }
           return (
             <NavLink
               key={item.id}
               to={sectionPaths[item.id as Section]}
               end={item.id === 'dashboard'}
               className={({ isActive }) =>
-                `flex min-w-[4.25rem] max-w-[5.75rem] shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition ${
+                `flex min-w-17 max-w-23 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition ${
                   isActive ? 'bg-indigo-100 font-semibold text-indigo-900' : 'text-slate-500 active:bg-slate-100'
                 }`
               }

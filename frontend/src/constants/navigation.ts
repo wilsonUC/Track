@@ -8,6 +8,8 @@ export type MenuItem = {
   shortLabel?: string
   /** Solo visible para usuarios administradores */
   adminOnly?: boolean
+  /** Visible, pero sin navegación por ahora */
+  disabled?: boolean
 }
 
 export const menuItems: readonly MenuItem[] = [
@@ -15,11 +17,11 @@ export const menuItems: readonly MenuItem[] = [
   { id: 'ingresos', label: 'Ingresos' },
   { id: 'gastos', label: 'Gastos' },
   { id: 'presupuestos', label: 'Presupuestos', shortLabel: 'Presup.' },
-  { id: 'metas', label: 'Metas' },
+  { id: 'metas', label: 'Metas', disabled: true },
   { id: 'recurrentes', label: 'Recurrentes', shortLabel: 'Recurr.' },
   { id: 'reportes', label: 'Reportes' },
-  { id: 'consejos', label: 'Consejos' },
+  { id: 'consejos', label: 'Consejos', disabled: true },
   { id: 'ia', label: 'IA de FinanzasTrack', shortLabel: 'IA' },
   { id: 'admin', label: 'Administración', shortLabel: 'Admin', adminOnly: true },
-  { id: 'configuracion', label: 'Configuración', shortLabel: 'Ajustes' },
+  { id: 'configuracion', label: 'Configuración', shortLabel: 'Ajustes', disabled: true },
 ]

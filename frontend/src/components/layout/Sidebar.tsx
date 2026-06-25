@@ -20,6 +20,10 @@ function navClassName(isActive: boolean) {
   }`
 }
 
+function disabledNavClassName() {
+  return 'flex w-full min-w-0 cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm text-indigo-300/50 opacity-70'
+}
+
 export function Sidebar({ onLogout, displayName, email, initial, isStaff }: SidebarProps) {
   const visibleMenuItems = menuItems.filter((item) => !item.adminOnly || isStaff)
 
@@ -37,23 +41,38 @@ export function Sidebar({ onLogout, displayName, email, initial, isStaff }: Side
         </div>
 
         <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden pr-0.5" aria-label="Secciones">
-          {visibleMenuItems.map((item) => (
-            <NavLink
-              key={item.id}
-              to={sectionPaths[item.id as Section]}
-              end={item.id === 'dashboard'}
-              className={({ isActive }) => navClassName(isActive)}
-            >
-              {({ isActive }) => (
-                <>
-                  <span className={`shrink-0 ${isActive ? 'text-white' : 'text-indigo-200 group-hover:text-indigo-50'}`}>
-                    <NavIcon section={item.id} />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {visibleMenuItems.map((item) =>
+            item.disabled ? (
+              <button
+                key={item.id}
+                type="button"
+                disabled
+                className={disabledNavClassName()}
+                title="Sección bloqueada por ahora"
+              >
+                <span className="shrink-0">
+                  <NavIcon section={item.id} />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+              </button>
+            ) : (
+              <NavLink
+                key={item.id}
+                to={sectionPaths[item.id as Section]}
+                end={item.id === 'dashboard'}
+                className={({ isActive }) => navClassName(isActive)}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={`shrink-0 ${isActive ? 'text-white' : 'text-indigo-200 group-hover:text-indigo-50'}`}>
+                      <NavIcon section={item.id} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            ),
+          )}
         </nav>
 
         <NavLink
