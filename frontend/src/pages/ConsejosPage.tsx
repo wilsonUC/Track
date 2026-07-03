@@ -1,107 +1,107 @@
-import { useState } from 'react';
-import { 
-  Lightbulb, 
-  TrendingUp, 
-  ShieldAlert, 
-  PiggyBank, 
-  ArrowRight, 
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ArrowRight,
+  Loader2,
+  PiggyBank,
+  RefreshCw,
   Sparkles,
-  BookOpen,
-  CheckCircle
-} from 'lucide-react';
+} from 'lucide-react'
+import { fetchConsejos, type ConsejoItem, type ConsejosResponse } from '../api/consejos'
+import { sectionPaths } from '../constants/routes'
+import {
+  consejoImpactoClass,
+  formatConsejosFecha,
+  getConsejoVisual,
+} from '../utils/consejosUi'
 
-interface Consejo {
-  id: number;
-  titulo: string;
-  descripcion: string;
-  categoria: 'AHORRO' | 'ALERTA' | 'INVERSIÓN' | 'GENERAL';
-  impacto: 'ALTO' | 'MEDIO' | 'OPTIMISTA';
-  colorIcono: string;
-  bgIcono: string;
-  icono: any;
-}
+const FILTROS = ['TODOS', 'ALERTA', 'AHORRO', 'INVERSIÓN', 'GENERAL'] as const
 
 export function ConsejosPage() {
-  // 1. Estado para filtrar por categorías
-  const [categoriaActiva, setCategoriaActiva] = useState<string>('TODOS');
+  const navigate = useNavigate()
+  const [categoriaActiva, setCategoriaActiva] = useState<string>('TODOS')
+  const [data, setData] = useState<ConsejosResponse | null>(null)
+  const [cargando, setCargando] = useState(true)
+  const [actualizando, setActualizando] = useState(false)
+  const [error, setError] = useState('')
 
-  // 2. Base de datos simulada con consejos personalizados para el usuario
-  const [consejos] = useState<Consejo[]>([
-    {
-      id: 1,
-      titulo: "¡Cuidado con el presupuesto de Transporte!",
-      descripcion: "Has superado el límite mensual establecido para Movilidad. Te recomendamos reducir los viajes en taxi esta semana y priorizar opciones más económicas para equilibrar tu saldo.",
-      categoria: 'ALERTA',
-      impacto: 'ALTO',
-      colorIcono: "text-rose-500",
-      bgIcono: "bg-rose-50 border-rose-100",
-      icono: ShieldAlert
-    },
-    {
-      id: 2,
-      titulo: "Optimiza tus suscripciones activas",
-      descripcion: "Tienes 3 servicios recurrentes activos este mes. Revisa si realmente utilizas todos constantemente; cancelar solo uno de S/ 15 o S/ 30 podría darte un respiro extra al año.",
-      categoria: 'AHORRO',
-      impacto: 'MEDIO',
-      colorIcono: "text-amber-500",
-      bgIcono: "bg-amber-50 border-amber-100",
-      icono: Lightbulb
-    },
-    {
-      id: 3,
-      titulo: "Meta 'Fondo de Emergencia' lograda",
-      descripcion: "¡Espectacular! Has completado el 100% de tu fondo de seguridad estudiantil. Tu colchón financiero está listo; ahora puedes enfocar ese flujo de dinero en tus otras metas activas.",
-      categoria: 'AHORRO',
-      impacto: 'OPTIMISTA',
-      colorIcono: "text-emerald-500",
-      bgIcono: "bg-emerald-50 border-emerald-100",
-      icono: CheckCircle
-    },
-    {
-      id: 4,
-      titulo: "La regla del 50/30/20 para principiantes",
-      descripcion: "Prueba dividir tus ingresos netos de esta manera: 50% para tus necesidades básicas y recibos, 30% para tus gustos o entretenimiento, y un 20% destinado directamente al ahorro o inversión.",
-      categoria: 'GENERAL',
-      impacto: 'MEDIO',
-      colorIcono: "text-indigo-600",
-      bgIcono: "bg-indigo-50 border-indigo-100",
-      icono: BookOpen
-    },
-    {
-      id: 5,
-      titulo: "Interés Compuesto: Haz crecer tu dinero",
-      descripcion: "Ahorrar es genial, pero invertir a largo plazo en opciones seguras (como depósitos a plazo fijo regulados) hace que tus ganancias generen más ganancias solas. ¡Averigua más!",
-      categoria: 'INVERSIÓN',
-      impacto: 'ALTO',
-      colorIcono: "text-violet-500",
-      bgIcono: "bg-violet-50 border-violet-100",
-      icono: TrendingUp
+  const cargar = useCallback(async (regenerar = false) => {
+    if (regenerar) {
+      setActualizando(true)
+    } else {
+      setCargando(true)
     }
-  ]);
+    setError('')
+    try {
+      const response = await fetchConsejos(regenerar)
+      setData(response)
+    } catch (err) {
+      const detalle = err instanceof Error ? err.message : 'Error desconocido'
+      setError(detalle)
+    } finally {
+      setCargando(false)
+      setActualizando(false)
+    }
+  }, [])
 
-  // 3. Filtrado lógico de consejos en pantalla
-  const consejosFiltrados = categoriaActiva === 'TODOS' 
-    ? consejos 
-    : consejos.filter(c => c.categoria === categoriaActiva);
+  useEffect(() => {
+    void cargar()
+  }, [cargar])
+
+  const consejos = data?.consejos ?? []
+  const consejosFiltrados =
+    categoriaActiva === 'TODOS'
+      ? consejos
+      : consejos.filter((c) => c.categoria === categoriaActiva)
+
+  const irAprenderMas = (consejo: ConsejoItem) => {
+    navigate(sectionPaths.ia, {
+      state: { preguntaSugerida: consejo.pregunta_ia },
+    })
+  }
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen text-slate-800">
-      
-      {/* HEADER PRINCIPAL */}
       <div className="border-b border-slate-200 pb-5">
-        <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider">
-          <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span>Sugerencias Inteligentes</span>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-indigo-600 font-bold text-xs uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
+              <span>Sugerencias Inteligentes</span>
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 mt-1">Consejos & Educación</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Recomendaciones personalizadas generadas con IA según tus datos reales.
+            </p>
+            {data?.generado_en && (
+              <p className="text-xs text-slate-400 mt-2">
+                Última actualización: {formatConsejosFecha(data.generado_en)}
+                {data.desde_cache ? ' (desde caché)' : ''}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void cargar(true)}
+            disabled={cargando || actualizando}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-600 shadow-sm transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {actualizando ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Actualizar consejos
+          </button>
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mt-1">Consejos & Educación</h1>
-        <p className="text-sm text-slate-500 mt-1">Recomendaciones personalizadas para mejorar la salud de tus finanzas.</p>
       </div>
 
-      {/* BOTONES DE FILTRADO (TABS) */}
       <div className="flex flex-wrap gap-2">
-        {['TODOS', 'ALERTA', 'AHORRO', 'INVERSIÓN', 'GENERAL'].map((cat) => (
+        {FILTROS.map((cat) => (
           <button
             key={cat}
+            type="button"
             onClick={() => setCategoriaActiva(cat)}
             className={`text-xs font-bold px-4 py-2.5 rounded-xl border transition-all active:scale-95 ${
               categoriaActiva === cat
@@ -114,7 +114,12 @@ export function ConsejosPage() {
         ))}
       </div>
 
-      {/* DETECTOR / RESUMEN */}
+      {error && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-lg font-bold flex items-center gap-2">
@@ -122,63 +127,82 @@ export function ConsejosPage() {
             Tu Diagnóstico de Salud Financiera
           </h2>
           <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-            Nuestro sistema analiza tus presupuestos mensuales y tus metas en tiempo real. Actualmente tienes 1 alerta crítica que requiere tu atención para no cerrar el mes en negativo.
+            {cargando && !data
+              ? 'Analizando tus presupuestos, metas y transacciones...'
+              : data?.resumen ?? 'Genera tus consejos para ver un diagnóstico personalizado.'}
           </p>
         </div>
-        <div className="bg-white/10 px-4 py-2.5 rounded-xl border border-white/10 text-center md:text-right">
-          <span className="text-[11px] uppercase font-bold tracking-wider text-indigo-300 block">Puntaje del Mes</span>
-          <span className="text-2xl font-black text-white">82 / 100</span>
+        <div className="bg-white/10 px-4 py-2.5 rounded-xl border border-white/10 text-center md:text-right min-w-[120px]">
+          <span className="text-[11px] uppercase font-bold tracking-wider text-indigo-300 block">
+            Puntaje del Mes
+          </span>
+          {cargando && !data ? (
+            <Loader2 className="mx-auto mt-1 h-6 w-6 animate-spin text-white" />
+          ) : (
+            <span className="text-2xl font-black text-white">{data?.puntaje ?? '—'} / 100</span>
+          )}
         </div>
       </div>
 
-      {/* LISTA DINÁMICA DE CONSEJOS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {consejosFiltrados.map((c) => (
-          <div 
-            key={c.id} 
-            className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
-          >
-            <div className="space-y-3">
-              {/* Top de la Tarjeta */}
-              <div className="flex items-center justify-between">
-                <div className={`p-2.5 rounded-xl border ${c.bgIcono}`}>
-                  <c.icono className={`w-5 h-5 ${c.colorIcono}`} />
+      {cargando && !data ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-48 animate-pulse rounded-2xl border border-slate-100 bg-white"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {consejosFiltrados.map((c, index) => {
+            const visual = getConsejoVisual(c.categoria)
+            const Icono = visual.icono
+
+            return (
+              <div
+                key={`${c.titulo}-${index}`}
+                className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className={`p-2.5 rounded-xl border ${visual.bgIcono}`}>
+                      <Icono className={`w-5 h-5 ${visual.colorIcono}`} />
+                    </div>
+                    <span
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-md ${consejoImpactoClass(c.impacto)}`}
+                    >
+                      IMPACTO {c.impacto}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-slate-800 text-base leading-snug">{c.titulo}</h3>
+                    <p className="text-xs text-slate-500 leading-relaxed">{c.descripcion}</p>
+                  </div>
                 </div>
-                
-                {/* Etiqueta de Prioridad / Impacto */}
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md ${
-                  c.impacto === 'ALTO' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
-                  c.impacto === 'MEDIO' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                  'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                }`}>
-                  IMPACTO {c.impacto}
-                </span>
+
+                <button
+                  type="button"
+                  onClick={() => irAprenderMas(c)}
+                  className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-indigo-600 hover:text-indigo-700 group"
+                >
+                  <span>Aprender más sobre esto</span>
+                  <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </button>
               </div>
+            )
+          })}
 
-              {/* Contenido */}
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-800 text-base leading-snug">{c.titulo}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">{c.descripcion}</p>
-              </div>
+          {!cargando && consejosFiltrados.length === 0 && (
+            <div className="col-span-1 md:col-span-2 text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+              <p className="text-sm text-slate-400 font-medium">
+                No hay consejos en esta categoría por el momento.
+              </p>
             </div>
-
-            {/* Enlace o botón de acción */}
-            <div className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer group">
-              <span>Aprender más sobre esto</span>
-              <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-
-          </div>
-        ))}
-
-        {/* Mensaje en caso de que un filtro esté vacío */}
-        {consejosFiltrados.length === 0 && (
-          <div className="col-span-1 md:col-span-2 text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-sm text-slate-400 font-medium">No hay consejos en esta categoría por el momento.</p>
-          </div>
-        )}
-      </div>
-
+          )}
+        </div>
+      )}
     </div>
-  );
+  )
 }

@@ -11,7 +11,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import Sum
 
-from .models import Presupuesto, Recurrente, Transaction
+from .models import MetaAhorro, Presupuesto, Recurrente, Transaction
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
@@ -35,13 +35,16 @@ def build_financial_context(user) -> str:
 
     income = _decimal(month_qs.filter(tipo=Transaction.Tipo.INGRESO).aggregate(total=Sum("monto"))["total"])
     expense = _decimal(month_qs.filter(tipo=Transaction.Tipo.GASTO).aggregate(total=Sum("monto"))["total"])
-    balance = income - expense
+    saving = _decimal(month_qs.filter(tipo=Transaction.Tipo.AHORRO).aggregate(total=Sum("monto"))["total"])
+    balance = income - expense - saving
 
     recent = (
         Transaction.objects.filter(usuario=user)
-        .select_related("categoria", "presupuesto", "recurrente")
+        .select_related("categoria", "presupuesto", "recurrente", "meta")
         .order_by("-fecha", "-creado_en")[:MAX_RECENT_TX]
     )
+
+    metas = MetaAhorro.objects.filter(usuario=user, activo=True).order_by("nombre")
 
     presupuestos = Presupuesto.objects.filter(usuario=user, activo=True).order_by("nombre")
     recurrentes = Recurrente.objects.filter(usuario=user, activo=True).select_related("categoria")
@@ -51,7 +54,8 @@ def build_financial_context(user) -> str:
         f"Mes actual ({month_start.strftime('%B %Y')}):",
         f"- Ingresos: S/ {income:.2f}",
         f"- Gastos: S/ {expense:.2f}",
-        f"- Balance del mes: S/ {balance:.2f}",
+        f"- Ahorros (aportes a metas): S/ {saving:.2f}",
+        f"- Balance disponible del mes: S/ {balance:.2f}",
         "",
         "Presupuestos activos (límite mensual):",
     ]
@@ -67,6 +71,27 @@ def build_financial_context(user) -> str:
             estado = calcular_estado(gastado, p.limite)
             lines.append(
                 f"- {p.nombre}: gastado S/ {gastado:.2f} / límite S/ {p.limite:.2f} ({pct}%, {estado})"
+            )
+
+    lines.extend(["", "Metas de ahorro activas:"])
+
+    if not metas:
+        lines.append("- Sin metas configuradas.")
+    else:
+        from .metas_service import calcular_acumulado, calcular_estado_meta, calcular_porcentaje
+
+        for meta in metas:
+            acumulado = calcular_acumulado(meta)
+            pct = calcular_porcentaje(acumulado, meta.monto_objetivo)
+            estado = calcular_estado_meta(meta, today)
+            limite = (
+                f", fecha límite {meta.fecha_limite.strftime('%Y-%m-%d')}"
+                if meta.fecha_limite
+                else ""
+            )
+            lines.append(
+                f"- {meta.nombre}: acumulado S/ {acumulado:.2f} / objetivo S/ {meta.monto_objetivo:.2f} "
+                f"({pct}%, {estado}{limite})"
             )
 
     lines.extend(["", "Recurrentes activos (mes actual):"])
@@ -95,9 +120,16 @@ def build_financial_context(user) -> str:
         lines.append("- Sin transacciones registradas.")
     else:
         for tx in recent:
-            tipo = "Ingreso" if tx.tipo == Transaction.Tipo.INGRESO else "Gasto"
+            if tx.tipo == Transaction.Tipo.INGRESO:
+                tipo = "Ingreso"
+            elif tx.tipo == Transaction.Tipo.AHORRO:
+                tipo = "Ahorro"
+            else:
+                tipo = "Gasto"
             desc = tx.descripcion.strip() or "Sin descripción"
-            if tx.presupuesto_id:
+            if tx.meta_id:
+                origen = f"Meta: {tx.meta.nombre}"
+            elif tx.presupuesto_id:
                 origen = f"Presupuesto: {tx.presupuesto.nombre}"
             elif tx.recurrente_id:
                 origen = f"Recurrente: {tx.recurrente.nombre}"
@@ -130,23 +162,27 @@ def _normalize_history(historial: list[dict]) -> list[dict]:
     return messages
 
 
-def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -> str:
+def request_groq_completion(
+    *,
+    messages: list[dict],
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    response_format: dict | None = None,
+    timeout: int = 45,
+) -> str:
     api_key = (getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY no está configurada en el servidor.")
 
     model = getattr(settings, "GROQ_MODEL", DEFAULT_MODEL) or DEFAULT_MODEL
-    context = build_financial_context(user)
-    payload = {
+    payload: dict = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": _system_prompt(context)},
-            *_normalize_history(historial or []),
-            {"role": "user", "content": mensaje.strip()},
-        ],
-        "temperature": 0.7,
-        "max_tokens": 1024,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
     }
+    if response_format:
+        payload["response_format"] = response_format
 
     request = urllib.request.Request(
         GROQ_CHAT_URL,
@@ -155,14 +191,13 @@ def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            # Cloudflare/Groq bloquean el User-Agent por defecto de Python (error 1010)
             "User-Agent": "FinanzasTrack/1.0 (Django backend)",
         },
         method="POST",
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=45) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
@@ -174,3 +209,16 @@ def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -
         return data["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError("Respuesta inesperada de Groq.") from exc
+
+
+def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -> str:
+    context = build_financial_context(user)
+    return request_groq_completion(
+        messages=[
+            {"role": "system", "content": _system_prompt(context)},
+            *_normalize_history(historial or []),
+            {"role": "user", "content": mensaje.strip()},
+        ],
+        temperature=0.7,
+        max_tokens=1024,
+    )

@@ -31,12 +31,17 @@ export function DashboardRecentTransactions({ transactions, loading }: Dashboard
             <ul className="divide-y divide-slate-100">
               {transactions.map((t) => {
                 const isIncome = t.tipo === 'income'
+                const isSaving = t.tipo === 'saving'
                 return (
                   <li key={t.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                          isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                          isIncome
+                            ? 'bg-emerald-50 text-emerald-600'
+                            : isSaving
+                              ? 'bg-indigo-50 text-indigo-600'
+                              : 'bg-rose-50 text-rose-600'
                         }`}
                       >
                         {isIncome ? (
@@ -58,6 +63,10 @@ export function DashboardRecentTransactions({ transactions, loading }: Dashboard
                             <span className="inline-block rounded bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
                               Recurrente · {t.recurrenteNombre}
                             </span>
+                          ) : t.esMeta ? (
+                            <span className="inline-block rounded bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                              Meta · {t.metaNombre}
+                            </span>
                           ) : (
                             <span className="inline-block rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
                               {t.categoriaNombre}
@@ -69,7 +78,7 @@ export function DashboardRecentTransactions({ transactions, loading }: Dashboard
                     </div>
                     <p
                       className={`shrink-0 text-sm font-bold tabular-nums ${
-                        isIncome ? 'text-emerald-600' : 'text-rose-600'
+                        isIncome ? 'text-emerald-600' : isSaving ? 'text-indigo-600' : 'text-rose-600'
                       }`}
                     >
                       {formatSignedSoles(t.montoNum, isIncome)}

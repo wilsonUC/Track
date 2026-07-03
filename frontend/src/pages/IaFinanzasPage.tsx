@@ -1,8 +1,15 @@
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { IaChatPanel } from '../components/ia/IaChatPanel'
 import { IaChatToolbar } from '../components/ia/IaChatToolbar'
 import { useIaChat } from '../hooks/useIaChat'
 
+type IaLocationState = {
+  preguntaSugerida?: string
+}
+
 export function IaFinanzasPage() {
+  const location = useLocation()
   const {
     mensajes,
     input,
@@ -12,6 +19,13 @@ export function IaFinanzasPage() {
     limpiarChat,
     manejarEnviar,
   } = useIaChat()
+
+  useEffect(() => {
+    const pregunta = (location.state as IaLocationState | null)?.preguntaSugerida?.trim()
+    if (pregunta) {
+      setInput(pregunta)
+    }
+  }, [location.state, setInput])
 
   return (
     <section className="mx-auto max-w-4xl space-y-5">

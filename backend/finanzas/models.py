@@ -104,12 +104,55 @@ class Recurrente(models.Model):
         return f"{self.nombre} (S/ {self.monto})"
 
 
+class MetaAhorro(models.Model):
+    """Objetivo de ahorro del usuario (ej. fondo de emergencia)."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="metas",
+    )
+    nombre = models.CharField(max_length=120)
+    monto_objetivo = models.DecimalField(max_digits=12, decimal_places=2)
+    fecha_limite = models.DateField(null=True, blank=True)
+    monto_rapido = models.DecimalField(max_digits=12, decimal_places=2, default=100)
+    categoria_referencia = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="metas_referencia",
+    )
+    activo = models.BooleanField(default=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nombre"]
+        verbose_name = "Meta de ahorro"
+        verbose_name_plural = "Metas de ahorro"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(monto_objetivo__gt=0),
+                name="chk_meta_monto_objetivo_mayor_que_cero",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(monto_rapido__gt=0),
+                name="chk_meta_monto_rapido_mayor_que_cero",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} (S/ {self.monto_objetivo})"
+
+
 class Transaction(models.Model):
-    """transaccion de ingreso o gasto, por usuario """
+    """Movimiento de dinero: ingreso, gasto o ahorro hacia una meta."""
 
     class Tipo(models.TextChoices):
         INGRESO = "income", "Ingreso"
         GASTO = "expense", "Gasto"
+        AHORRO = "saving", "Ahorro"
 
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -138,6 +181,13 @@ class Transaction(models.Model):
         null=True,
         blank=True,
     )
+    meta = models.ForeignKey(
+        MetaAhorro,
+        on_delete=models.PROTECT,
+        related_name="transacciones",
+        null=True,
+        blank=True,
+    )
 
     tipo = models.CharField(max_length=10, choices=Tipo.choices)
     monto = models.DecimalField(max_digits=12, decimal_places=2)
@@ -154,24 +204,39 @@ class Transaction(models.Model):
             ),
             models.CheckConstraint(
                 condition=(
-                    models.Q(tipo="income", presupuesto__isnull=True, categoria__isnull=False)
+                    models.Q(
+                        tipo="income",
+                        presupuesto__isnull=True,
+                        meta__isnull=True,
+                        categoria__isnull=False,
+                    )
                     | models.Q(
                         tipo="expense",
                         presupuesto__isnull=False,
                         categoria__isnull=True,
                         recurrente__isnull=True,
+                        meta__isnull=True,
                     )
                     | models.Q(
                         tipo="expense",
                         presupuesto__isnull=True,
                         categoria__isnull=False,
                         recurrente__isnull=True,
+                        meta__isnull=True,
                     )
                     | models.Q(
                         tipo="expense",
                         presupuesto__isnull=True,
                         categoria__isnull=False,
                         recurrente__isnull=False,
+                        meta__isnull=True,
+                    )
+                    | models.Q(
+                        tipo="saving",
+                        meta__isnull=False,
+                        categoria__isnull=True,
+                        presupuesto__isnull=True,
+                        recurrente__isnull=True,
                     )
                 ),
                 name="chk_transaction_origen",
@@ -206,5 +271,26 @@ class PerfilUsuario(models.Model):
         verbose_name = "Perfil de Usuario"
         verbose_name_plural = "Perfiles de Usuarios"
 
-    def __str__(self):  
+    def __str__(self):
         return f"{self.usuario.username} - {self.telefono}"
+
+
+class ConsejoCache(models.Model):
+    """Última generación de consejos IA por usuario (caché 24 h)."""
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="consejo_cache",
+    )
+    puntaje = models.PositiveSmallIntegerField()
+    resumen = models.TextField()
+    consejos = models.JSONField()
+    generado_en = models.DateTimeField()
+
+    class Meta:
+        verbose_name = "Caché de consejos"
+        verbose_name_plural = "Cachés de consejos"
+
+    def __str__(self):
+        return f"Consejos de {self.usuario.username} ({self.generado_en:%Y-%m-%d %H:%M})"

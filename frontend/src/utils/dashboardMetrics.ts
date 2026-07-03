@@ -9,8 +9,10 @@ export type EnrichedTransaction = ApiTransaction & {
   categoriaNombre: string
   presupuestoNombre: string | null
   recurrenteNombre: string | null
+  metaNombre: string | null
   esPresupuesto: boolean
   esRecurrente: boolean
+  esMeta: boolean
   etiquetaOrigen: string
 }
 
@@ -28,7 +30,12 @@ export type CategoryExpenseRow = {
   colorLight: string
 }
 
-const SAVINGS_GOAL_PERCENT = 20
+
+export function getBalanceSubtitle(balance: number) {
+  if (balance > 0) return '¡Excelente balance! 💰'
+  if (balance === 0) return 'Sin saldo disponible en el período'
+  return 'Gastos y ahorros superan ingresos'
+}
 
 export function buildCategoryMap(categories: ApiCategory[]) {
   return new Map(categories.map((c) => [c.id, c.nombre]))
@@ -41,12 +48,15 @@ export function enrichTransactions(
   return transactions.map((t) => {
     const esPresupuesto = t.presupuesto != null
     const esRecurrente = t.recurrente != null
+    const esMeta = t.meta != null
     const presupuestoNombre = t.presupuesto_nombre ?? null
     const recurrenteNombre = t.recurrente_nombre ?? null
+    const metaNombre = t.meta_nombre ?? null
     const categoriaNombre = t.categoria ? (categoryMap.get(t.categoria) ?? 'Sin categoría') : ''
     let etiquetaOrigen = categoriaNombre
     if (esPresupuesto) etiquetaOrigen = `Presupuesto: ${presupuestoNombre ?? 'Sin nombre'}`
     else if (esRecurrente) etiquetaOrigen = `Recurrente: ${recurrenteNombre ?? 'Sin nombre'}`
+    else if (esMeta) etiquetaOrigen = `Meta: ${metaNombre ?? 'Sin nombre'}`
 
     return {
       ...t,
@@ -54,8 +64,10 @@ export function enrichTransactions(
       categoriaNombre,
       presupuestoNombre,
       recurrenteNombre,
+      metaNombre,
       esPresupuesto,
       esRecurrente,
+      esMeta,
       etiquetaOrigen,
     }
   })
@@ -74,29 +86,23 @@ export function sumByType(transactions: EnrichedTransaction[]) {
   return transactions.reduce(
     (acc, t) => {
       if (t.tipo === 'income') acc.income += t.montoNum
-      else acc.expense += t.montoNum
+      else if (t.tipo === 'expense') acc.expense += t.montoNum
+      else if (t.tipo === 'saving') acc.saving += t.montoNum
       return acc
     },
-    { income: 0, expense: 0 },
+    { income: 0, expense: 0, saving: 0 },
   )
 }
 
-export function computeSavingsPercent(income: number, expense: number) {
+export function computeSavingsRatePercent(income: number, saving: number) {
   if (income <= 0) return 0
-  return Math.round(((income - expense) / income) * 100)
+  return Math.round((saving / income) * 100)
 }
 
-export function getBalanceSubtitle(balance: number) {
-  if (balance > 0) return '¡Excelente balance! 💰'
-  if (balance === 0) return 'Ingresos y gastos equilibrados'
-  return 'Gastos superan ingresos en el período'
-}
-
-export function getSavingsSubtitle(savingsPercent: number) {
-  if (savingsPercent >= SAVINGS_GOAL_PERCENT) {
-    return `Meta: ${SAVINGS_GOAL_PERCENT}% | ¡Superada! 🚀`
-  }
-  return `Meta: ${SAVINGS_GOAL_PERCENT}% | Te faltan ${SAVINGS_GOAL_PERCENT - savingsPercent} pp`
+export function getSavingsSubtitle(income: number, saving: number, periodLabel: string) {
+  const rate = computeSavingsRatePercent(income, saving)
+  if (income <= 0) return 'Sin ingresos en el período'
+  return `${rate}% de tus ingresos · ${periodLabel}`
 }
 
 export function buildLast6MonthsChart(
@@ -127,7 +133,7 @@ export function buildCategoryExpenses(expenseTransactions: EnrichedTransaction[]
   const totalsByCategory = new Map<string, number>()
 
   for (const t of expenseTransactions) {
-    const label = t.esPresupuesto || t.esRecurrente ? t.etiquetaOrigen : t.categoriaNombre
+    const label = t.esPresupuesto || t.esRecurrente || t.esMeta ? t.etiquetaOrigen : t.categoriaNombre
     totalsByCategory.set(label, (totalsByCategory.get(label) ?? 0) + t.montoNum)
   }
 

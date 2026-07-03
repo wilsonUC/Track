@@ -4,6 +4,7 @@ import { fetchProfile, type UserProfile } from '../api/auth'
 import { CuentaPasswordForm } from '../components/cuenta/CuentaPasswordForm'
 import { CuentaPersonalForm } from '../components/cuenta/CuentaPersonalForm'
 import { CuentaProfileCard } from '../components/cuenta/CuentaProfileCard'
+import { CuentaResetDatos } from '../components/cuenta/CuentaResetDatos'
 
 type OutletContext = {
   refreshProfile: () => Promise<void>
@@ -60,6 +61,7 @@ export function CuentaPage() {
       <div className="space-y-6">
         <CuentaPersonalForm profile={profile} onSaved={handleProfileSaved} />
         <CuentaPasswordForm />
+        <CuentaResetDatos />
       </div>
     </section>
   )

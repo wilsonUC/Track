@@ -15,6 +15,7 @@ export function MainHeader({ section, displayName, onOpenNewTransaction }: MainH
   const isDashboard = section === 'dashboard'
   const isCuenta = pathname === cuentaPath
   const isAdmin = section === 'admin'
+  const isConfiguracion = section === 'configuracion'
 
   return (
     <header className="mb-5 flex flex-col gap-4 sm:mb-6 lg:flex-row lg:items-start lg:justify-between">
@@ -43,7 +44,7 @@ export function MainHeader({ section, displayName, onOpenNewTransaction }: MainH
         )}
       </div>
 
-      {!isCuenta && !isAdmin && (
+      {!isCuenta && !isAdmin && !isConfiguracion && (
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           {isDashboard && (
             <button

@@ -7,7 +7,6 @@ import {
   buildCategoryExpenses,
   buildCategoryMap,
   buildLast6MonthsChart,
-  computeSavingsPercent,
   enrichTransactions,
   filterByDateRange,
   getBalanceSubtitle,
@@ -64,11 +63,7 @@ export function DashboardPanel() {
   )
 
   const periodTotals = useMemo(() => sumByType(filtered), [filtered])
-  const balance = periodTotals.income - periodTotals.expense
-  const savingsPercent = useMemo(
-    () => computeSavingsPercent(periodTotals.income, periodTotals.expense),
-    [periodTotals],
-  )
+  const balance = periodTotals.income - periodTotals.expense - periodTotals.saving
 
   const periodIncome = useMemo(
     () => sortByDateDesc(filtered.filter((t) => t.tipo === 'income')),
@@ -134,8 +129,8 @@ export function DashboardPanel() {
         />
         <DashboardSummaryCard
           title="Ahorro"
-          amount={`${savingsPercent}%`}
-          subtitle={getSavingsSubtitle(savingsPercent)}
+          amount={formatSoles(periodTotals.saving)}
+          subtitle={getSavingsSubtitle(periodTotals.income, periodTotals.saving, dateFilter.label)}
           variant="savings"
           isActive={activeCard === 'savings'}
           onClick={() => setActiveCard('savings')}

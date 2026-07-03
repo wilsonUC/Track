@@ -151,6 +151,16 @@ export async function changePassword(data: ChangePasswordPayload): Promise<void>
   }
 }
 
+export async function resetFinancialData(): Promise<void> {
+  const res = await authFetch('/api/perfil/resetear-datos/', {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(JSON.stringify(err))
+  }
+}
+
 export type RegisterPayload = {
   username: string
   first_name: string

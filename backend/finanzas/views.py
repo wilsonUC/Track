@@ -11,8 +11,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, Presupuesto, Recurrente, Transaction
+from .models import Category, ConsejoCache, MetaAhorro, Presupuesto, Recurrente, Transaction
 from .ia_service import chat_with_groq
+from .consejos_service import get_or_generate_consejos
+from .metas_service import ultimo_aporte
 from .recurrentes_service import transacciones_mes_actual
 from .serializers import (
     CategorySerializer,
@@ -20,6 +22,8 @@ from .serializers import (
     IaChatSerializer,
     AdminUsuarioSerializer,
     AdminUsuarioUpdateSerializer,
+    MetaRegistrarAporteSerializer,
+    MetaSerializer,
     PresupuestoSerializer,
     RecurrenteRegistrarPagoSerializer,
     RecurrenteSerializer,
@@ -57,7 +61,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Transaction.objects.filter(usuario=self.request.user).select_related(
-            "categoria", "presupuesto", "recurrente"
+            "categoria", "presupuesto", "recurrente", "meta"
         )
 
     def perform_create(self, serializer):
@@ -185,6 +189,71 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+class MetaViewSet(viewsets.ModelViewSet):
+    """Metas de ahorro del usuario."""
+
+    serializer_class = MetaSerializer
+
+    def get_queryset(self):
+        return (
+            MetaAhorro.objects.filter(usuario=self.request.user, activo=True)
+            .select_related("categoria_referencia")
+            .annotate(
+                acumulado=Coalesce(
+                    Sum(
+                        "transacciones__monto",
+                        filter=Q(transacciones__tipo=Transaction.Tipo.AHORRO),
+                    ),
+                    Decimal("0"),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                )
+            )
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.activo = False
+        instance.save(update_fields=["activo", "actualizado_en"])
+
+    @action(detail=True, methods=["post"], url_path="registrar-aporte")
+    def registrar_aporte(self, request, pk=None):
+        meta = self.get_object()
+        body = MetaRegistrarAporteSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+
+        monto = body.validated_data.get("monto") or meta.monto_rapido
+        Transaction.objects.create(
+            usuario=request.user,
+            meta=meta,
+            categoria=None,
+            presupuesto=None,
+            recurrente=None,
+            tipo=Transaction.Tipo.AHORRO,
+            monto=monto,
+            fecha=date.today(),
+            descripcion=f"Ahorro meta: {meta.nombre}",
+        )
+        meta = self.get_queryset().get(pk=meta.pk)
+        serializer = self.get_serializer(meta)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="desmarcar-aporte")
+    def desmarcar_aporte(self, request, pk=None):
+        meta = self.get_object()
+        aporte = ultimo_aporte(meta)
+        if aporte is None:
+            return Response(
+                {"detalle": "No hay aportes para desmarcar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        aporte.delete()
+        meta = self.get_queryset().get(pk=meta.pk)
+        serializer = self.get_serializer(meta)
+        return Response(serializer.data)
+
+
 class IaChatView(APIView):
     """POST /api/ia/chat/ — asistente financiero con contexto real del usuario."""
 
@@ -202,6 +271,18 @@ class IaChatView(APIView):
             return Response({"detalle": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         return Response({"respuesta": respuesta})
+
+
+class ConsejosView(APIView):
+    """GET /api/consejos/ — consejos IA con caché 24 h. ?regenerar=1 fuerza nueva generación."""
+
+    def get(self, request):
+        force = request.query_params.get("regenerar") in ("1", "true", "yes")
+        try:
+            payload = get_or_generate_consejos(request.user, force=force)
+        except RuntimeError as exc:
+            return Response({"detalle": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(payload)
 
 
 class PerfilView(APIView):
@@ -232,6 +313,32 @@ class CambioPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"mensaje": "Contraseña actualizada correctamente."})
+
+
+class ResetDatosView(APIView):
+    """POST /api/perfil/resetear-datos/ — borra los datos financieros del usuario.
+
+    Elimina transacciones, presupuestos, recurrentes, metas y la caché de consejos.
+    NO toca la cuenta del usuario (credenciales, perfil, teléfono).
+    """
+
+    def post(self, request):
+        user = request.user
+
+        eliminados = {
+            "transacciones": Transaction.objects.filter(usuario=user).delete()[0],
+            "presupuestos": Presupuesto.objects.filter(usuario=user).delete()[0],
+            "recurrentes": Recurrente.objects.filter(usuario=user).delete()[0],
+            "metas": MetaAhorro.objects.filter(usuario=user).delete()[0],
+            "consejos_cache": ConsejoCache.objects.filter(usuario=user).delete()[0],
+        }
+
+        return Response(
+            {
+                "mensaje": "Tus datos financieros se borraron. Empiezas desde cero.",
+                "eliminados": eliminados,
+            }
+        )
 
 
 class AdminUsuariosView(APIView):

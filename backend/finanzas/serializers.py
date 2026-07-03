@@ -5,7 +5,13 @@ from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Category, PerfilUsuario, Presupuesto, Recurrente, Transaction
+from .models import Category, MetaAhorro, PerfilUsuario, Presupuesto, Recurrente, Transaction
+from .metas_service import (
+    calcular_acumulado,
+    calcular_completada,
+    calcular_estado_meta,
+    calcular_porcentaje as calcular_porcentaje_meta,
+)
 from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
 from .recurrentes_service import calcular_estado_recurrente
 
@@ -223,6 +229,82 @@ class RecurrenteRegistrarPagoSerializer(serializers.Serializer):
     monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
 
 
+class MetaSerializer(serializers.ModelSerializer):
+    acumulado = serializers.SerializerMethodField()
+    porcentaje = serializers.SerializerMethodField()
+    completada = serializers.SerializerMethodField()
+    estado = serializers.SerializerMethodField()
+    categoria_referencia_nombre = serializers.CharField(
+        source="categoria_referencia.nombre",
+        read_only=True,
+        default=None,
+    )
+
+    class Meta:
+        model = MetaAhorro
+        fields = [
+            "id",
+            "nombre",
+            "monto_objetivo",
+            "fecha_limite",
+            "monto_rapido",
+            "categoria_referencia",
+            "categoria_referencia_nombre",
+            "activo",
+            "acumulado",
+            "porcentaje",
+            "completada",
+            "estado",
+            "creado_en",
+            "actualizado_en",
+        ]
+        read_only_fields = [
+            "id",
+            "acumulado",
+            "porcentaje",
+            "completada",
+            "estado",
+            "creado_en",
+            "actualizado_en",
+        ]
+
+    def _acumulado(self, obj: MetaAhorro):
+        if hasattr(obj, "acumulado") and obj.acumulado is not None:
+            return obj.acumulado
+        return calcular_acumulado(obj)
+
+    def get_acumulado(self, obj):
+        return self._acumulado(obj)
+
+    def get_porcentaje(self, obj):
+        return calcular_porcentaje_meta(self._acumulado(obj), obj.monto_objetivo)
+
+    def get_completada(self, obj):
+        return calcular_completada(self._acumulado(obj), obj.monto_objetivo)
+
+    def get_estado(self, obj):
+        return calcular_estado_meta(obj)
+
+    def validate_monto_objetivo(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El monto objetivo debe ser mayor que cero.")
+        return value
+
+    def validate_monto_rapido(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El monto rápido debe ser mayor que cero.")
+        return value
+
+    def validate_categoria_referencia(self, value):
+        if value and value.tipo != Category.Tipo.GASTO:
+            raise serializers.ValidationError("La categoría de referencia debe ser de gasto.")
+        return value
+
+
+class MetaRegistrarAporteSerializer(serializers.Serializer):
+    monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+
+
 class TransactionSerializer(serializers.ModelSerializer):
     """
     Un movimiento de dinero: categoría o presupuesto (gastos), tipo, monto, fecha, etc.
@@ -230,6 +312,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     presupuesto_nombre = serializers.CharField(source="presupuesto.nombre", read_only=True, default=None)
     recurrente_nombre = serializers.CharField(source="recurrente.nombre", read_only=True, default=None)
+    meta_nombre = serializers.CharField(source="meta.nombre", read_only=True, default=None)
 
     class Meta:
         model = Transaction
@@ -240,6 +323,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             "presupuesto_nombre",
             "recurrente",
             "recurrente_nombre",
+            "meta",
+            "meta_nombre",
             "tipo",
             "monto",
             "fecha",
@@ -247,7 +332,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "presupuesto_nombre", "recurrente_nombre", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "presupuesto_nombre", "recurrente_nombre", "meta_nombre", "creado_en", "actualizado_en"]
 
     def validate_monto(self, value):
         """El monto tiene que ser mayor que cero (un gasto o ingreso “en cero” no tiene sentido)."""
@@ -259,6 +344,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         categoria = attrs.get("categoria")
         presupuesto = attrs.get("presupuesto")
         recurrente = attrs.get("recurrente")
+        meta = attrs.get("meta")
         tipo = attrs.get("tipo")
 
         if self.instance:
@@ -268,6 +354,8 @@ class TransactionSerializer(serializers.ModelSerializer):
                 presupuesto = self.instance.presupuesto
             if "recurrente" not in attrs:
                 recurrente = self.instance.recurrente
+            if "meta" not in attrs:
+                meta = self.instance.meta
             if tipo is None:
                 tipo = self.instance.tipo
 
@@ -279,15 +367,24 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"categoria": "La categoría es obligatoria para ingresos."}
                 )
-            if presupuesto:
+            if presupuesto or meta:
                 raise serializers.ValidationError(
-                    {"presupuesto": "Los ingresos no pueden asociarse a un presupuesto."}
+                    "Los ingresos no pueden asociarse a presupuesto ni meta."
+                )
+        elif tipo == Transaction.Tipo.AHORRO:
+            if not meta:
+                raise serializers.ValidationError(
+                    {"meta": "La meta es obligatoria para ahorros."}
+                )
+            if categoria or presupuesto or recurrente:
+                raise serializers.ValidationError(
+                    "Un ahorro solo puede asociarse a una meta."
                 )
         elif tipo == Transaction.Tipo.GASTO:
             if presupuesto:
-                if categoria or recurrente:
+                if categoria or recurrente or meta:
                     raise serializers.ValidationError(
-                        "Un gasto de presupuesto no puede tener categoría ni recurrente."
+                        "Un gasto de presupuesto no puede tener categoría, recurrente ni meta."
                     )
             elif recurrente:
                 if not categoria:
@@ -312,8 +409,12 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"recurrente": "El recurrente no pertenece al usuario."}
                 )
+            if meta and user and meta.usuario_id != user.id:
+                raise serializers.ValidationError(
+                    {"meta": "La meta no pertenece al usuario."}
+                )
 
-        if categoria and tipo and categoria.tipo != tipo:
+        if categoria and tipo in (Transaction.Tipo.INGRESO, Transaction.Tipo.GASTO) and categoria.tipo != tipo:
             raise serializers.ValidationError(
                 {"tipo": "El tipo debe coincidir con el de la categoría (ingreso/gasto)."}
             )

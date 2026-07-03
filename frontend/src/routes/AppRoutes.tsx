@@ -6,7 +6,7 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { GastosPage } from '../pages/GastosPage'
 import { IngresosPage } from '../pages/IngresosPage'
 import { LoginPage } from '../pages/LoginPage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
+import { ConfiguracionPage } from '../pages/ConfiguracionPage'
 import { RegisterPage } from '../pages/RegisterPage'
 import { ReportesPage } from '../pages/ReportesPage'
 import { MetasPage } from '../pages/MetasPage'
@@ -70,7 +70,7 @@ export function AppRoutes() {
         <Route path="admin" element={<Navigate to="/admin/usuarios" replace />} />
         <Route path="admin/usuarios" element={<AdminUsuariosPage />} />
         <Route path="cuenta" element={<CuentaPage />} />
-        <Route path="configuracion" element={<PlaceholderPage section="configuracion" />} />
+        <Route path="configuracion" element={<ConfiguracionPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
