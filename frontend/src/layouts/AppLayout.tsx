@@ -75,10 +75,6 @@ export function AppLayout() {
   const isStaff = profile?.is_staff ?? false
   const isAdminPath = pathname.startsWith('/admin')
 
-  useEffect(() => {
-    setSecondaryHeaderAction(null)
-  }, [pathname])
-
   if (isAdminPath && !profileLoaded) {
     return (
       <div className="flex h-dvh items-center justify-center bg-slate-100 text-sm text-slate-500">
