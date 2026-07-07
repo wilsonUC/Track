@@ -35,12 +35,18 @@ def build_financial_context(user) -> str:
 
     income = _decimal(month_qs.filter(tipo=Transaction.Tipo.INGRESO).aggregate(total=Sum("monto"))["total"])
     expense = _decimal(month_qs.filter(tipo=Transaction.Tipo.GASTO).aggregate(total=Sum("monto"))["total"])
-    saving = _decimal(month_qs.filter(tipo=Transaction.Tipo.AHORRO).aggregate(total=Sum("monto"))["total"])
-    balance = income - expense - saving
+    saving_mes = _decimal(month_qs.filter(tipo=Transaction.Tipo.AHORRO).aggregate(total=Sum("monto"))["total"])
+    balance = income - expense
+
+    from .ahorros_service import ahorro_libre, total_ahorrado, total_asignado
+
+    total_ahorro = total_ahorrado(user)
+    asignado = total_asignado(user)
+    libre = total_ahorro - asignado
 
     recent = (
         Transaction.objects.filter(usuario=user)
-        .select_related("categoria", "presupuesto", "recurrente", "meta")
+        .select_related("categoria", "presupuesto", "recurrente")
         .order_by("-fecha", "-creado_en")[:MAX_RECENT_TX]
     )
 
@@ -54,8 +60,13 @@ def build_financial_context(user) -> str:
         f"Mes actual ({month_start.strftime('%B %Y')}):",
         f"- Ingresos: S/ {income:.2f}",
         f"- Gastos: S/ {expense:.2f}",
-        f"- Ahorros (aportes a metas): S/ {saving:.2f}",
-        f"- Balance disponible del mes: S/ {balance:.2f}",
+        f"- Balance del mes (ingresos - gastos): S/ {balance:.2f}",
+        f"- Ahorros apartados este mes: S/ {saving_mes:.2f}",
+        "",
+        "Pool de ahorros (acumulado histórico):",
+        f"- Total ahorrado: S/ {total_ahorro:.2f}",
+        f"- Asignado a metas: S/ {asignado:.2f}",
+        f"- Libre (sin asignar): S/ {libre:.2f}",
         "",
         "Presupuestos activos (límite mensual):",
     ]
@@ -90,7 +101,7 @@ def build_financial_context(user) -> str:
                 else ""
             )
             lines.append(
-                f"- {meta.nombre}: acumulado S/ {acumulado:.2f} / objetivo S/ {meta.monto_objetivo:.2f} "
+                f"- {meta.nombre}: asignado S/ {acumulado:.2f} / objetivo S/ {meta.monto_objetivo:.2f} "
                 f"({pct}%, {estado}{limite})"
             )
 
@@ -127,8 +138,8 @@ def build_financial_context(user) -> str:
             else:
                 tipo = "Gasto"
             desc = tx.descripcion.strip() or "Sin descripción"
-            if tx.meta_id:
-                origen = f"Meta: {tx.meta.nombre}"
+            if tx.tipo == Transaction.Tipo.AHORRO:
+                origen = "Ahorro"
             elif tx.presupuesto_id:
                 origen = f"Presupuesto: {tx.presupuesto.nombre}"
             elif tx.recurrente_id:

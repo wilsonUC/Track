@@ -1,10 +1,10 @@
-import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, Landmark } from 'lucide-react'
 
 type DashboardSummaryCardProps = {
   title: string
   amount: string
   subtitle?: string
-  variant: 'balance' | 'income' | 'expense' | 'savings'
+  variant: 'balance' | 'income' | 'expense' | 'savings' | 'totalBalance'
   isActive?: boolean
   onClick?: () => void
 }
@@ -12,7 +12,8 @@ type DashboardSummaryCardProps = {
 function CardIcon({ variant }: { variant: DashboardSummaryCardProps['variant'] }) {
   const cls = 'h-5 w-5'
   if (variant === 'balance') return <Wallet className={cls} aria-hidden />
-  if (variant === 'income')  return <TrendingUp className={cls} aria-hidden />
+  if (variant === 'totalBalance') return <Landmark className={cls} aria-hidden />
+  if (variant === 'income') return <TrendingUp className={cls} aria-hidden />
   if (variant === 'expense') return <TrendingDown className={cls} aria-hidden />
   return <PiggyBank className={cls} aria-hidden />
 }
@@ -20,9 +21,10 @@ function CardIcon({ variant }: { variant: DashboardSummaryCardProps['variant'] }
 export function DashboardSummaryCard({ title, amount, subtitle, variant, isActive, onClick }: DashboardSummaryCardProps) {
   if (isActive) {
     let activeGradient = 'from-indigo-600 via-violet-600 to-indigo-700'
-    if (variant === 'income')  activeGradient = 'from-emerald-600 via-teal-600 to-emerald-700'
+    if (variant === 'income') activeGradient = 'from-emerald-600 via-teal-600 to-emerald-700'
     if (variant === 'expense') activeGradient = 'from-rose-600 via-pink-600 to-rose-700'
     if (variant === 'savings') activeGradient = 'from-indigo-600 via-fuchsia-600 to-violet-700'
+    if (variant === 'totalBalance') activeGradient = 'from-slate-700 via-slate-600 to-slate-800'
 
     return (
       <article
@@ -46,14 +48,18 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
       ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
       : variant === 'expense'
         ? 'bg-rose-50 text-rose-600 border border-rose-100/50'
-        : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
+        : variant === 'totalBalance'
+          ? 'bg-slate-100 text-slate-600 border border-slate-200/50'
+          : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
 
   const amountColor =
     variant === 'income'
       ? 'text-emerald-600'
       : variant === 'expense'
         ? 'text-rose-600'
-        : 'text-slate-800'
+        : variant === 'totalBalance'
+          ? 'text-slate-800'
+          : 'text-slate-800'
 
   return (
     <article

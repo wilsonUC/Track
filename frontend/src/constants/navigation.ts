@@ -16,6 +16,7 @@ export const menuItems: readonly MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', shortLabel: 'Inicio' },
   { id: 'ingresos', label: 'Ingresos' },
   { id: 'gastos', label: 'Gastos' },
+  { id: 'ahorros', label: 'Ahorros' },
   { id: 'presupuestos', label: 'Presupuestos', shortLabel: 'Presup.' },
   { id: 'metas', label: 'Metas' },
   { id: 'recurrentes', label: 'Recurrentes', shortLabel: 'Recurr.' },

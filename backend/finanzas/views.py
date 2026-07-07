@@ -11,19 +11,30 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, ConsejoCache, MetaAhorro, Presupuesto, Recurrente, Transaction
+from .models import (
+    AsignacionMeta,
+    Category,
+    ConsejoCache,
+    MetaAhorro,
+    Presupuesto,
+    PreferenciasUsuario,
+    Recurrente,
+    Transaction,
+)
 from .ia_service import chat_with_groq
 from .consejos_service import get_or_generate_consejos
-from .metas_service import ultimo_aporte
+from .ahorros_service import ahorro_libre, resumen_ahorros
 from .recurrentes_service import transacciones_mes_actual
 from .serializers import (
+    AhorroSerializer,
     CategorySerializer,
     FinanzasTokenObtainPairSerializer,
     IaChatSerializer,
     AdminUsuarioSerializer,
     AdminUsuarioUpdateSerializer,
-    MetaRegistrarAporteSerializer,
+    MetaAsignarSerializer,
     MetaSerializer,
+    PreferenciasSerializer,
     PresupuestoSerializer,
     RecurrenteRegistrarPagoSerializer,
     RecurrenteSerializer,
@@ -61,7 +72,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Transaction.objects.filter(usuario=self.request.user).select_related(
-            "categoria", "presupuesto", "recurrente", "meta"
+            "categoria", "presupuesto", "recurrente"
         )
 
     def perform_create(self, serializer):
@@ -197,17 +208,7 @@ class MetaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return (
             MetaAhorro.objects.filter(usuario=self.request.user, activo=True)
-            .select_related("categoria_referencia")
-            .annotate(
-                acumulado=Coalesce(
-                    Sum(
-                        "transacciones__monto",
-                        filter=Q(transacciones__tipo=Transaction.Tipo.AHORRO),
-                    ),
-                    Decimal("0"),
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
-                )
-            )
+            .select_related("categoria_referencia", "asignacion")
         )
 
     def perform_create(self, serializer):
@@ -217,41 +218,85 @@ class MetaViewSet(viewsets.ModelViewSet):
         instance.activo = False
         instance.save(update_fields=["activo", "actualizado_en"])
 
-    @action(detail=True, methods=["post"], url_path="registrar-aporte")
-    def registrar_aporte(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="asignar")
+    def asignar(self, request, pk=None):
+        """Asigna ahorro libre a la meta. No puede superar el ahorro libre."""
         meta = self.get_object()
-        body = MetaRegistrarAporteSerializer(data=request.data)
+        body = MetaAsignarSerializer(data=request.data)
         body.is_valid(raise_exception=True)
+        monto = body.validated_data["monto"]
 
-        monto = body.validated_data.get("monto") or meta.monto_rapido
-        Transaction.objects.create(
-            usuario=request.user,
-            meta=meta,
-            categoria=None,
-            presupuesto=None,
-            recurrente=None,
-            tipo=Transaction.Tipo.AHORRO,
-            monto=monto,
-            fecha=date.today(),
-            descripcion=f"Ahorro meta: {meta.nombre}",
-        )
-        meta = self.get_queryset().get(pk=meta.pk)
-        serializer = self.get_serializer(meta)
-        return Response(serializer.data)
-
-    @action(detail=True, methods=["post"], url_path="desmarcar-aporte")
-    def desmarcar_aporte(self, request, pk=None):
-        meta = self.get_object()
-        aporte = ultimo_aporte(meta)
-        if aporte is None:
+        libre = ahorro_libre(request.user)
+        if monto > libre:
             return Response(
-                {"detalle": "No hay aportes para desmarcar."},
+                {"detalle": f"Solo tienes S/ {libre:.2f} de ahorro libre para asignar."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        aporte.delete()
-        meta = self.get_queryset().get(pk=meta.pk)
-        serializer = self.get_serializer(meta)
-        return Response(serializer.data)
+
+        asignacion, _ = AsignacionMeta.objects.get_or_create(
+            meta=meta,
+            defaults={"usuario": request.user, "monto": Decimal("0")},
+        )
+        asignacion.monto = asignacion.monto + monto
+        asignacion.save(update_fields=["monto", "actualizado_en"])
+
+        return Response(self.get_serializer(meta).data)
+
+    @action(detail=True, methods=["post"], url_path="desasignar")
+    def desasignar(self, request, pk=None):
+        """Quita ahorro asignado de la meta; vuelve a estar libre."""
+        meta = self.get_object()
+        body = MetaAsignarSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        monto = body.validated_data["monto"]
+
+        asignacion = AsignacionMeta.objects.filter(meta=meta).first()
+        asignado = asignacion.monto if asignacion else Decimal("0")
+        if monto > asignado:
+            return Response(
+                {"detalle": f"La meta solo tiene S/ {asignado:.2f} asignados."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        asignacion.monto = asignado - monto
+        asignacion.save(update_fields=["monto", "actualizado_en"])
+
+        return Response(self.get_serializer(meta).data)
+
+
+class AhorroViewSet(viewsets.ModelViewSet):
+    """Pool de ahorros del usuario (transacciones tipo saving, sin meta)."""
+
+    serializer_class = AhorroSerializer
+
+    def get_queryset(self):
+        return Transaction.objects.filter(
+            usuario=self.request.user,
+            tipo=Transaction.Tipo.AHORRO,
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user, tipo=Transaction.Tipo.AHORRO)
+
+    def perform_destroy(self, instance):
+        """No se puede borrar ahorro si dejaría el pool por debajo de lo asignado."""
+        libre = ahorro_libre(self.request.user)
+        if instance.monto > libre:
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError(
+                {
+                    "detalle": (
+                        "No puedes eliminar este ahorro: parte ya está asignado a metas. "
+                        "Desasigna primero."
+                    )
+                }
+            )
+        instance.delete()
+
+    @action(detail=False, methods=["get"], url_path="resumen")
+    def resumen(self, request):
+        return Response(resumen_ahorros(request.user))
 
 
 class IaChatView(APIView):
@@ -302,6 +347,21 @@ class PerfilView(APIView):
         return Response(perfil_desde_usuario(request.user))
 
 
+class PreferenciasView(APIView):
+    """GET/PATCH /api/preferencias/ — preferencias de la app del usuario logueado."""
+
+    def get(self, request):
+        prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
+        return Response(PreferenciasSerializer(prefs).data)
+
+    def patch(self, request):
+        prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
+        serializer = PreferenciasSerializer(prefs, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(PreferenciasSerializer(prefs).data)
+
+
 class CambioPasswordView(APIView):
     """POST /api/perfil/cambiar-password/ — cambiar contraseña del usuario logueado."""
 
@@ -329,6 +389,7 @@ class ResetDatosView(APIView):
             "transacciones": Transaction.objects.filter(usuario=user).delete()[0],
             "presupuestos": Presupuesto.objects.filter(usuario=user).delete()[0],
             "recurrentes": Recurrente.objects.filter(usuario=user).delete()[0],
+            "asignaciones": AsignacionMeta.objects.filter(usuario=user).delete()[0],
             "metas": MetaAhorro.objects.filter(usuario=user).delete()[0],
             "consejos_cache": ConsejoCache.objects.filter(usuario=user).delete()[0],
         }

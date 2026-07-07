@@ -6,7 +6,6 @@ export type MetaCardView = {
   nombre: string
   objetivo: number
   acumulado: number
-  montoRapido: number
   porcentaje: number
   completada: boolean
   estado: ApiMeta['estado']
@@ -22,7 +21,6 @@ export function mapMetaToCard(m: ApiMeta): MetaCardView {
     nombre: m.nombre,
     objetivo: Number(m.monto_objetivo),
     acumulado: Number(m.acumulado),
-    montoRapido: Number(m.monto_rapido),
     porcentaje: m.porcentaje,
     completada: m.completada,
     estado: m.estado,

@@ -20,7 +20,7 @@ export function ConfigSection({
 }: ConfigSectionProps) {
   return (
     <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-700/30 sm:px-6">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
             <Icon className="h-5 w-5" aria-hidden />
@@ -36,7 +36,7 @@ export function ConfigSection({
           </span>
         )}
       </div>
-      <div className="divide-y divide-slate-100">{children}</div>
+      <div className="divide-y divide-slate-100 dark:divide-slate-700/30">{children}</div>
     </article>
   )
 }

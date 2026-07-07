@@ -13,7 +13,7 @@ export function MobileNav({ isStaff }: MobileNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white py-2 shadow-sm md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white py-2 shadow-sm dark:border-slate-800 dark:bg-slate-950 md:hidden"
       style={{ paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >
@@ -43,13 +43,15 @@ export function MobileNav({ isStaff }: MobileNavProps) {
               end={item.id === 'dashboard'}
               className={({ isActive }) =>
                 `flex min-w-17 max-w-23 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition ${
-                  isActive ? 'bg-indigo-100 font-semibold text-indigo-900' : 'text-slate-500 active:bg-slate-100'
+                  isActive
+                    ? 'bg-indigo-100 font-semibold text-indigo-900 dark:bg-slate-800 dark:text-slate-100'
+                    : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-slate-800'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <span className={isActive ? 'text-indigo-600' : 'text-slate-400'}>
+                  <span className={isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'}>
                     <NavIcon section={item.id} />
                   </span>
                   <span className="line-clamp-2 w-full text-center">{label}</span>

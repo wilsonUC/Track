@@ -17,6 +17,12 @@ const monthShort = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep
 
 const chartMonthShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+let showDecimals = true
+
+export function setFormatPreferences(opts: { showDecimals: boolean }) {
+  showDecimals = opts.showDecimals
+}
+
 export function parseTransactionDate(fecha: string): Date {
   const [year, month, day] = fecha.split('-').map(Number)
   return new Date(year, month - 1, day)
@@ -26,7 +32,9 @@ export function formatSoles(
   value: number,
   options?: { minimumFractionDigits?: number; maximumFractionDigits?: number },
 ) {
-  const { minimumFractionDigits = 2, maximumFractionDigits = 2 } = options ?? {}
+  const fractionDigits = showDecimals ? 2 : 0
+  const { minimumFractionDigits = fractionDigits, maximumFractionDigits = fractionDigits } =
+    options ?? {}
   return `S/ ${value.toLocaleString('es-PE', { minimumFractionDigits, maximumFractionDigits })}`
 }
 

@@ -7,7 +7,6 @@ export type ApiMeta = {
   nombre: string
   monto_objetivo: string
   fecha_limite: string | null
-  monto_rapido: string
   categoria_referencia: number | null
   categoria_referencia_nombre: string | null
   activo: boolean
@@ -17,6 +16,18 @@ export type ApiMeta = {
   estado: MetaEstado
   creado_en: string
   actualizado_en: string
+}
+
+function formatError(body: unknown, fallback: string): string {
+  if (!body || typeof body !== 'object') return fallback
+  const record = body as Record<string, unknown>
+  if (typeof record.detalle === 'string') return record.detalle
+  const parts: string[] = []
+  for (const value of Object.values(record)) {
+    if (Array.isArray(value)) parts.push(value.map(String).join(', '))
+    else if (typeof value === 'string') parts.push(value)
+  }
+  return parts.length > 0 ? parts.join(' · ') : fallback
 }
 
 export async function fetchMetas(): Promise<ApiMeta[]> {
@@ -29,7 +40,6 @@ export async function createMeta(data: {
   nombre: string
   monto_objetivo: string
   fecha_limite?: string | null
-  monto_rapido: string
   categoria_referencia?: number | null
 }): Promise<ApiMeta> {
   const res = await authFetch('/api/metas/', {
@@ -38,7 +48,7 @@ export async function createMeta(data: {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(JSON.stringify(err))
+    throw new Error(formatError(err, 'No se pudo crear la meta.'))
   }
   return res.json()
 }
@@ -49,7 +59,6 @@ export async function updateMeta(
     nombre?: string
     monto_objetivo?: string
     fecha_limite?: string | null
-    monto_rapido?: string
     categoria_referencia?: number | null
   },
 ): Promise<ApiMeta> {
@@ -59,30 +68,31 @@ export async function updateMeta(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(JSON.stringify(err))
+    throw new Error(formatError(err, 'No se pudo actualizar la meta.'))
   }
   return res.json()
 }
 
-export async function registrarAporteMeta(metaId: number, monto?: string): Promise<ApiMeta> {
-  const res = await authFetch(`/api/metas/${metaId}/registrar-aporte/`, {
+export async function asignarAhorroMeta(metaId: number, monto: string): Promise<ApiMeta> {
+  const res = await authFetch(`/api/metas/${metaId}/asignar/`, {
     method: 'POST',
-    body: JSON.stringify(monto ? { monto } : {}),
+    body: JSON.stringify({ monto }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(JSON.stringify(err))
+    throw new Error(formatError(err, 'No se pudo asignar el ahorro.'))
   }
   return res.json()
 }
 
-export async function desmarcarAporteMeta(metaId: number): Promise<ApiMeta> {
-  const res = await authFetch(`/api/metas/${metaId}/desmarcar-aporte/`, {
+export async function desasignarAhorroMeta(metaId: number, monto: string): Promise<ApiMeta> {
+  const res = await authFetch(`/api/metas/${metaId}/desasignar/`, {
     method: 'POST',
+    body: JSON.stringify({ monto }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(JSON.stringify(err))
+    throw new Error(formatError(err, 'No se pudo quitar la asignación.'))
   }
   return res.json()
 }

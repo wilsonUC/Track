@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Sparkles,
   Settings,
+  PiggyBank,
 } from 'lucide-react'
 import type { Section } from '../../types/finance'
 
@@ -23,6 +24,8 @@ export function NavIcon({ section }: { section: Section }) {
       return <TrendingUp className={iconClass} aria-hidden />
     case 'gastos':
       return <TrendingDown className={iconClass} aria-hidden />
+    case 'ahorros':
+      return <PiggyBank className={iconClass} aria-hidden />
     case 'presupuestos':
       return <CreditCard className={iconClass} aria-hidden />
     case 'metas':

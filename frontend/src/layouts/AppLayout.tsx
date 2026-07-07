@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PreferencesProvider } from '../context/PreferencesContext'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { fetchProfile, logout, profileDisplayName, profileInitial, type UserProfile } from '../api/auth'
 import { sectionFromPath } from '../constants/routes'
@@ -25,6 +26,10 @@ export function AppLayout() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [description, setDescription] = useState('')
   const [transactionsVersion, setTransactionsVersion] = useState(0)
+  const [secondaryHeaderAction, setSecondaryHeaderAction] = useState<{
+    label: string
+    onClick: () => void
+  } | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
 
@@ -70,6 +75,10 @@ export function AppLayout() {
   const isStaff = profile?.is_staff ?? false
   const isAdminPath = pathname.startsWith('/admin')
 
+  useEffect(() => {
+    setSecondaryHeaderAction(null)
+  }, [pathname])
+
   if (isAdminPath && !profileLoaded) {
     return (
       <div className="flex h-dvh items-center justify-center bg-slate-100 text-sm text-slate-500">
@@ -83,7 +92,8 @@ export function AppLayout() {
   }
 
   return (
-    <div className="h-dvh overflow-hidden bg-slate-100 text-slate-900">
+    <PreferencesProvider>
+      <div className="h-dvh overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100" data-app-shell>
       <Sidebar
         onLogout={handleLogout}
         displayName={displayName}
@@ -99,12 +109,14 @@ export function AppLayout() {
               section={section}
               displayName={displayName}
               onOpenNewTransaction={handleOpenNewTransaction}
+              secondaryAction={secondaryHeaderAction}
             />
             <Outlet
               context={{
                 transactionsVersion,
                 bumpTransactions: () => setTransactionsVersion((v) => v + 1),
                 refreshProfile,
+                setSecondaryHeaderAction,
               }}
             />
           </div>
@@ -127,6 +139,7 @@ export function AppLayout() {
         description={description}
         onDescriptionChange={setDescription}
       />
-    </div>
+      </div>
+    </PreferencesProvider>
   )
 }

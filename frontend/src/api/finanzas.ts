@@ -13,8 +13,6 @@ export type ApiTransaction = {
   presupuesto_nombre: string | null
   recurrente: number | null
   recurrente_nombre: string | null
-  meta: number | null
-  meta_nombre: string | null
   tipo: 'income' | 'expense' | 'saving'
   monto: string
   fecha: string

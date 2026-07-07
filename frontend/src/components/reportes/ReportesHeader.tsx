@@ -17,7 +17,7 @@ export function ReportesHeader({ filter, onFilterChange, onExport }: ReportesHea
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div
-        className="flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+        className="flex rounded-full border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/60 dark:shadow-none"
         role="group"
         aria-label="Filtrar reporte"
       >
@@ -29,7 +29,7 @@ export function ReportesHeader({ filter, onFilterChange, onExport }: ReportesHea
             className={`rounded-full px-4 py-2 text-xs font-semibold transition-all duration-200 sm:px-5 ${
               filter === option.id
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {option.label}

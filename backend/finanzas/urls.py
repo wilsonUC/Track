@@ -9,12 +9,14 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AdminUsuarioDetalleView,
     AdminUsuariosView,
+    AhorroViewSet,
     CategoryViewSet,
     CambioPasswordView,
     IaChatView,
     ConsejosView,
     MetaViewSet,
     PerfilView,
+    PreferenciasView,
     PresupuestoViewSet,
     RecurrenteViewSet,
     RegistroView,
@@ -29,6 +31,7 @@ router.register(r"transacciones", TransactionViewSet, basename="transaccion")
 router.register(r"presupuestos", PresupuestoViewSet, basename="presupuesto")
 router.register(r"recurrentes", RecurrenteViewSet, basename="recurrente")
 router.register(r"metas", MetaViewSet, basename="meta")
+router.register(r"ahorros", AhorroViewSet, basename="ahorro")
 
 urlpatterns = [
     # Todas las rutas del router van debajo de lo que pongas en config/urls (p. ej. "api/")
@@ -37,6 +40,7 @@ urlpatterns = [
     path("ia/chat/", IaChatView.as_view(), name="ia-chat"),
     path("consejos/", ConsejosView.as_view(), name="consejos"),
     path("perfil/", PerfilView.as_view(), name="perfil"),
+    path("preferencias/", PreferenciasView.as_view(), name="preferencias"),
     path("perfil/cambiar-password/", CambioPasswordView.as_view(), name="perfil-cambiar-password"),
     path("perfil/resetear-datos/", ResetDatosView.as_view(), name="perfil-resetear-datos"),
     path("registro/", RegistroView.as_view(), name="registro"),

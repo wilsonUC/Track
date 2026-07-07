@@ -11,19 +11,20 @@ import {
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
-import { RecurrentesToolbar } from '../components/recurrentes/RecurrentesToolbar'
 import type { RecurrenteCardView } from '../components/recurrentes/recurrentesTypes'
 import { mapRecurrenteToCard } from '../utils/recurrentesDisplay'
 
 type OutletContext = {
   transactionsVersion: number
   bumpTransactions: () => void
+  setSecondaryHeaderAction: (action: { label: string; onClick: () => void } | null) => void
 }
 
 type ModalMode = 'create' | 'edit'
 
 export function RecurrentesPage() {
-  const { transactionsVersion, bumpTransactions } = useOutletContext<OutletContext>()
+  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
+    useOutletContext<OutletContext>()
   const [recurrentes, setRecurrentes] = useState<RecurrenteCardView[]>([])
   const [categorias, setCategorias] = useState<Awaited<ReturnType<typeof fetchCategories>>>([])
   const [loading, setLoading] = useState(true)
@@ -170,10 +171,16 @@ export function RecurrentesPage() {
     }
   }
 
+  useEffect(() => {
+    setSecondaryHeaderAction({
+      label: 'Nuevo recurrente',
+      onClick: abrirModalCrear,
+    })
+    return () => setSecondaryHeaderAction(null)
+  }, [setSecondaryHeaderAction])
+
   return (
     <section className="space-y-6 text-slate-800">
-      <RecurrentesToolbar onNuevoRecurrente={abrirModalCrear} />
-
       {loading && <p className="text-sm text-slate-500">Cargando recurrentes…</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 

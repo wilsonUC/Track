@@ -1,5 +1,6 @@
 import { ChartColumn } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { usePreferences } from '../../context/PreferencesContext'
 import type { MonthChartPoint } from '../../utils/dashboardMetrics'
 import { formatSoles } from '../../utils/financeFormat'
 
@@ -9,8 +10,19 @@ type DashboardMonthlyChartProps = {
 }
 
 export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartProps) {
+  const { preferences } = usePreferences()
   const [chartType, setChartType] = useState<'income' | 'expense'>('income')
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  const isDark = useMemo(() => {
+    if (!preferences) return false
+    if (preferences.tema === 'oscuro') return true
+    if (preferences.tema === 'claro') return false
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  }, [preferences])
+
+  const gridStroke = isDark ? '#334155' : '#f1f5f9'
+  const hoverLineStroke = isDark ? '#475569' : '#cbd5e1'
 
   const isIncome = chartType === 'income'
   const activeColor = isIncome ? '#10b981' : '#f43f5e'
@@ -113,7 +125,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
                 const y = endY - (tick / maxValue) * usableHeight
                 return (
                   <g key={tick} className="opacity-75">
-                    <line x1={startX} y1={y} x2={endX} y2={y} stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth={1} />
+                    <line x1={startX} y1={y} x2={endX} y2={y} stroke={gridStroke} strokeDasharray="4 4" strokeWidth={1} />
                     <text
                       x={startX - 10}
                       y={y + 3}
@@ -132,7 +144,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
                   y1={startY}
                   x2={points[hoveredIndex].x}
                   y2={endY}
-                  stroke="#cbd5e1"
+                  stroke={hoverLineStroke}
                   strokeDasharray="2 2"
                   strokeWidth={1}
                 />

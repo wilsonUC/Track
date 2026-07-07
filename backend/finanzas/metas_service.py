@@ -1,21 +1,22 @@
-"""Cálculos de metas de ahorro (acumulado, porcentaje, estado)."""
+"""Cálculos de metas de ahorro (acumulado, porcentaje, estado).
+
+El acumulado de una meta ya no viene de transacciones: viene de cuánto
+ahorro del pool está asignado a esa meta (modelo AsignacionMeta).
+"""
 
 from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Sum
-
-from .models import Transaction
+from .models import AsignacionMeta
 
 
 def calcular_acumulado(meta) -> Decimal:
-    total = Transaction.objects.filter(
-        meta=meta,
-        tipo=Transaction.Tipo.AHORRO,
-    ).aggregate(total=Sum("monto"))["total"]
-    return total if total is not None else Decimal("0")
+    asignacion = AsignacionMeta.objects.filter(meta=meta).first()
+    if asignacion is None:
+        return Decimal("0")
+    return asignacion.monto
 
 
 def calcular_porcentaje(acumulado: Decimal, objetivo: Decimal) -> int:
@@ -36,11 +37,3 @@ def calcular_estado_meta(meta, reference: date | None = None) -> str:
     if meta.fecha_limite and meta.fecha_limite < today:
         return "vencida"
     return "en_progreso"
-
-
-def ultimo_aporte(meta):
-    return (
-        Transaction.objects.filter(meta=meta, tipo=Transaction.Tipo.AHORRO)
-        .order_by("-fecha", "-creado_en", "-id")
-        .first()
-    )

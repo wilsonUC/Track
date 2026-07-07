@@ -8,9 +8,13 @@ type MainHeaderProps = {
   section: Section
   displayName: string
   onOpenNewTransaction: () => void
+  secondaryAction?: {
+    label: string
+    onClick: () => void
+  } | null
 }
 
-export function MainHeader({ section, displayName, onOpenNewTransaction }: MainHeaderProps) {
+export function MainHeader({ section, displayName, onOpenNewTransaction, secondaryAction }: MainHeaderProps) {
   const { pathname } = useLocation()
   const isDashboard = section === 'dashboard'
   const isCuenta = pathname === cuentaPath
@@ -22,21 +26,21 @@ export function MainHeader({ section, displayName, onOpenNewTransaction }: MainH
       <div className="min-w-0 space-y-1">
         {isCuenta ? (
           <>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">Mi Cuenta</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">Mi Cuenta</h2>
             <p className="text-sm text-slate-500">
               Visualiza y actualiza la información de tu perfil y preferencias de seguridad.
             </p>
           </>
         ) : isDashboard ? (
           <>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               ¡Hola, {displayName}!
             </h2>
             <p className="text-sm text-slate-500">Vista general de tus finanzas</p>
           </>
         ) : (
           <>
-            <h2 className="text-xl font-bold capitalize tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">
+            <h2 className="text-3xl font-extrabold capitalize tracking-tight text-slate-900 sm:text-4xl lg:text-5xl">
               {sectionTitle[section]}
             </h2>
             <p className="text-sm text-slate-500">{sectionSubtitle[section]}</p>
@@ -53,6 +57,16 @@ export function MainHeader({ section, displayName, onOpenNewTransaction }: MainH
             >
               <Download className="h-4 w-4" aria-hidden />
               Exportar
+            </button>
+          )}
+          {secondaryAction && (
+            <button
+              type="button"
+              onClick={secondaryAction.onClick}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95 sm:w-auto"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {secondaryAction.label}
             </button>
           )}
           <button

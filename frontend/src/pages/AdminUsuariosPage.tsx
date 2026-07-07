@@ -113,7 +113,7 @@ export function AdminUsuariosPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-700/30">
           <h3 className="text-lg font-bold text-slate-900">Usuarios registrados</h3>
           <p className="mt-1 text-sm text-slate-500">
             Aprueba cuentas nuevas o bloquea accesos cuando sea necesario.
@@ -121,8 +121,8 @@ export function AdminUsuariosPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-[980px] divide-y divide-slate-100 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+          <table className="min-w-[980px] divide-y divide-slate-100 text-sm dark:divide-slate-700/30">
+            <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-800/40">
               <tr>
                 <th className="px-5 py-3">Usuario</th>
                 <th className="px-5 py-3">Contacto</th>
@@ -131,7 +131,7 @@ export function AdminUsuariosPage() {
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
               {users.map((user) => {
                 const draft = drafts[user.id] ?? {}
                 const values = {
@@ -237,10 +237,12 @@ export function AdminUsuariosPage() {
 
 function StatCard({ label, value, tone = 'slate' }: { label: string; value: number; tone?: 'slate' | 'amber' | 'emerald' | 'red' }) {
   const toneClass = {
-    slate: 'border-slate-200 bg-white text-slate-900',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    red: 'border-red-200 bg-red-50 text-red-800',
+    slate: 'border-slate-200 bg-white text-slate-900 dark:border-slate-700/40 dark:bg-slate-900/50 dark:text-slate-100',
+    amber:
+      'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
+    emerald:
+      'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300',
+    red: 'border-red-200 bg-red-50 text-red-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300',
   }[tone]
 
   return (

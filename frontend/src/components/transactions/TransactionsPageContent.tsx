@@ -205,25 +205,25 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
                 return (
                   <li
                     key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50/80 sm:gap-3"
+                    className="list-row-compact flex items-center justify-between gap-2 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:gap-3"
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${catInfo.bg}`}
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-transparent dark:ring-white/5 ${catInfo.bg}`}
                       >
                         {catInfo.icon}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-700">
+                        <p className="truncate text-sm font-bold text-slate-700 dark:text-slate-200">
                           {t.descripcion || 'Sin descripción'}
                         </p>
                         <div className="mt-1 flex items-center gap-2">
                           {t.esPresupuesto ? (
-                            <span className="inline-block rounded-md border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                            <span className="inline-block rounded-md border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-300">
                               Presupuesto · {t.presupuestoNombre}
                             </span>
                           ) : t.esRecurrente ? (
-                            <span className="inline-block rounded-md border border-violet-100 bg-violet-50/70 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                            <span className="inline-block rounded-md border border-violet-100 bg-violet-50/70 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300">
                               Recurrente · {t.recurrenteNombre}
                             </span>
                           ) : (

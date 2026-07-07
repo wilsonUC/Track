@@ -11,6 +11,7 @@ import {
   filterByDateRange,
   getBalanceSubtitle,
   getSavingsSubtitle,
+  getTotalBalanceSubtitle,
   sortByDateDesc,
   sumByType,
   type EnrichedTransaction,
@@ -63,7 +64,11 @@ export function DashboardPanel() {
   )
 
   const periodTotals = useMemo(() => sumByType(filtered), [filtered])
-  const balance = periodTotals.income - periodTotals.expense - periodTotals.saving
+  const balance = periodTotals.income - periodTotals.expense
+  const saldoDisponible = balance
+
+  const allTimeTotals = useMemo(() => sumByType(allTransactions), [allTransactions])
+  const totalBalance = allTimeTotals.income - allTimeTotals.expense
 
   const periodIncome = useMemo(
     () => sortByDateDesc(filtered.filter((t) => t.tipo === 'income')),
@@ -102,7 +107,7 @@ export function DashboardPanel() {
         onCustomEndChange={dateFilter.setCustomEnd}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardSummaryCard
           title="Balance"
           amount={formatSoles(balance)}
@@ -110,6 +115,12 @@ export function DashboardPanel() {
           variant="balance"
           isActive={activeCard === 'balance'}
           onClick={() => setActiveCard('balance')}
+        />
+        <DashboardSummaryCard
+          title="Balance total"
+          amount={formatSoles(totalBalance)}
+          subtitle={getTotalBalanceSubtitle(totalBalance)}
+          variant="totalBalance"
         />
         <DashboardSummaryCard
           title="Ingresos"
@@ -130,7 +141,7 @@ export function DashboardPanel() {
         <DashboardSummaryCard
           title="Ahorro"
           amount={formatSoles(periodTotals.saving)}
-          subtitle={getSavingsSubtitle(periodTotals.income, periodTotals.saving, dateFilter.label)}
+          subtitle={getSavingsSubtitle(saldoDisponible, periodTotals.saving, dateFilter.label)}
           variant="savings"
           isActive={activeCard === 'savings'}
           onClick={() => setActiveCard('savings')}

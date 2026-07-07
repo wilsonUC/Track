@@ -48,7 +48,7 @@ export function buildReportCategoryRows(transactions: EnrichedTransaction[]): Re
   const totals = new Map<string, { income: number; expense: number }>()
 
   for (const t of transactions) {
-    const nombre = t.esPresupuesto || t.esRecurrente || t.esMeta ? t.etiquetaOrigen : t.categoriaNombre
+    const nombre = t.esPresupuesto || t.esRecurrente ? t.etiquetaOrigen : t.categoriaNombre
     const entry = totals.get(nombre) ?? { income: 0, expense: 0 }
     if (t.tipo === 'income') entry.income += t.montoNum
     else entry.expense += t.montoNum

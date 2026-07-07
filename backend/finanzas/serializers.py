@@ -5,7 +5,15 @@ from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Category, MetaAhorro, PerfilUsuario, Presupuesto, Recurrente, Transaction
+from .models import (
+    Category,
+    MetaAhorro,
+    PerfilUsuario,
+    PreferenciasUsuario,
+    Presupuesto,
+    Recurrente,
+    Transaction,
+)
 from .metas_service import (
     calcular_acumulado,
     calcular_completada,
@@ -247,7 +255,6 @@ class MetaSerializer(serializers.ModelSerializer):
             "nombre",
             "monto_objetivo",
             "fecha_limite",
-            "monto_rapido",
             "categoria_referencia",
             "categoria_referencia_nombre",
             "activo",
@@ -269,8 +276,6 @@ class MetaSerializer(serializers.ModelSerializer):
         ]
 
     def _acumulado(self, obj: MetaAhorro):
-        if hasattr(obj, "acumulado") and obj.acumulado is not None:
-            return obj.acumulado
         return calcular_acumulado(obj)
 
     def get_acumulado(self, obj):
@@ -290,19 +295,54 @@ class MetaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El monto objetivo debe ser mayor que cero.")
         return value
 
-    def validate_monto_rapido(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("El monto rápido debe ser mayor que cero.")
-        return value
-
     def validate_categoria_referencia(self, value):
         if value and value.tipo != Category.Tipo.GASTO:
             raise serializers.ValidationError("La categoría de referencia debe ser de gasto.")
         return value
 
 
-class MetaRegistrarAporteSerializer(serializers.Serializer):
-    monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+class MetaAsignarSerializer(serializers.Serializer):
+    monto = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+    def validate_monto(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El monto debe ser mayor que cero.")
+        return value
+
+
+class AhorroSerializer(serializers.ModelSerializer):
+    """Aporte al pool de ahorros: transacción tipo saving sin meta ni categoría."""
+
+    class Meta:
+        model = Transaction
+        fields = ["id", "monto", "fecha", "descripcion", "creado_en"]
+        read_only_fields = ["id", "creado_en"]
+
+    def validate_monto(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El monto debe ser mayor que cero.")
+        return value
+
+    def validate(self, attrs):
+        from .ahorros_service import saldo_disponible_mes
+
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        monto = attrs.get("monto")
+
+        # Solo validar el tope al crear un ahorro nuevo (no al editar uno existente).
+        if self.instance is None and user and monto is not None:
+            disponible = saldo_disponible_mes(user)
+            if monto > disponible:
+                raise serializers.ValidationError(
+                    {
+                        "monto": (
+                            f"Solo tienes S/ {disponible:.2f} de saldo disponible este mes "
+                            "para apartar (ingresos - gastos - ahorros ya apartados)."
+                        )
+                    }
+                )
+        return attrs
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -312,7 +352,6 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     presupuesto_nombre = serializers.CharField(source="presupuesto.nombre", read_only=True, default=None)
     recurrente_nombre = serializers.CharField(source="recurrente.nombre", read_only=True, default=None)
-    meta_nombre = serializers.CharField(source="meta.nombre", read_only=True, default=None)
 
     class Meta:
         model = Transaction
@@ -323,8 +362,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             "presupuesto_nombre",
             "recurrente",
             "recurrente_nombre",
-            "meta",
-            "meta_nombre",
             "tipo",
             "monto",
             "fecha",
@@ -332,7 +369,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "presupuesto_nombre", "recurrente_nombre", "meta_nombre", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "presupuesto_nombre", "recurrente_nombre", "creado_en", "actualizado_en"]
 
     def validate_monto(self, value):
         """El monto tiene que ser mayor que cero (un gasto o ingreso “en cero” no tiene sentido)."""
@@ -344,7 +381,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         categoria = attrs.get("categoria")
         presupuesto = attrs.get("presupuesto")
         recurrente = attrs.get("recurrente")
-        meta = attrs.get("meta")
         tipo = attrs.get("tipo")
 
         if self.instance:
@@ -354,8 +390,6 @@ class TransactionSerializer(serializers.ModelSerializer):
                 presupuesto = self.instance.presupuesto
             if "recurrente" not in attrs:
                 recurrente = self.instance.recurrente
-            if "meta" not in attrs:
-                meta = self.instance.meta
             if tipo is None:
                 tipo = self.instance.tipo
 
@@ -367,33 +401,25 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"categoria": "La categoría es obligatoria para ingresos."}
                 )
-            if presupuesto or meta:
+            if presupuesto:
                 raise serializers.ValidationError(
-                    "Los ingresos no pueden asociarse a presupuesto ni meta."
+                    "Los ingresos no pueden asociarse a presupuesto."
                 )
         elif tipo == Transaction.Tipo.AHORRO:
-            if not meta:
-                raise serializers.ValidationError(
-                    {"meta": "La meta es obligatoria para ahorros."}
-                )
             if categoria or presupuesto or recurrente:
                 raise serializers.ValidationError(
-                    "Un ahorro solo puede asociarse a una meta."
+                    "Un ahorro no puede tener categoría, presupuesto ni recurrente."
                 )
         elif tipo == Transaction.Tipo.GASTO:
             if presupuesto:
-                if categoria or recurrente or meta:
+                if categoria or recurrente:
                     raise serializers.ValidationError(
-                        "Un gasto de presupuesto no puede tener categoría, recurrente ni meta."
+                        "Un gasto de presupuesto no puede tener categoría ni recurrente."
                     )
             elif recurrente:
                 if not categoria:
                     raise serializers.ValidationError(
                         {"categoria": "Un gasto recurrente requiere categoría."}
-                    )
-                if presupuesto:
-                    raise serializers.ValidationError(
-                        {"presupuesto": "Un gasto recurrente no puede tener presupuesto."}
                     )
             else:
                 if not categoria:
@@ -409,16 +435,36 @@ class TransactionSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"recurrente": "El recurrente no pertenece al usuario."}
                 )
-            if meta and user and meta.usuario_id != user.id:
-                raise serializers.ValidationError(
-                    {"meta": "La meta no pertenece al usuario."}
-                )
 
         if categoria and tipo in (Transaction.Tipo.INGRESO, Transaction.Tipo.GASTO) and categoria.tipo != tipo:
             raise serializers.ValidationError(
                 {"tipo": "El tipo debe coincidir con el de la categoría (ingreso/gasto)."}
             )
         return attrs
+
+
+class PreferenciasSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PreferenciasUsuario
+        fields = [
+            "tema",
+            "vista_compacta",
+            "moneda",
+            "dia_inicio_mes",
+            "mostrar_decimales",
+            "actualizado_en",
+        ]
+        read_only_fields = ["actualizado_en"]
+
+    def validate_dia_inicio_mes(self, value):
+        if value < 1 or value > 28:
+            raise serializers.ValidationError("El día debe estar entre 1 y 28.")
+        return value
+
+    def validate_moneda(self, value):
+        if value != "PEN":
+            raise serializers.ValidationError("Por ahora solo está disponible la moneda PEN.")
+        return value
 
 
 class RegistroSerializer(serializers.Serializer):

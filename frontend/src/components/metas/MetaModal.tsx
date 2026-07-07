@@ -8,7 +8,6 @@ type MetaModalProps = {
   nombre: string
   montoObjetivo: string
   fechaLimite: string
-  montoRapido: string
   categoriaReferenciaId: number | ''
   categoriasGasto: ApiCategory[]
   saving?: boolean
@@ -16,7 +15,6 @@ type MetaModalProps = {
   onNombreChange: (value: string) => void
   onMontoObjetivoChange: (value: string) => void
   onFechaLimiteChange: (value: string) => void
-  onMontoRapidoChange: (value: string) => void
   onCategoriaReferenciaChange: (value: number | '') => void
   onClose: () => void
   onSubmit: (e: FormEvent) => void
@@ -28,7 +26,6 @@ export function MetaModal({
   nombre,
   montoObjetivo,
   fechaLimite,
-  montoRapido,
   categoriaReferenciaId,
   categoriasGasto,
   saving,
@@ -36,7 +33,6 @@ export function MetaModal({
   onNombreChange,
   onMontoObjetivoChange,
   onFechaLimiteChange,
-  onMontoRapidoChange,
   onCategoriaReferenciaChange,
   onClose,
   onSubmit,
@@ -102,25 +98,6 @@ export function MetaModal({
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
-              Monto del botón (S/)
-            </label>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="100"
-              value={montoRapido}
-              onChange={(e) => onMontoRapidoChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              required
-            />
-            <p className="mt-1 text-[11px] text-slate-400">
-              Monto que se registra al pulsar «Registrar ahorro».
-            </p>
           </div>
 
           <div>

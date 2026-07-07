@@ -1,21 +1,19 @@
-import { AlertTriangle, CheckCircle2, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, MinusCircle, Pencil, Plus } from 'lucide-react'
 import { getCategoryChartColors, getCategoryDisplay } from '../../utils/categoryDisplay'
 import type { MetaCardView } from '../../utils/metasDisplay'
 
 type MetaCardProps = {
   meta: MetaCardView
-  onRegistrarAporte: (id: number) => void
+  onAsignar: (meta: MetaCardView) => void
+  onDesasignar: (meta: MetaCardView) => void
   onEditar: (meta: MetaCardView) => void
-  registrando?: boolean
 }
 
-export function MetaCard({ meta, onRegistrarAporte, onEditar, registrando }: MetaCardProps) {
+export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardProps) {
   const {
-    id,
     nombre,
     objetivo,
     acumulado,
-    montoRapido,
     porcentaje,
     completada,
     estado,
@@ -78,34 +76,41 @@ export function MetaCard({ meta, onRegistrarAporte, onEditar, registrando }: Met
         </div>
       </div>
 
+      {completada && (
+        <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 py-2 text-xs font-bold text-emerald-600">
+          <CheckCircle2 className="h-4 w-4" aria-hidden />
+          ¡Meta lograda con éxito!
+        </div>
+      )}
+
       <div className="flex gap-2 pt-1">
-        {completada ? (
-          <div className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 py-3 text-xs font-bold text-emerald-600">
-            <CheckCircle2 className="h-4 w-4" aria-hidden />
-            ¡Meta lograda con éxito!
-          </div>
-        ) : (
-          <>
-            <button
-              type="button"
-              disabled={registrando}
-              onClick={() => onRegistrarAporte(id)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 py-2.5 text-xs font-bold text-slate-600 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 disabled:opacity-60"
-            >
-              <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>{registrando ? 'Registrando…' : `Registrar ahorro (S/ ${montoRapido})`}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onEditar(meta)}
-              className="flex shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-slate-500 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95"
-              aria-label={`Editar meta ${nombre}`}
-              title="Editar meta"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          disabled={completada}
+          onClick={() => onAsignar(meta)}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 py-2.5 text-xs font-bold text-slate-600 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>Asignar</span>
+        </button>
+        <button
+          type="button"
+          disabled={acumulado <= 0}
+          onClick={() => onDesasignar(meta)}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 py-2.5 text-xs font-bold text-slate-600 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <MinusCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>Quitar</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onEditar(meta)}
+          className="flex shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-slate-500 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95"
+          aria-label={`Editar meta ${nombre}`}
+          title="Editar meta"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
       </div>
     </article>
   )

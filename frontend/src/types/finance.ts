@@ -2,6 +2,7 @@ export type Section =
   | 'dashboard'
   | 'ingresos'
   | 'gastos'
+  | 'ahorros'
   | 'presupuestos'
   | 'metas'
   | 'recurrentes'

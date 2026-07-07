@@ -1,51 +1,67 @@
 import {
   Bell,
   Brain,
+  CheckCircle2,
   Coins,
   ExternalLink,
-  Info,
   LayoutGrid,
+  Loader2,
   Save,
   Shield,
   Sparkles,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { TemaPreferencia } from '../api/preferencias'
 import { ConfigRow, ConfigSegmented, ConfigSelect, ConfigToggle } from '../components/configuracion/ConfigControls'
 import { ConfigSection } from '../components/configuracion/ConfigSection'
 import { cuentaPath } from '../constants/routes'
+import { usePreferences } from '../context/PreferencesContext'
 
 export function ConfiguracionPage() {
-  const [tema, setTema] = useState('claro')
+  const { preferences, loading, saving, savePreferences } = usePreferences()
+
+  const [tema, setTema] = useState<TemaPreferencia>('claro')
   const [vistaCompacta, setVistaCompacta] = useState(false)
   const [moneda, setMoneda] = useState('PEN')
-  const [diaInicioMes, setDiaInicioMes] = useState('1')
-  const [inicioSemana, setInicioSemana] = useState('lunes')
-  const [alertasPresupuesto, setAlertasPresupuesto] = useState(true)
-  const [recordatorioRecurrentes, setRecordatorioRecurrentes] = useState(true)
-  const [resumenSemanal, setResumenSemanal] = useState(false)
-  const [consejosAuto, setConsejosAuto] = useState(true)
-  const [incluirAhorrosBalance, setIncluirAhorrosBalance] = useState(true)
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
+  const [saveMessage, setSaveMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
+
+  useEffect(() => {
+    if (!preferences) return
+    setTema(preferences.tema)
+    setVistaCompacta(preferences.vista_compacta)
+    setMoneda(preferences.moneda)
+    setMostrarDecimales(preferences.mostrar_decimales)
+  }, [preferences])
+
+  async function handleSave() {
+    setSaveMessage('')
+    setSaveError('')
+    try {
+      await savePreferences({
+        tema,
+        vista_compacta: vistaCompacta,
+        moneda,
+        mostrar_decimales: mostrarDecimales,
+      })
+      setSaveMessage('Preferencias guardadas correctamente.')
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'No se pudieron guardar las preferencias.')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[200px] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
 
   return (
     <section className="space-y-6">
-      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-slate-50 px-5 py-4 sm:px-6">
-        <div className="flex gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-            <Info className="h-5 w-5" aria-hidden />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-indigo-900">Vista previa de configuración</p>
-            <p className="mt-1 text-sm text-indigo-800/80">
-              Puedes explorar y cambiar estas opciones en pantalla, pero{' '}
-              <span className="font-medium">aún no se guardan</span>. Más adelante conectaremos cada
-              preferencia con tu cuenta.
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-2">
         <ConfigSection
           icon={LayoutGrid}
@@ -56,7 +72,7 @@ export function ConfiguracionPage() {
           <ConfigRow label="Tema" hint="Claro, oscuro o según el sistema operativo.">
             <ConfigSegmented
               value={tema}
-              onChange={setTema}
+              onChange={(v) => setTema(v as TemaPreferencia)}
               options={[
                 { value: 'claro', label: 'Claro' },
                 { value: 'oscuro', label: 'Oscuro' },
@@ -80,7 +96,7 @@ export function ConfiguracionPage() {
           icon={Coins}
           iconClass="bg-emerald-50 text-emerald-600"
           title="Finanzas"
-          subtitle="Moneda y criterios para reportes y filtros."
+          subtitle="Moneda usada para mostrar tus montos."
         >
           <ConfigRow label="Moneda principal" hint="Todos los montos se muestran en esta moneda.">
             <ConfigSelect
@@ -91,29 +107,6 @@ export function ConfiguracionPage() {
                 { value: 'USD', label: 'Dólares (US$) — próximamente' },
               ]}
               disabled
-            />
-          </ConfigRow>
-          <ConfigRow
-            label="Inicio del mes personal"
-            hint="Para reportes y metas si tu ciclo no empieza el día 1."
-          >
-            <ConfigSelect
-              value={diaInicioMes}
-              onChange={setDiaInicioMes}
-              options={Array.from({ length: 28 }, (_, i) => ({
-                value: String(i + 1),
-                label: `Día ${i + 1} de cada mes`,
-              }))}
-            />
-          </ConfigRow>
-          <ConfigRow label="La semana empieza en" hint="Afecta el filtro «Semana» del dashboard.">
-            <ConfigSegmented
-              value={inicioSemana}
-              onChange={setInicioSemana}
-              options={[
-                { value: 'lunes', label: 'Lunes' },
-                { value: 'domingo', label: 'Domingo' },
-              ]}
             />
           </ConfigRow>
         </ConfigSection>
@@ -130,36 +123,21 @@ export function ConfiguracionPage() {
             hint="Aviso cuando un gasto supere el límite mensual."
             disabled
           >
-            <ConfigToggle
-              checked={alertasPresupuesto}
-              onChange={setAlertasPresupuesto}
-              disabled
-              label="Presupuestos superados"
-            />
+            <ConfigToggle checked disabled onChange={() => undefined} label="Presupuestos superados" />
           </ConfigRow>
           <ConfigRow
             label="Recurrentes pendientes"
             hint="Recordatorio si un pago o cobro del mes no está registrado."
             disabled
           >
-            <ConfigToggle
-              checked={recordatorioRecurrentes}
-              onChange={setRecordatorioRecurrentes}
-              disabled
-              label="Recurrentes pendientes"
-            />
+            <ConfigToggle checked disabled onChange={() => undefined} label="Recurrentes pendientes" />
           </ConfigRow>
           <ConfigRow
             label="Resumen semanal"
             hint="Email con ingresos, gastos y balance de la semana."
             disabled
           >
-            <ConfigToggle
-              checked={resumenSemanal}
-              onChange={setResumenSemanal}
-              disabled
-              label="Resumen semanal"
-            />
+            <ConfigToggle checked={false} disabled onChange={() => undefined} label="Resumen semanal" />
           </ConfigRow>
         </ConfigSection>
 
@@ -175,12 +153,7 @@ export function ConfiguracionPage() {
             hint="Regenerar consejos una vez al día con tus datos actualizados."
             disabled
           >
-            <ConfigToggle
-              checked={consejosAuto}
-              onChange={setConsejosAuto}
-              disabled
-              label="Consejos automáticos"
-            />
+            <ConfigToggle checked disabled onChange={() => undefined} label="Consejos automáticos" />
           </ConfigRow>
           <ConfigRow
             label="Cantidad de consejos"
@@ -206,16 +179,6 @@ export function ConfiguracionPage() {
           title="Dashboard y listas"
           subtitle="Qué datos destacar en el resumen principal."
         >
-          <ConfigRow
-            label="Descontar ahorros del balance"
-            hint="Balance = ingresos − gastos − aportes a metas."
-          >
-            <ConfigToggle
-              checked={incluirAhorrosBalance}
-              onChange={setIncluirAhorrosBalance}
-              label="Descontar ahorros del balance"
-            />
-          </ConfigRow>
           <ConfigRow label="Mostrar decimales" hint="Ej.: S/ 1,250.50 en lugar de S/ 1,251.">
             <ConfigToggle
               checked={mostrarDecimales}
@@ -270,17 +233,33 @@ export function ConfiguracionPage() {
         </ConfigSection>
       </div>
 
-      <div className="flex flex-col items-stretch justify-end gap-3 rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <p className="text-xs text-slate-500">
-          Los cambios de esta pantalla son solo de demostración y se pierden al recargar.
-        </p>
+      <div className="flex flex-col items-stretch justify-end gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="space-y-1">
+          {saveMessage && (
+            <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+              {saveMessage}
+            </p>
+          )}
+          {saveError && <p className="text-xs text-rose-600">{saveError}</p>}
+          {!saveMessage && !saveError && (
+            <p className="text-xs text-slate-500">
+              Los cambios se guardan en tu cuenta y se aplican en toda la app.
+            </p>
+          )}
+        </div>
         <button
           type="button"
-          disabled
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 cursor-not-allowed"
+          disabled={saving}
+          onClick={() => void handleSave()}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
         >
-          <Save className="h-4 w-4" aria-hidden />
-          Guardar preferencias
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-4 w-4" aria-hidden />
+          )}
+          {saving ? 'Guardando…' : 'Guardar preferencias'}
         </button>
       </div>
     </section>

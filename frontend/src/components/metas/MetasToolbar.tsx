@@ -6,13 +6,7 @@ type MetasToolbarProps = {
 
 export function MetasToolbar({ onNuevaMeta }: MetasToolbarProps) {
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Metas de ahorro</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Define objetivos y registra aportes desde tu dinero disponible.
-        </p>
-      </div>
+    <div className="flex justify-end border-b border-slate-200 pb-5">
       <button
         type="button"
         onClick={onNuevaMeta}

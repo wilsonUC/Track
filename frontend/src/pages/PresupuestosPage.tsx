@@ -10,19 +10,20 @@ import {
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
 import { PresupuestosGrid } from '../components/presupuestos/PresupuestosGrid'
 import { PresupuestosSummaryCard } from '../components/presupuestos/PresupuestosSummaryCard'
-import { PresupuestosToolbar } from '../components/presupuestos/PresupuestosToolbar'
 import type { PresupuestoCardView } from '../components/presupuestos/presupuestosTypes'
 import { mapPresupuestoToCard } from '../utils/presupuestosDisplay'
 
 type OutletContext = {
   transactionsVersion: number
   bumpTransactions: () => void
+  setSecondaryHeaderAction: (action: { label: string; onClick: () => void } | null) => void
 }
 
 type ModalMode = 'create' | 'edit'
 
 export function PresupuestosPage() {
-  const { transactionsVersion, bumpTransactions } = useOutletContext<OutletContext>()
+  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
+    useOutletContext<OutletContext>()
   const [presupuestos, setPresupuestos] = useState<PresupuestoCardView[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -153,10 +154,16 @@ export function PresupuestosPage() {
     }
   }
 
+  useEffect(() => {
+    setSecondaryHeaderAction({
+      label: 'Nuevo presupuesto',
+      onClick: abrirModalCrear,
+    })
+    return () => setSecondaryHeaderAction(null)
+  }, [setSecondaryHeaderAction])
+
   return (
     <section className="space-y-6 text-slate-800">
-      <PresupuestosToolbar onNuevoPresupuesto={abrirModalCrear} />
-
       {loading && <p className="text-sm text-slate-500">Cargando presupuestos…</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 

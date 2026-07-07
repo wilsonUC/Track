@@ -105,8 +105,8 @@ export function ConsejosPage() {
             onClick={() => setCategoriaActiva(cat)}
             className={`text-xs font-bold px-4 py-2.5 rounded-xl border transition-all active:scale-95 ${
               categoriaActiva === cat
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none dark:ring-1 dark:ring-indigo-500/40'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
             }`}
           >
             {cat === 'TODOS' ? 'Ver Todo' : cat}
@@ -162,7 +162,7 @@ export function ConsejosPage() {
             return (
               <div
                 key={`${c.titulo}-${index}`}
-                className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
+                className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow dark:border-slate-700 dark:hover:shadow-none"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -185,7 +185,7 @@ export function ConsejosPage() {
                 <button
                   type="button"
                   onClick={() => irAprenderMas(c)}
-                  className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-indigo-600 hover:text-indigo-700 group"
+                  className="pt-2 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-indigo-600 hover:text-indigo-700 group dark:border-slate-700/30 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   <span>Aprender más sobre esto</span>
                   <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />

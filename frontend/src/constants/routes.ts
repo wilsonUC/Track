@@ -8,6 +8,7 @@ export const sectionPaths: Record<Section, string> = {
   dashboard: '/',
   ingresos: '/ingresos',
   gastos: '/gastos',
+  ahorros: '/ahorros',
   presupuestos: '/presupuestos',
   metas: '/metas',
   recurrentes: '/recurrentes',

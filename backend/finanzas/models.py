@@ -181,13 +181,6 @@ class Transaction(models.Model):
         null=True,
         blank=True,
     )
-    meta = models.ForeignKey(
-        MetaAhorro,
-        on_delete=models.PROTECT,
-        related_name="transacciones",
-        null=True,
-        blank=True,
-    )
 
     tipo = models.CharField(max_length=10, choices=Tipo.choices)
     monto = models.DecimalField(max_digits=12, decimal_places=2)
@@ -207,7 +200,6 @@ class Transaction(models.Model):
                     models.Q(
                         tipo="income",
                         presupuesto__isnull=True,
-                        meta__isnull=True,
                         categoria__isnull=False,
                     )
                     | models.Q(
@@ -215,25 +207,21 @@ class Transaction(models.Model):
                         presupuesto__isnull=False,
                         categoria__isnull=True,
                         recurrente__isnull=True,
-                        meta__isnull=True,
                     )
                     | models.Q(
                         tipo="expense",
                         presupuesto__isnull=True,
                         categoria__isnull=False,
                         recurrente__isnull=True,
-                        meta__isnull=True,
                     )
                     | models.Q(
                         tipo="expense",
                         presupuesto__isnull=True,
                         categoria__isnull=False,
                         recurrente__isnull=False,
-                        meta__isnull=True,
                     )
                     | models.Q(
                         tipo="saving",
-                        meta__isnull=False,
                         categoria__isnull=True,
                         presupuesto__isnull=True,
                         recurrente__isnull=True,
@@ -275,6 +263,44 @@ class PerfilUsuario(models.Model):
         return f"{self.usuario.username} - {self.telefono}"
 
 
+class PreferenciasUsuario(models.Model):
+    """Preferencias de la app por usuario (configuración)."""
+
+    class Tema(models.TextChoices):
+        CLARO = "claro", "Claro"
+        OSCURO = "oscuro", "Oscuro"
+        SISTEMA = "sistema", "Sistema"
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="preferencias",
+    )
+    tema = models.CharField(
+        max_length=10,
+        choices=Tema.choices,
+        default=Tema.CLARO,
+    )
+    vista_compacta = models.BooleanField(default=False)
+    moneda = models.CharField(max_length=3, default="PEN")
+    dia_inicio_mes = models.PositiveSmallIntegerField(default=1)
+    mostrar_decimales = models.BooleanField(default=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Preferencias de usuario"
+        verbose_name_plural = "Preferencias de usuarios"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(dia_inicio_mes__gte=1, dia_inicio_mes__lte=28),
+                name="chk_preferencias_dia_inicio_mes",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Preferencias de {self.usuario.username}"
+
+
 class ConsejoCache(models.Model):
     """Última generación de consejos IA por usuario (caché 24 h)."""
 
@@ -294,3 +320,38 @@ class ConsejoCache(models.Model):
 
     def __str__(self):
         return f"Consejos de {self.usuario.username} ({self.generado_en:%Y-%m-%d %H:%M})"
+
+
+class AsignacionMeta(models.Model):
+    """Cuánto del ahorro acumulado del usuario está asignado a una meta.
+
+    No mueve dinero: reparte el pool de ahorros (transacciones tipo saving)
+    entre las metas. Una fila por meta; el monto sube al asignar y baja al desasignar.
+    """
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="asignaciones_meta",
+    )
+    meta = models.OneToOneField(
+        MetaAhorro,
+        on_delete=models.CASCADE,
+        related_name="asignacion",
+    )
+    monto = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Asignación de meta"
+        verbose_name_plural = "Asignaciones de metas"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(monto__gte=0),
+                name="chk_asignacion_monto_no_negativo",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.meta.nombre}: S/ {self.monto}"
