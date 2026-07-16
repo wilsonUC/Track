@@ -12,7 +12,10 @@ export type ResumenAhorros = {
   total: string
   asignado: string
   libre: string
-  disponible_mes: string
+  /** Saldo histórico aún no apartado (ingresos − gastos − ahorros). */
+  disponible: string
+  /** @deprecated Usar `disponible`. Se mantiene por compatibilidad. */
+  disponible_mes?: string
 }
 
 function formatError(body: unknown, fallback: string): string {

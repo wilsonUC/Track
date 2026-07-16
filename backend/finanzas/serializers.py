@@ -324,7 +324,7 @@ class AhorroSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        from .ahorros_service import saldo_disponible_mes
+        from .ahorros_service import saldo_disponible_total
 
         request = self.context.get("request")
         user = getattr(request, "user", None)
@@ -332,13 +332,13 @@ class AhorroSerializer(serializers.ModelSerializer):
 
         # Solo validar el tope al crear un ahorro nuevo (no al editar uno existente).
         if self.instance is None and user and monto is not None:
-            disponible = saldo_disponible_mes(user)
+            disponible = saldo_disponible_total(user)
             if monto > disponible:
                 raise serializers.ValidationError(
                     {
                         "monto": (
-                            f"Solo tienes S/ {disponible:.2f} de saldo disponible este mes "
-                            "para apartar (ingresos - gastos - ahorros ya apartados)."
+                            f"Solo tienes S/ {disponible:.2f} de saldo disponible "
+                            "para apartar (ingresos − gastos − ahorros ya apartados)."
                         )
                     }
                 )

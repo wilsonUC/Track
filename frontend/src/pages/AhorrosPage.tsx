@@ -61,7 +61,7 @@ export function AhorrosPage() {
     }
   }
 
-  const disponible = resumen ? Number(resumen.disponible_mes) : 0
+  const disponible = resumen ? Number(resumen.disponible ?? resumen.disponible_mes ?? 0) : 0
 
   useEffect(() => {
     setSecondaryHeaderAction({
@@ -115,9 +115,11 @@ export function AhorrosPage() {
           </div>
 
           <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm text-indigo-800">
-            Disponible para apartar este mes:{' '}
+            Disponible para apartar:{' '}
             <span className="font-bold">{formatSoles(disponible)}</span>{' '}
-            <span className="text-indigo-500">(ingresos − gastos − ahorros ya apartados)</span>
+            <span className="text-indigo-500">
+              (balance total − ahorros ya apartados)
+            </span>
           </div>
 
           <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">

@@ -38,7 +38,7 @@ export function AhorroModal({ open, disponible, onClose, onSaved, crearAhorro }:
       return
     }
     if (montoNum > disponible) {
-      setError(`Solo tienes ${formatSoles(disponible)} disponibles este mes para apartar.`)
+      setError(`Solo tienes ${formatSoles(disponible)} disponibles para apartar.`)
       return
     }
     if (!fecha) {
@@ -74,7 +74,7 @@ export function AhorroModal({ open, disponible, onClose, onSaved, crearAhorro }:
             <div>
               <h3 className="text-xl font-bold text-slate-900">Apartar ahorro</h3>
               <p className="mt-0.5 text-xs text-slate-500">
-                Disponible este mes: <span className="font-semibold">{formatSoles(disponible)}</span>
+                Disponible: <span className="font-semibold">{formatSoles(disponible)}</span>
               </p>
             </div>
             <button

@@ -4,13 +4,12 @@ Modelo:
 - Los ahorros se acumulan como transacciones tipo `saving` (sin meta).
 - Cada `AsignacionMeta` reparte parte de ese total hacia una meta.
 - Libre = total ahorrado - total asignado.
-- Al apartar ahorro nuevo el tope es el saldo disponible del período
-  (ingresos - gastos - ahorros ya apartados en ese período).
+- Al apartar ahorro nuevo el tope es el saldo disponible histórico:
+  (todos los ingresos - todos los gastos - todo lo ya ahorrado).
 """
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 
 from django.db.models import Sum
@@ -42,27 +41,33 @@ def ahorro_libre(user) -> Decimal:
     return total_ahorrado(user) - total_asignado(user)
 
 
-def saldo_disponible_periodo(user, inicio: date, fin: date) -> Decimal:
-    """Ingresos - Gastos - Ahorros ya apartados dentro del período dado."""
-    qs = Transaction.objects.filter(usuario=user, fecha__gte=inicio, fecha__lte=fin)
+def saldo_disponible_total(user) -> Decimal:
+    """Ingresos históricos - gastos históricos - ahorros ya apartados.
+
+    Es el tope para apartar nuevos ahorros (balance total aún no guardado).
+    """
+    qs = Transaction.objects.filter(usuario=user)
     ingresos = _dec(qs.filter(tipo=Transaction.Tipo.INGRESO).aggregate(t=Sum("monto"))["t"])
     gastos = _dec(qs.filter(tipo=Transaction.Tipo.GASTO).aggregate(t=Sum("monto"))["t"])
     ahorros = _dec(qs.filter(tipo=Transaction.Tipo.AHORRO).aggregate(t=Sum("monto"))["t"])
-    return ingresos - gastos - ahorros
+    disponible = ingresos - gastos - ahorros
+    return disponible if disponible > 0 else Decimal("0")
 
 
-def saldo_disponible_mes(user, reference: date | None = None) -> Decimal:
-    today = reference or date.today()
-    inicio = today.replace(day=1)
-    return saldo_disponible_periodo(user, inicio, today)
+# Alias de compatibilidad: el tope ya no es solo del mes.
+def saldo_disponible_mes(user, reference=None) -> Decimal:  # noqa: ARG001
+    return saldo_disponible_total(user)
 
 
 def resumen_ahorros(user) -> dict:
     total = total_ahorrado(user)
     asignado = total_asignado(user)
+    disponible = saldo_disponible_total(user)
     return {
         "total": total,
         "asignado": asignado,
         "libre": total - asignado,
-        "disponible_mes": saldo_disponible_mes(user),
+        "disponible": disponible,
+        # Compatibilidad con clientes que aún lean disponible_mes
+        "disponible_mes": disponible,
     }
