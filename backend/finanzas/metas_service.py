@@ -13,10 +13,11 @@ from .models import AsignacionMeta
 
 
 def calcular_acumulado(meta) -> Decimal:
-    asignacion = AsignacionMeta.objects.filter(meta=meta).first()
-    if asignacion is None:
+    try:
+        return meta.asignacion.monto
+    except (AsignacionMeta.DoesNotExist, AttributeError):
         return Decimal("0")
-    return asignacion.monto
+
 
 
 def calcular_porcentaje(acumulado: Decimal, objetivo: Decimal) -> int:

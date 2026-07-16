@@ -34,63 +34,113 @@ export function ReportesCategoryTable({ filter, categories, loading }: ReportesC
       )}
 
       {!loading && categories.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 dark:border-slate-700/30 dark:bg-slate-800/20">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-white/70 font-semibold text-slate-400 dark:border-slate-700/30 dark:bg-slate-900/30 dark:text-slate-500">
-                  <th className="w-2/5 px-4 py-3">Categoría</th>
-                  <th className="px-3 py-3 text-center">Tipo</th>
-                  <th className="px-3 py-3 text-center">Peso relativo</th>
-                  <th className="px-4 py-3 text-right">Total acumulado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80 dark:divide-slate-700/25">
-                {categories.map((cat) => (
-                  <tr
-                    key={`${cat.nombre}-${cat.tipo}`}
-                    className="bg-white/60 transition-colors hover:bg-white dark:bg-transparent dark:hover:bg-slate-800/35"
+        <>
+          {/* Vista móvil: Tarjetas */}
+          <div className="md:hidden space-y-2.5">
+            {categories.map((cat) => (
+              <div
+                key={`${cat.nombre}-${cat.tipo}`}
+                className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800/30 dark:bg-slate-900/50"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    <span
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/80 dark:ring-slate-900/60 ${cat.color}`}
+                    />
+                    {cat.nombre || 'Sin categoría'}
+                  </span>
+                  <span
+                    className={`inline-flex min-w-[4.5rem] items-center justify-center rounded-full border px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                      cat.tipo === 'ingreso'
+                        ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300'
+                        : cat.tipo === 'ahorro'
+                          ? 'border-teal-200/80 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/12 dark:text-teal-300'
+                          : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/12 dark:text-rose-300'
+                    }`}
                   >
-                    <td className="px-4 py-3.5 font-semibold text-slate-700 dark:text-slate-200">
-                      <span className="inline-flex items-center gap-2.5">
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/80 dark:ring-slate-900/60 ${cat.color}`} />
-                        {cat.nombre || 'Sin categoría'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3.5 text-center">
-                      <span
-                        className={`inline-flex min-w-[4.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    {cat.tipo}
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between border-t border-slate-100/60 pt-2 text-xs dark:border-slate-700/20">
+                  <div className="text-slate-400 dark:text-slate-500">
+                    Peso relativo: <span className="font-semibold text-slate-600 dark:text-slate-300">{cat.porcentaje}</span>
+                  </div>
+                  <div
+                    className={`font-bold tabular-nums text-sm ${
+                      cat.tipo === 'ingreso'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : cat.tipo === 'ahorro'
+                          ? 'text-teal-600 dark:text-teal-400'
+                          : 'text-slate-800 dark:text-slate-200'
+                    }`}
+                  >
+                    {cat.tipo === 'ingreso' ? '+' : cat.tipo === 'gasto' ? '-' : ''}
+                    {cat.total}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Vista escritorio: Tabla */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 dark:border-slate-700/30 dark:bg-slate-800/20">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-white/70 font-semibold text-slate-400 dark:border-slate-700/30 dark:bg-slate-900/30 dark:text-slate-500">
+                    <th className="w-2/5 px-4 py-3">Categoría</th>
+                    <th className="px-3 py-3 text-center">Tipo</th>
+                    <th className="px-3 py-3 text-center">Peso relativo</th>
+                    <th className="px-4 py-3 text-right">Total acumulado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100/80 dark:divide-slate-700/25">
+                  {categories.map((cat) => (
+                    <tr
+                      key={`${cat.nombre}-${cat.tipo}`}
+                      className="bg-white/60 transition-colors hover:bg-white dark:bg-transparent dark:hover:bg-slate-800/35"
+                    >
+                      <td className="px-4 py-3.5 font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="inline-flex items-center gap-2.5">
+                          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white/80 dark:ring-slate-900/60 ${cat.color}`} />
+                          {cat.nombre || 'Sin categoría'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5 text-center">
+                        <span
+                          className={`inline-flex min-w-[4.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                            cat.tipo === 'ingreso'
+                              ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300'
+                              : cat.tipo === 'ahorro'
+                                ? 'border-teal-200/80 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/12 dark:text-teal-300'
+                                : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/12 dark:text-rose-300'
+                          }`}
+                        >
+                          {cat.tipo}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5 text-center font-semibold text-slate-500 dark:text-slate-400">
+                        {cat.porcentaje}
+                      </td>
+                      <td
+                        className={`px-4 py-3.5 text-right font-bold tabular-nums ${
                           cat.tipo === 'ingreso'
-                            ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300'
+                            ? 'text-emerald-600 dark:text-emerald-400'
                             : cat.tipo === 'ahorro'
-                              ? 'border-teal-200/80 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/12 dark:text-teal-300'
-                              : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/12 dark:text-rose-300'
+                              ? 'text-teal-600 dark:text-teal-400'
+                              : 'text-slate-800 dark:text-slate-200'
                         }`}
                       >
-                        {cat.tipo}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3.5 text-center font-semibold text-slate-500 dark:text-slate-400">
-                      {cat.porcentaje}
-                    </td>
-                    <td
-                      className={`px-4 py-3.5 text-right font-bold tabular-nums ${
-                        cat.tipo === 'ingreso'
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : cat.tipo === 'ahorro'
-                            ? 'text-teal-600 dark:text-teal-400'
-                            : 'text-slate-800 dark:text-slate-200'
-                      }`}
-                    >
-                      {cat.tipo === 'ingreso' ? '+' : cat.tipo === 'gasto' ? '-' : ''}
-                      {cat.total}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        {cat.tipo === 'ingreso' ? '+' : cat.tipo === 'gasto' ? '-' : ''}
+                        {cat.total}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </article>
   )

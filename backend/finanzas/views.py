@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.db.models import DecimalField, Q, Sum
+from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -24,7 +24,7 @@ from .models import (
 from .ia_service import chat_with_groq
 from .consejos_service import get_or_generate_consejos
 from .ahorros_service import ahorro_libre, resumen_ahorros
-from .recurrentes_service import transacciones_mes_actual
+from .recurrentes_service import transacciones_mes_actual, _bounds_mes, _bounds_mes_anterior
 from .serializers import (
     AhorroSerializer,
     CategorySerializer,
@@ -141,9 +141,29 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
     serializer_class = RecurrenteSerializer
 
     def get_queryset(self):
+        today = date.today()
+        inicio_mes, fin_mes = _bounds_mes(today)
+        inicio_anterior, fin_anterior = _bounds_mes_anterior(today)
+
+        txs_este_mes = Transaction.objects.filter(
+            recurrente=OuterRef("pk"),
+            fecha__gte=inicio_mes,
+            fecha__lte=fin_mes,
+        )
+
+        txs_mes_anterior = Transaction.objects.filter(
+            recurrente=OuterRef("pk"),
+            fecha__gte=inicio_anterior,
+            fecha__lte=fin_anterior,
+        )
+
         return (
             Recurrente.objects.filter(usuario=self.request.user, activo=True)
             .select_related("categoria")
+            .annotate(
+                registrado_este_mes=Exists(txs_este_mes),
+                registrado_mes_anterior=Exists(txs_mes_anterior),
+            )
             .order_by("tipo", "nombre")
         )
 
@@ -184,6 +204,7 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             fecha=date.today(),
             descripcion=f"Recurrente {etiqueta}: {recurrente.nombre}",
         )
+        recurrente = self.get_queryset().get(pk=recurrente.pk)
         serializer = self.get_serializer(recurrente)
         return Response(serializer.data)
 
@@ -196,6 +217,7 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
                 {"detalle": "No hay registro de este mes para desmarcar."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        recurrente = self.get_queryset().get(pk=recurrente.pk)
         serializer = self.get_serializer(recurrente)
         return Response(serializer.data)
 

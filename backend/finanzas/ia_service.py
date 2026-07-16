@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from datetime import date
 from decimal import Decimal
 
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import DecimalField, Q, Sum
+from django.db.models.functions import Coalesce
 
 from .models import MetaAhorro, Presupuesto, Recurrente, Transaction
 
@@ -50,9 +52,26 @@ def build_financial_context(user) -> str:
         .order_by("-fecha", "-creado_en")[:MAX_RECENT_TX]
     )
 
-    metas = MetaAhorro.objects.filter(usuario=user, activo=True).order_by("nombre")
+    metas = MetaAhorro.objects.filter(usuario=user, activo=True).select_related("asignacion").order_by("nombre")
 
-    presupuestos = Presupuesto.objects.filter(usuario=user, activo=True).order_by("nombre")
+    presupuestos = (
+        Presupuesto.objects.filter(usuario=user, activo=True)
+        .annotate(
+            gastado=Coalesce(
+                Sum(
+                    "transacciones__monto",
+                    filter=Q(
+                        transacciones__tipo=Transaction.Tipo.GASTO,
+                        transacciones__fecha__gte=month_start,
+                        transacciones__fecha__lte=today,
+                    ),
+                ),
+                Decimal("0"),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+        .order_by("nombre")
+    )
     recurrentes = Recurrente.objects.filter(usuario=user, activo=True).select_related("categoria")
 
     lines = [
@@ -74,10 +93,10 @@ def build_financial_context(user) -> str:
     if not presupuestos:
         lines.append("- Sin presupuestos configurados.")
     else:
-        from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
+        from .presupuestos_service import calcular_estado, calcular_porcentaje
 
         for p in presupuestos:
-            gastado = calcular_gastado_mes(p, today)
+            gastado = p.gastado
             pct = calcular_porcentaje(gastado, p.limite)
             estado = calcular_estado(gastado, p.limite)
             lines.append(
@@ -207,14 +226,26 @@ def request_groq_completion(
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Groq respondió con error ({exc.code}): {body}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"No se pudo conectar con Groq: {exc.reason}") from exc
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as exc:
+            is_retryable_status = exc.code == 429 or (500 <= exc.code <= 599)
+            if is_retryable_status and attempt < max_retries - 1:
+                sleep_time = 2 ** attempt
+                time.sleep(sleep_time)
+                continue
+            body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Groq respondió con error ({exc.code}): {body}") from exc
+        except urllib.error.URLError as exc:
+            if attempt < max_retries - 1:
+                sleep_time = 2 ** attempt
+                time.sleep(sleep_time)
+                continue
+            raise RuntimeError(f"No se pudo conectar con Groq: {exc.reason}") from exc
 
     try:
         return data["choices"][0]["message"]["content"].strip()
@@ -223,13 +254,40 @@ def request_groq_completion(
 
 
 def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -> str:
-    context = build_financial_context(user)
-    return request_groq_completion(
-        messages=[
-            {"role": "system", "content": _system_prompt(context)},
-            *_normalize_history(historial or []),
-            {"role": "user", "content": mensaje.strip()},
-        ],
-        temperature=0.7,
-        max_tokens=1024,
-    )
+    try:
+        context = build_financial_context(user)
+        return request_groq_completion(
+            messages=[
+                {"role": "system", "content": _system_prompt(context)},
+                *_normalize_history(historial or []),
+                {"role": "user", "content": mensaje.strip()},
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+        )
+    except RuntimeError:
+        from .models import Transaction
+        from django.db.models import Sum
+        from datetime import date
+        today = date.today()
+        month_start = today.replace(day=1)
+
+        month_qs = Transaction.objects.filter(
+            usuario=user,
+            fecha__gte=month_start,
+            fecha__lte=today,
+        )
+        income = month_qs.filter(tipo=Transaction.Tipo.INGRESO).aggregate(total=Sum("monto"))["total"] or 0
+        expense = month_qs.filter(tipo=Transaction.Tipo.GASTO).aggregate(total=Sum("monto"))["total"] or 0
+        balance = Decimal(str(income)) - Decimal(str(expense))
+
+        return (
+            "Hola. En este momento el asistente avanzado de IA no se encuentra disponible "
+            "debido a un problema de conexión con el proveedor del servicio. Sin embargo, "
+            "he calculado de forma local tu balance básico de este mes para ayudarte:\n\n"
+            f"**Resumen de {today.strftime('%B %Y')}**:\n"
+            f"- **Ingresos:** S/ {income:.2f}\n"
+            f"- **Gastos:** S/ {expense:.2f}\n"
+            f"- **Balance mensual:** S/ {balance:.2f}\n\n"
+            "Por favor, intenta de nuevo en unos minutos cuando la conexión se haya restablecido."
+        )

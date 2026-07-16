@@ -64,7 +64,11 @@ def transacciones_mes_actual(recurrente, reference: date | None = None):
 def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dict:
     today = reference or date.today()
     inicio, fin = _bounds_mes(today)
-    registrado_mes = tiene_registro_en_rango(recurrente, inicio, fin)
+
+    if hasattr(recurrente, "registrado_este_mes"):
+        registrado_mes = recurrente.registrado_este_mes
+    else:
+        registrado_mes = tiene_registro_en_rango(recurrente, inicio, fin)
 
     vencido = False
     mes_anterior_sin_registrar = None
@@ -81,10 +85,12 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
             vencido = True
         prev_inicio, prev_fin = _bounds_mes_anterior(today)
         # Solo avisar si el recurrente ya existía el mes anterior (no recién creado)
-        if (
-            creado <= prev_fin
-            and not tiene_registro_en_rango(recurrente, prev_inicio, prev_fin)
-        ):
+        if hasattr(recurrente, "registrado_mes_anterior"):
+            registrado_anterior = recurrente.registrado_mes_anterior
+        else:
+            registrado_anterior = tiene_registro_en_rango(recurrente, prev_inicio, prev_fin)
+
+        if creado <= prev_fin and not registrado_anterior:
             mes_anterior_sin_registrar = MESES_ES[prev_inicio.month - 1]
 
     return {

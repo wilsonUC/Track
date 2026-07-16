@@ -120,7 +120,126 @@ export function AdminUsuariosPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Vista móvil: Tarjetas */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700/30">
+          {users.map((user) => {
+            const draft = drafts[user.id] ?? {}
+            const values = {
+              first_name: draft.first_name ?? user.first_name,
+              last_name: draft.last_name ?? user.last_name,
+              email: draft.email ?? user.email,
+              telefono: draft.telefono ?? user.telefono,
+            }
+            const isSaving = savingId === user.id
+            const isCurrentUser = user.username === currentUsername
+
+            return (
+              <div key={user.id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">@{user.username}</span>
+                    {user.is_staff && (
+                      <span className="ml-2 inline-block rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                        Admin
+                      </span>
+                    )}
+                  </div>
+                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusClass(user.estado_cuenta)}`}>
+                    {user.estado_cuenta_label}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-slate-400">Nombre</label>
+                    <input
+                      value={values.first_name}
+                      onChange={(e) => updateDraft(user.id, 'first_name', e.target.value)}
+                      className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800"
+                      placeholder="Nombre"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-slate-400">Apellidos</label>
+                    <input
+                      value={values.last_name}
+                      onChange={(e) => updateDraft(user.id, 'last_name', e.target.value)}
+                      className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800"
+                      placeholder="Apellidos"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-slate-400">Correo</label>
+                    <input
+                      value={values.email}
+                      onChange={(e) => updateDraft(user.id, 'email', e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800"
+                      placeholder="Correo"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-medium text-slate-400">Teléfono</label>
+                    <input
+                      value={values.telefono}
+                      onChange={(e) => updateDraft(user.id, 'telefono', e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800"
+                      placeholder="Teléfono"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-400">
+                  Último ingreso: <span className="font-semibold text-slate-600 dark:text-slate-300">{formatDate(user.last_login)}</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/60 pt-3 dark:border-slate-800/40">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => saveUser(user, values)}
+                    className="flex-1 min-w-[70px] rounded-lg bg-indigo-600 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {isSaving ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  {isCurrentUser ? (
+                    <span className="flex-1 min-w-[120px] rounded-lg bg-slate-50 py-1.5 text-center text-[10px] text-slate-400 dark:bg-slate-850">
+                      Cuenta propia (no editable)
+                    </span>
+                  ) : (
+                    <>
+                      {user.estado_cuenta !== 'active' && (
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => saveUser(user, { estado_cuenta: 'active' })}
+                          className="flex-1 min-w-[70px] rounded-lg border border-emerald-200 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400"
+                        >
+                          Aprobar
+                        </button>
+                      )}
+                      {user.estado_cuenta !== 'blocked' && (
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
+                          className="flex-1 min-w-[70px] rounded-lg border border-red-200 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400"
+                        >
+                          Bloquear
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Vista escritorio: Tabla */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-[980px] divide-y divide-slate-100 text-sm dark:divide-slate-700/30">
             <thead className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wide text-slate-500 dark:bg-slate-800/40">
               <tr>

@@ -349,3 +349,35 @@ class PreferenciasTests(FinanzasAPITestCase):
         self.assertEqual(patch_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(patch_resp.data["tema"], "oscuro")
         self.assertTrue(patch_resp.data["vista_compacta"])
+
+
+from unittest.mock import patch
+
+class IAConResilienciaTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.user = self.crear_usuario(username="ia_res", telefono="900000060")
+        self.crear_categorias()
+        self.autenticar(self.user)
+
+    @patch("finanzas.consejos_service.request_groq_completion")
+    def test_consejos_ia_fallback_local(self, mock_groq):
+        mock_groq.side_effect = RuntimeError("Error en Groq")
+
+        response = self.client.get("/api/consejos/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["fallback"])
+        self.assertIn("resumen", response.data)
+        self.assertGreaterEqual(len(response.data["consejos"]), 4)
+
+    @patch("finanzas.ia_service.request_groq_completion")
+    def test_chat_ia_fallback_offline(self, mock_groq):
+        mock_groq.side_effect = RuntimeError("Error en Groq")
+
+        response = self.client.post(
+            "/api/ia/chat/",
+            {"mensaje": "Hola IA"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("asistente avanzado de IA no se encuentra disponible", response.data["respuesta"])
+

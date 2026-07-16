@@ -166,8 +166,36 @@ def get_or_generate_consejos(user, *, force: bool = False) -> dict:
     if cache and not force and _cache_is_fresh(cache):
         return _payload_from_cache(cache, desde_cache=True)
 
-    payload = generate_consejos_with_groq(user)
+    try:
+        payload = generate_consejos_with_groq(user)
+        is_fallback = False
+    except RuntimeError:
+        if cache:
+            result = _payload_from_cache(cache, desde_cache=True)
+            result["fallback"] = True
+            result["mensaje_fallback"] = (
+                "El asistente de IA no está disponible temporalmente. "
+                "Mostrando consejos anteriores."
+            )
+            return result
+        payload = generate_local_fallback_consejos(user)
+        is_fallback = True
+
     now = timezone.now()
+
+    if is_fallback:
+        return {
+            "puntaje": payload["puntaje"],
+            "resumen": payload["resumen"],
+            "consejos": payload["consejos"],
+            "generado_en": now.isoformat(),
+            "desde_cache": False,
+            "fallback": True,
+            "mensaje_fallback": (
+                "El asistente de IA no está disponible. "
+                "Mostrando diagnóstico básico local."
+            ),
+        }
 
     if cache:
         cache.puntaje = payload["puntaje"]
@@ -185,3 +213,132 @@ def get_or_generate_consejos(user, *, force: bool = False) -> dict:
         )
 
     return _payload_from_cache(cache, desde_cache=False)
+
+
+def generate_local_fallback_consejos(user) -> dict:
+    from .models import Presupuesto, Recurrente, MetaAhorro, Transaction
+    from .presupuestos_service import calcular_gastado_mes
+    from .recurrentes_service import calcular_estado_recurrente
+    from .ahorros_service import ahorro_libre
+    from datetime import date
+    from decimal import Decimal
+
+    today = date.today()
+    presupuestos = Presupuesto.objects.filter(usuario=user, activo=True)
+    recurrentes = Recurrente.objects.filter(usuario=user, activo=True)
+    metas = MetaAhorro.objects.filter(usuario=user, activo=True)
+
+    excedidos = 0
+    alerta_presupuestos = 0
+    for p in presupuestos:
+        gastado = calcular_gastado_mes(p, today)
+        if gastado > p.limite:
+            excedidos += 1
+        elif p.limite > 0 and gastado >= p.limite * Decimal("0.9"):
+            alerta_presupuestos += 1
+
+    vencidos = 0
+    for r in recurrentes:
+        estado = calcular_estado_recurrente(r, today)
+        if estado.get("vencido"):
+            vencidos += 1
+
+    puntaje = 100
+    if excedidos > 0:
+        puntaje -= min(40, excedidos * 15)
+    if vencidos > 0:
+        puntaje -= min(30, vencidos * 10)
+    if alerta_presupuestos > 0:
+        puntaje -= min(20, alerta_presupuestos * 5)
+    if not metas.exists():
+        puntaje -= 10
+    puntaje = max(10, puntaje)
+
+    consejos = []
+
+    if excedidos > 0:
+        consejos.append({
+            "titulo": "Presupuestos excedidos",
+            "descripcion": f"Tienes {excedidos} presupuesto(s) donde tus gastos superaron el límite establecido. Intenta recortar egresos no esenciales en estas categorías.",
+            "categoria": "ALERTA",
+            "impacto": "ALTO",
+            "pregunta_ia": "¿Cómo puedo recortar gastos en mis presupuestos excedidos?",
+        })
+    elif alerta_presupuestos > 0:
+        consejos.append({
+            "titulo": "Presupuestos al límite",
+            "descripcion": f"Tienes {alerta_presupuestos} presupuesto(s) cerca de alcanzar su límite mensual (90% o más). Vigila tus próximos consumos.",
+            "categoria": "ALERTA",
+            "impacto": "MEDIO",
+            "pregunta_ia": "¿Qué estrategias me recomiendas para no pasarme de mis presupuestos?",
+        })
+
+    if vencidos > 0:
+        consejos.append({
+            "titulo": "Pagos recurrentes pendientes",
+            "descripcion": f"Tienes {vencidos} pago(s) o cobro(s) fijos que se encuentran vencidos este mes. Regístralos para mantener al día tus cuentas.",
+            "categoria": "ALERTA",
+            "impacto": "ALTO",
+            "pregunta_ia": "¿Cómo afectan los pagos vencidos a mi salud financiera?",
+        })
+
+    if not metas.exists():
+        consejos.append({
+            "titulo": "Define tu primera meta",
+            "descripcion": "Establecer objetivos claros (ej. un fondo de emergencia o unas vacaciones) facilita el hábito del ahorro y te da un propósito.",
+            "categoria": "AHORRO",
+            "impacto": "MEDIO",
+            "pregunta_ia": "¿Cómo puedo definir una meta de ahorro realista?",
+        })
+    else:
+        libre = ahorro_libre(user)
+        if libre > 0:
+            consejos.append({
+                "titulo": "Asigna tu ahorro libre",
+                "descripcion": f"Tienes S/ {libre:.2f} en tu pool de ahorro sin asignar a ninguna meta. Distribúyelo para ver tu progreso real.",
+                "categoria": "AHORRO",
+                "impacto": "MEDIO",
+                "pregunta_ia": "¿Cómo debería distribuir mis ahorros libres entre mis metas?",
+            })
+
+    if len(consejos) < 4:
+        consejos.append({
+            "titulo": "Ahorra de forma automática",
+            "descripcion": "Una de las mejores reglas financieras es págate a ti mismo primero. Separa al menos el 10% de tus ingresos apenas los recibas.",
+            "categoria": "AHORRO",
+            "impacto": "MEDIO",
+            "pregunta_ia": "¿Cómo puedo crear un hábito de ahorro constante?",
+        })
+    if len(consejos) < 4:
+        consejos.append({
+            "titulo": "Fondo de emergencia",
+            "descripcion": "Es aconsejable acumular entre 3 y 6 meses de tus gastos básicos para imprevistos (médicos, reparaciones o desempleo).",
+            "categoria": "INVERSIÓN",
+            "impacto": "ALTO",
+            "pregunta_ia": "¿Cómo calculo el tamaño de mi fondo de emergencia?",
+        })
+    if len(consejos) < 4:
+        consejos.append({
+            "titulo": "Evita deudas de consumo",
+            "descripcion": "Las tarjetas de crédito son excelentes herramientas si pagas el total del mes, pero sus intereses pueden desestabilizar tus finanzas si te financias con ellas.",
+            "categoria": "GENERAL",
+            "impacto": "ALTO",
+            "pregunta_ia": "¿Cuáles son las mejores prácticas para usar tarjetas de crédito?",
+        })
+
+    consejos = consejos[:6]
+
+    resumen = "Diagnóstico local: "
+    if excedidos > 0 or vencidos > 0:
+        resumen += "Tienes alertas importantes (presupuestos excedidos o pagos vencidos) que requieren tu atención inmediata."
+    elif alerta_presupuestos > 0:
+        resumen += "Tus finanzas están bajo control, pero tienes presupuestos muy cerca de su límite mensual. Monitorea tus transacciones."
+    else:
+        resumen += "Tus finanzas se ven estables y sin alertas críticas este mes. ¡Sigue así!"
+
+    return {
+        "puntaje": puntaje,
+        "resumen": resumen,
+        "consejos": consejos,
+    }
+
