@@ -62,7 +62,9 @@ export function ReportesCategoryTable({ filter, categories, loading }: ReportesC
                         className={`inline-flex min-w-[4.5rem] items-center justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
                           cat.tipo === 'ingreso'
                             ? 'border-emerald-200/80 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/12 dark:text-emerald-300'
-                            : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/12 dark:text-rose-300'
+                            : cat.tipo === 'ahorro'
+                              ? 'border-teal-200/80 bg-teal-50 text-teal-700 dark:border-teal-500/30 dark:bg-teal-500/12 dark:text-teal-300'
+                              : 'border-rose-200/80 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/12 dark:text-rose-300'
                         }`}
                       >
                         {cat.tipo}
@@ -75,10 +77,12 @@ export function ReportesCategoryTable({ filter, categories, loading }: ReportesC
                       className={`px-4 py-3.5 text-right font-bold tabular-nums ${
                         cat.tipo === 'ingreso'
                           ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-slate-800 dark:text-slate-200'
+                          : cat.tipo === 'ahorro'
+                            ? 'text-teal-600 dark:text-teal-400'
+                            : 'text-slate-800 dark:text-slate-200'
                       }`}
                     >
-                      {cat.tipo === 'ingreso' ? '+' : '-'}
+                      {cat.tipo === 'ingreso' ? '+' : cat.tipo === 'gasto' ? '-' : ''}
                       {cat.total}
                     </td>
                   </tr>

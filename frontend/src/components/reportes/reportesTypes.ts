@@ -5,7 +5,7 @@ export type ReportCategoryRow = {
   total: string
   valorNum: number
   porcentaje: string
-  tipo: 'ingreso' | 'gasto'
+  tipo: 'ingreso' | 'gasto' | 'ahorro'
   color: string
 }
 

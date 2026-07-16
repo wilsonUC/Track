@@ -44,30 +44,39 @@ export function buildMonthlyBarData(
   }))
 }
 
+const AHORRO_REPORT_COLOR = 'bg-teal-500'
+
+function reportRowColor(nombre: string, tipo: ReportCategoryRow['tipo']) {
+  if (tipo === 'ahorro' || nombre === 'Ahorro') return AHORRO_REPORT_COLOR
+  return getCategoryChartColors(nombre).colorBg
+}
+
 export function buildReportCategoryRows(transactions: EnrichedTransaction[]): ReportCategoryRow[] {
-  const totals = new Map<string, { income: number; expense: number }>()
+  const totals = new Map<string, { income: number; expense: number; saving: number }>()
 
   for (const t of transactions) {
-    const nombre = t.esPresupuesto || t.esRecurrente ? t.etiquetaOrigen : t.categoriaNombre
-    const entry = totals.get(nombre) ?? { income: 0, expense: 0 }
+    const nombre = t.esAhorro
+      ? t.etiquetaOrigen
+      : t.esPresupuesto || t.esRecurrente
+        ? t.etiquetaOrigen
+        : t.categoriaNombre
+    const entry = totals.get(nombre) ?? { income: 0, expense: 0, saving: 0 }
     if (t.tipo === 'income') entry.income += t.montoNum
-    else entry.expense += t.montoNum
+    else if (t.tipo === 'expense') entry.expense += t.montoNum
+    else if (t.tipo === 'saving') entry.saving += t.montoNum
     totals.set(nombre, entry)
   }
 
   const rows: ReportCategoryRow[] = []
 
-  for (const [nombre, { income, expense }] of totals) {
-    const { colorBg } = getCategoryChartColors(nombre)
-    const color = colorBg
-
+  for (const [nombre, { income, expense, saving }] of totals) {
     if (income > 0) {
       rows.push({
         nombre,
         valorNum: income,
         total: formatSoles(income),
         tipo: 'ingreso',
-        color,
+        color: reportRowColor(nombre, 'ingreso'),
         porcentaje: '0%',
       })
     }
@@ -77,7 +86,17 @@ export function buildReportCategoryRows(transactions: EnrichedTransaction[]): Re
         valorNum: expense,
         total: formatSoles(expense),
         tipo: 'gasto',
-        color,
+        color: reportRowColor(nombre, 'gasto'),
+        porcentaje: '0%',
+      })
+    }
+    if (saving > 0) {
+      rows.push({
+        nombre,
+        valorNum: saving,
+        total: formatSoles(saving),
+        tipo: 'ahorro',
+        color: reportRowColor(nombre, 'ahorro'),
         porcentaje: '0%',
       })
     }
