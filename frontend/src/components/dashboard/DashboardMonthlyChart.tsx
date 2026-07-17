@@ -95,7 +95,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
         {loading && <p className="py-16 text-center text-sm text-slate-500">Cargando…</p>}
 
         {!loading && (
-          <div className="relative">
+          <div className="relative w-full min-w-0 overflow-hidden">
             {hoveredIndex !== null && points[hoveredIndex] && (
               <div
                 className="pointer-events-none absolute z-10 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-lg transition-all duration-150 ease-out"
@@ -113,7 +113,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
               </div>
             )}
 
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} width="100%" height="100%" className="overflow-visible">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full max-w-full block overflow-visible" style={{ height: 'auto' }}>
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={activeColor} stopOpacity={0.25} />
