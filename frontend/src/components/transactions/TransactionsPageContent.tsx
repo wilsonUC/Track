@@ -202,44 +202,81 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
                     ? (t.recurrenteNombre ?? 'Recurrente')
                     : t.categoriaNombre
                 const catInfo = getCategoryDisplay(displayName)
+
+                const badgeElement = t.esPresupuesto ? (
+                  <span className="inline-block max-w-[130px] truncate rounded-md border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    Presupuesto · {t.presupuestoNombre}
+                  </span>
+                ) : t.esRecurrente ? (
+                  <span className="inline-block max-w-[130px] truncate rounded-md border border-violet-100 bg-violet-50/70 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300">
+                    Recurrente · {t.recurrenteNombre}
+                  </span>
+                ) : (
+                  <span
+                    className={`inline-block max-w-[130px] truncate rounded-md border px-2 py-0.5 text-[10px] font-semibold ${catInfo.badge}`}
+                  >
+                    {t.categoriaNombre}
+                  </span>
+                )
+
+                const dateElement = (
+                  <span className="text-[10px] font-medium text-slate-400">
+                    {formatShortDate(t.fecha)}
+                  </span>
+                )
+
                 return (
                   <li
                     key={t.id}
-                    className="list-row-compact flex items-center justify-between gap-2 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:gap-3"
+                    className="list-row-compact flex flex-col gap-2 rounded-xl p-2.5 transition duration-150 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                   >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-transparent dark:ring-white/5 ${catInfo.bg}`}
-                      >
-                        {catInfo.icon}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-700 dark:text-slate-200">
-                          {t.descripcion || 'Sin descripción'}
-                        </p>
-                        <div className="mt-1 flex items-center gap-2">
-                          {t.esPresupuesto ? (
-                            <span className="inline-block rounded-md border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-500/25 dark:bg-indigo-500/10 dark:text-indigo-300">
-                              Presupuesto · {t.presupuestoNombre}
-                            </span>
-                          ) : t.esRecurrente ? (
-                            <span className="inline-block rounded-md border border-violet-100 bg-violet-50/70 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/10 dark:text-violet-300">
-                              Recurrente · {t.recurrenteNombre}
-                            </span>
-                          ) : (
-                            <span
-                              className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold ${catInfo.badge}`}
-                            >
-                              {t.categoriaNombre}
-                            </span>
-                          )}
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {formatShortDate(t.fecha)}
-                          </span>
+                    {/* Fila principal (icono, descripción y monto en móvil) */}
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-transparent dark:ring-white/5 ${catInfo.bg}`}
+                        >
+                          {catInfo.icon}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-slate-700 dark:text-slate-200">
+                            {t.descripcion || 'Sin descripción'}
+                          </p>
+                          <div className="mt-1 hidden sm:flex items-center gap-2">
+                            {badgeElement}
+                            {dateElement}
+                          </div>
                         </div>
                       </div>
+                      
+                      {/* Monto visible solo en móvil a la derecha */}
+                      <p
+                        className={`text-sm font-bold tabular-nums sm:hidden ${
+                          isIncome ? 'text-emerald-600' : 'text-rose-600'
+                        }`}
+                      >
+                        {formatSignedSoles(t.montoNum, isIncome)}
+                      </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+
+                    {/* Fila inferior de detalles y acciones en móvil */}
+                    <div className="flex items-center justify-between border-t border-slate-100/50 pt-2 sm:hidden dark:border-slate-800/30">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1 mr-2">
+                        {badgeElement}
+                        {dateElement}
+                      </div>
+                      <TransactionRowActions
+                        disabled={deletingId === t.id}
+                        onEdit={() => setModal({ open: true, mode: 'edit', transaction: t })}
+                        onDuplicate={() =>
+                          setModal({ open: true, mode: 'duplicate', transaction: t })
+                        }
+                        onDelete={() => void handleDelete(t)}
+                      />
+                    </div>
+
+                    {/* Fila de monto y acciones en escritorio */}
+                    <div className="hidden sm:flex shrink-0 items-center gap-2">
                       <p
                         className={`text-sm font-bold tabular-nums ${
                           isIncome ? 'text-emerald-600' : 'text-rose-600'

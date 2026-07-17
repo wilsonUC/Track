@@ -99,7 +99,7 @@ export function AppLayout() {
       />
 
       <div className="flex h-full min-h-0 flex-col md:pl-64">
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
           <div className="mx-auto max-w-6xl">
             <MainHeader
               section={section}

@@ -76,13 +76,14 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
                         <p className="truncate text-sm font-bold text-slate-700">
                           {item.descripcion || 'Sin descripción'}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 min-w-0">
                           <span
-                            className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-all ${catInfo.badge}`}
+                            className={`inline-block max-w-[120px] truncate rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-all ${catInfo.badge}`}
+                            title={item.categoriaNombre}
                           >
                             {item.categoriaNombre}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-medium">{formatShortDate(item.fecha)}</span>
+                          <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">{formatShortDate(item.fecha)}</span>
                         </div>
                       </div>
                     </div>
