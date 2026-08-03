@@ -109,8 +109,8 @@ export function MetasPage() {
     setEditingId(meta.id)
     setNombre(meta.nombre)
     setMontoObjetivo(String(meta.objetivo))
-    setFechaInicio(meta.fechaInicio ? meta.fechaInicio.slice(0, 7) : '')
-    setFechaLimite(meta.fechaLimite ? meta.fechaLimite.slice(0, 7) : '')
+    setFechaInicio(meta.fechaInicio ?? '')
+    setFechaLimite(meta.fechaLimite ?? '')
     setCategoriaReferenciaId(meta.categoriaReferenciaId ?? '')
     setModalError('')
     setIsModalOpen(true)
@@ -158,8 +158,8 @@ export function MetasPage() {
       const payload = {
         nombre: nombre.trim(),
         monto_objetivo: montoObjetivo,
-        fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
-        fecha_limite: fechaLimite ? `${fechaLimite}-01` : null,
+        fecha_inicio: fechaInicio || null,
+        fecha_limite: fechaLimite || null,
         categoria_referencia: categoriaReferenciaId || null,
       }
 

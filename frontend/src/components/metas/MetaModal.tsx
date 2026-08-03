@@ -97,7 +97,7 @@ export function MetaModal({
                 Fecha de inicio (opcional)
               </label>
               <input
-                type="month"
+                type="date"
                 value={fechaInicio}
                 onChange={(e) => onFechaInicioChange(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -108,7 +108,7 @@ export function MetaModal({
                 Fecha límite (opcional)
               </label>
               <input
-                type="month"
+                type="date"
                 value={fechaLimite}
                 onChange={(e) => onFechaLimiteChange(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
