@@ -78,7 +78,7 @@ export function ResumenCuentasAtrasadas({
                   pagarExpanded ? 'max-h-[500px] mt-4 opacity-100' : 'max-h-0 opacity-0'
                 }`}
               >
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[280px] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin' }}>
                   {deudas.map((item) => (
                     <div
                       key={item.id}
@@ -158,7 +158,7 @@ export function ResumenCuentasAtrasadas({
                   cobrarExpanded ? 'max-h-[500px] mt-4 opacity-100' : 'max-h-0 opacity-0'
                 }`}
               >
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[280px] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin' }}>
                   {cobros.map((item) => (
                     <div
                       key={item.id}
