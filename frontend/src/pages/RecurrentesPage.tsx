@@ -7,10 +7,15 @@ import {
   fetchRecurrentes,
   registrarPagoRecurrente,
   updateRecurrente,
+  fetchCuentasAtrasadas,
+  type ApiCuentasAtrasadas,
+  type ApiCuentasAtrasadasItem,
 } from '../api/recurrentes'
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
+import { ResumenCuentasAtrasadas } from '../components/recurrentes/ResumenCuentasAtrasadas'
+import { FiltroMesRecurrentes } from '../components/recurrentes/FiltroMesRecurrentes'
 import type { RecurrenteCardView } from '../components/recurrentes/recurrentesTypes'
 import { mapRecurrenteToCard } from '../utils/recurrentesDisplay'
 
@@ -37,19 +42,43 @@ export function RecurrentesPage() {
   const [monto, setMonto] = useState('')
   const [diaPago, setDiaPago] = useState('5')
   const [categoriaId, setCategoriaId] = useState<number | ''>('')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
   const [procesandoId, setProcesandoId] = useState<number | null>(null)
+
+  const [fechaRef, setFechaRef] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d
+  })
+  const [cuentasAtrasadas, setCuentasAtrasadas] = useState<ApiCuentasAtrasadas | null>(null)
+  const [procesandoAtrasadaId, setProcesandoAtrasadaId] = useState<string | null>(null)
+
+  const formatIsoDate = (date: Date) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
 
-    Promise.all([fetchRecurrentes(), fetchCategories()])
-      .then(([data, cats]) => {
+    const mesIso = formatIsoDate(fechaRef)
+
+    Promise.all([
+      fetchRecurrentes(mesIso),
+      fetchCuentasAtrasadas(),
+      fetchCategories(),
+    ])
+      .then(([data, atrasadasData, cats]) => {
         if (cancelled) return
         setRecurrentes(data.map(mapRecurrenteToCard))
+        setCuentasAtrasadas(atrasadasData)
         setCategorias(cats)
       })
       .catch(() => {
@@ -62,18 +91,18 @@ export function RecurrentesPage() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion])
+  }, [transactionsVersion, fechaRef])
 
   const gastos = useMemo(() => recurrentes.filter((r) => r.tipo === 'expense'), [recurrentes])
   const ingresos = useMemo(() => recurrentes.filter((r) => r.tipo === 'income'), [recurrentes])
 
   const totalPendienteGastos = useMemo(
-    () => gastos.filter((r) => !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
+    () => gastos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
     [gastos],
   )
 
   const totalPendienteIngresos = useMemo(
-    () => ingresos.filter((r) => !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
+    () => ingresos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
     [ingresos],
   )
 
@@ -82,6 +111,8 @@ export function RecurrentesPage() {
     setMonto('')
     setDiaPago('5')
     setCategoriaId('')
+    setFechaInicio('')
+    setFechaFin('')
     setTipo('expense')
     setEditingId(null)
     setModalError('')
@@ -101,6 +132,8 @@ export function RecurrentesPage() {
     setMonto(String(recurrente.monto))
     setDiaPago(String(recurrente.diaPago))
     setCategoriaId(recurrente.categoriaId)
+    setFechaInicio(recurrente.fechaInicio ? recurrente.fechaInicio.slice(0, 7) : '')
+    setFechaFin(recurrente.fechaFin ? recurrente.fechaFin.slice(0, 7) : '')
     setModalError('')
     setIsModalOpen(true)
   }
@@ -122,15 +155,41 @@ export function RecurrentesPage() {
     setProcesandoId(id)
     setError('')
     try {
+      const mesIso = formatIsoDate(fechaRef)
       const actualizado = recurrente.registradoMes
-        ? await desmarcarPagoRecurrente(id)
-        : await registrarPagoRecurrente(id)
+        ? await desmarcarPagoRecurrente(id, mesIso)
+        : await registrarPagoRecurrente(id, undefined, mesIso)
       setRecurrentes((prev) => prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)))
+      
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      
       bumpTransactions()
     } catch {
       setError('No se pudo actualizar el estado del recurrente.')
     } finally {
       setProcesandoId(null)
+    }
+  }
+
+  const manejarPagarAtrasada = async (item: ApiCuentasAtrasadasItem) => {
+    setProcesandoAtrasadaId(item.id)
+    setError('')
+    try {
+      const actualizado = await registrarPagoRecurrente(item.id_recurrente, undefined, item.fecha_pago)
+      const mesIso = formatIsoDate(fechaRef)
+      if (item.fecha_pago.slice(0, 7) === mesIso.slice(0, 7)) {
+        setRecurrentes((prev) =>
+          prev.map((r) => (r.id === item.id_recurrente ? mapRecurrenteToCard(actualizado) : r)),
+        )
+      }
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
+    } catch {
+      setError('No se pudo registrar el pago atrasado.')
+    } finally {
+      setProcesandoAtrasadaId(null)
     }
   }
 
@@ -147,6 +206,8 @@ export function RecurrentesPage() {
         tipo,
         dia_pago: parseInt(diaPago, 10),
         categoria: categoriaId,
+        fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
+        fecha_fin: fechaFin ? `${fechaFin}-01` : null,
       }
 
       if (modalMode === 'edit' && editingId !== null) {
@@ -160,11 +221,26 @@ export function RecurrentesPage() {
       }
 
       cerrarModal()
-    } catch {
+    } catch (err) {
+      let customError = ''
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (parsed && typeof parsed === 'object') {
+            const vals = Object.values(parsed)
+            if (vals.length > 0) {
+              customError = Array.isArray(vals[0]) ? vals[0].join(', ') : String(vals[0])
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
       setModalError(
-        modalMode === 'edit'
-          ? 'No se pudo actualizar el recurrente.'
-          : 'No se pudo crear el recurrente.',
+        customError ||
+          (modalMode === 'edit'
+            ? 'No se pudo actualizar el recurrente.'
+            : 'No se pudo crear el recurrente.'),
       )
     } finally {
       setSaving(false)
@@ -181,6 +257,8 @@ export function RecurrentesPage() {
 
   return (
     <section className="space-y-6 text-slate-800">
+      <FiltroMesRecurrentes fechaRef={fechaRef} onChangeFecha={setFechaRef} />
+
       {loading && <p className="text-sm text-slate-500">Cargando recurrentes…</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
@@ -189,6 +267,15 @@ export function RecurrentesPage() {
           <RecurrentesSummaryCard
             totalPendienteGastos={totalPendienteGastos}
             totalPendienteIngresos={totalPendienteIngresos}
+          />
+
+          <ResumenCuentasAtrasadas
+            deudas={cuentasAtrasadas?.deudas ?? []}
+            cobros={cuentasAtrasadas?.cobros ?? []}
+            totalPagar={cuentasAtrasadas?.total_pagar ?? 0}
+            totalCobrar={cuentasAtrasadas?.total_cobrar ?? 0}
+            onPagar={manejarPagarAtrasada}
+            procesandoId={procesandoAtrasadaId}
           />
 
           <div className="space-y-4">
@@ -243,6 +330,8 @@ export function RecurrentesPage() {
         monto={monto}
         diaPago={diaPago}
         categoriaId={categoriaId}
+        fechaInicio={fechaInicio}
+        fechaFin={fechaFin}
         categorias={categorias}
         saving={saving}
         error={modalError}
@@ -251,6 +340,8 @@ export function RecurrentesPage() {
         onMontoChange={setMonto}
         onDiaPagoChange={setDiaPago}
         onCategoriaIdChange={setCategoriaId}
+        onFechaInicioChange={setFechaInicio}
+        onFechaFinChange={setFechaFin}
         onClose={cerrarModal}
         onSubmit={manejarGuardar}
       />

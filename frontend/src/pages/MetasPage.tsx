@@ -40,6 +40,7 @@ export function MetasPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [nombre, setNombre] = useState('')
   const [montoObjetivo, setMontoObjetivo] = useState('')
+  const [fechaInicio, setFechaInicio] = useState('')
   const [fechaLimite, setFechaLimite] = useState('')
   const [categoriaReferenciaId, setCategoriaReferenciaId] = useState<number | ''>('')
   const [categoriasGasto, setCategoriasGasto] = useState<Awaited<ReturnType<typeof fetchCategories>>>([])
@@ -90,6 +91,7 @@ export function MetasPage() {
   const resetForm = () => {
     setNombre('')
     setMontoObjetivo('')
+    setFechaInicio('')
     setFechaLimite('')
     setCategoriaReferenciaId('')
     setEditingId(null)
@@ -107,7 +109,8 @@ export function MetasPage() {
     setEditingId(meta.id)
     setNombre(meta.nombre)
     setMontoObjetivo(String(meta.objetivo))
-    setFechaLimite(meta.fechaLimite ?? '')
+    setFechaInicio(meta.fechaInicio ? meta.fechaInicio.slice(0, 7) : '')
+    setFechaLimite(meta.fechaLimite ? meta.fechaLimite.slice(0, 7) : '')
     setCategoriaReferenciaId(meta.categoriaReferenciaId ?? '')
     setModalError('')
     setIsModalOpen(true)
@@ -155,7 +158,8 @@ export function MetasPage() {
       const payload = {
         nombre: nombre.trim(),
         monto_objetivo: montoObjetivo,
-        fecha_limite: fechaLimite || null,
+        fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
+        fecha_limite: fechaLimite ? `${fechaLimite}-01` : null,
         categoria_referencia: categoriaReferenciaId || null,
       }
 
@@ -238,6 +242,7 @@ export function MetasPage() {
         mode={modalMode}
         nombre={nombre}
         montoObjetivo={montoObjetivo}
+        fechaInicio={fechaInicio}
         fechaLimite={fechaLimite}
         categoriaReferenciaId={categoriaReferenciaId}
         categoriasGasto={categoriasGasto}
@@ -245,6 +250,7 @@ export function MetasPage() {
         error={modalError}
         onNombreChange={setNombre}
         onMontoObjetivoChange={setMontoObjetivo}
+        onFechaInicioChange={setFechaInicio}
         onFechaLimiteChange={setFechaLimite}
         onCategoriaReferenciaChange={setCategoriaReferenciaId}
         onClose={cerrarModal}

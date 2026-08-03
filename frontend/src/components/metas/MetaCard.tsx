@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, MinusCircle, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, Calendar, CheckCircle2, MinusCircle, Pencil, Plus } from 'lucide-react'
 import { getCategoryChartColors, getCategoryDisplay } from '../../utils/categoryDisplay'
 import type { MetaCardView } from '../../utils/metasDisplay'
 
@@ -17,8 +17,10 @@ export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardPr
     porcentaje,
     completada,
     estado,
+    fechaInicioLabel,
     fechaLimiteLabel,
     iconCategory,
+    montoSugeridoMensual,
   } = meta
 
   const catInfo = getCategoryDisplay(iconCategory)
@@ -32,8 +34,17 @@ export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardPr
           <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[10px] font-black tracking-wider text-slate-500">
             {iconCategory.toUpperCase()}
           </span>
-          {fechaLimiteLabel && (
-            <span className="text-xs font-medium text-slate-400">Meta: {fechaLimiteLabel}</span>
+          {(fechaInicioLabel || fechaLimiteLabel) && (
+            <span className="flex items-center gap-1 rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[9px] font-bold text-slate-500">
+              <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
+              <span>
+                {fechaInicioLabel && fechaLimiteLabel
+                  ? `${fechaInicioLabel} al ${fechaLimiteLabel}`
+                  : fechaInicioLabel
+                    ? `Inicio: ${fechaInicioLabel}`
+                    : `Meta: ${fechaLimiteLabel}`}
+              </span>
+            </span>
           )}
         </div>
 
@@ -74,6 +85,12 @@ export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardPr
             style={{ width: `${Math.min(porcentaje, 100)}%` }}
           />
         </div>
+
+        {!completada && montoSugeridoMensual && (
+          <p className="text-[11px] text-slate-500 font-medium bg-indigo-50/50 border border-indigo-100/60 rounded-xl p-2 mt-1">
+            💡 Ahorro mensual sugerido: <span className="font-bold text-indigo-700">S/ {montoSugeridoMensual.toFixed(2)}</span>
+          </p>
+        )}
       </div>
 
       {completada && (

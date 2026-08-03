@@ -6,6 +6,7 @@ export type ApiMeta = {
   id: number
   nombre: string
   monto_objetivo: string
+  fecha_inicio: string | null
   fecha_limite: string | null
   categoria_referencia: number | null
   categoria_referencia_nombre: string | null
@@ -14,6 +15,7 @@ export type ApiMeta = {
   porcentaje: number
   completada: boolean
   estado: MetaEstado
+  monto_sugerido_mensual: string | null
   creado_en: string
   actualizado_en: string
 }
@@ -39,6 +41,7 @@ export async function fetchMetas(): Promise<ApiMeta[]> {
 export async function createMeta(data: {
   nombre: string
   monto_objetivo: string
+  fecha_inicio?: string | null
   fecha_limite?: string | null
   categoria_referencia?: number | null
 }): Promise<ApiMeta> {
@@ -58,6 +61,7 @@ export async function updateMeta(
   data: {
     nombre?: string
     monto_objetivo?: string
+    fecha_inicio?: string | null
     fecha_limite?: string | null
     categoria_referencia?: number | null
   },

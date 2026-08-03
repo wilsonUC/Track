@@ -83,6 +83,8 @@ class Recurrente(models.Model):
         related_name="recurrentes",
     )
     permite_parciales = models.BooleanField(default=False)
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -114,6 +116,7 @@ class MetaAhorro(models.Model):
     )
     nombre = models.CharField(max_length=120)
     monto_objetivo = models.DecimalField(max_digits=12, decimal_places=2)
+    fecha_inicio = models.DateField(null=True, blank=True)
     fecha_limite = models.DateField(null=True, blank=True)
     monto_rapido = models.DecimalField(max_digits=12, decimal_places=2, default=100)
     categoria_referencia = models.ForeignKey(

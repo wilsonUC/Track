@@ -24,7 +24,12 @@ from .models import (
 from .ia_service import chat_with_groq
 from .consejos_service import get_or_generate_consejos
 from .ahorros_service import ahorro_libre, resumen_ahorros
-from .recurrentes_service import transacciones_mes_actual, _bounds_mes, _bounds_mes_anterior
+from .recurrentes_service import (
+    transacciones_mes_actual,
+    _bounds_mes,
+    _bounds_mes_anterior,
+    obtener_cuentas_atrasadas,
+)
 from .serializers import (
     AhorroSerializer,
     CategorySerializer,
@@ -141,9 +146,16 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
     serializer_class = RecurrenteSerializer
 
     def get_queryset(self):
-        today = date.today()
-        inicio_mes, fin_mes = _bounds_mes(today)
-        inicio_anterior, fin_anterior = _bounds_mes_anterior(today)
+        mes_param = self.request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(mes_param)
+            except ValueError:
+                pass
+
+        inicio_mes, fin_mes = _bounds_mes(reference_date)
+        inicio_anterior, fin_anterior = _bounds_mes_anterior(reference_date)
 
         txs_este_mes = Transaction.objects.filter(
             recurrente=OuterRef("pk"),
@@ -167,6 +179,18 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             .order_by("tipo", "nombre")
         )
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        mes_param = self.request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(mes_param)
+            except ValueError:
+                pass
+        context["reference_date"] = reference_date
+        return context
+
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user, permite_parciales=False)
 
@@ -186,7 +210,9 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if transacciones_mes_actual(recurrente).exists():
+        fecha_pago = body.validated_data.get("fecha") or date.today()
+
+        if transacciones_mes_actual(recurrente, reference=fecha_pago).exists():
             return Response(
                 {"detalle": "Ya hay un registro de este mes para este recurrente."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -201,25 +227,44 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             presupuesto=None,
             tipo=recurrente.tipo,
             monto=monto,
-            fecha=date.today(),
+            fecha=fecha_pago,
             descripcion=f"Recurrente {etiqueta}: {recurrente.nombre}",
         )
+
+        context = self.get_serializer_context()
+        context["reference_date"] = fecha_pago
         recurrente = self.get_queryset().get(pk=recurrente.pk)
-        serializer = self.get_serializer(recurrente)
+        serializer = self.get_serializer(recurrente, context=context)
         return Response(serializer.data)
 
     @action(detail=True, methods=["post"], url_path="desmarcar-pago")
     def desmarcar_pago(self, request, pk=None):
         recurrente = self.get_object()
-        eliminados, _ = transacciones_mes_actual(recurrente).delete()
+        fecha_pago_str = request.data.get("fecha")
+        fecha_pago = date.today()
+        if fecha_pago_str:
+            try:
+                fecha_pago = date.fromisoformat(fecha_pago_str)
+            except ValueError:
+                pass
+
+        eliminados, _ = transacciones_mes_actual(recurrente, reference=fecha_pago).delete()
         if eliminados == 0:
             return Response(
                 {"detalle": "No hay registro de este mes para desmarcar."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        context = self.get_serializer_context()
+        context["reference_date"] = fecha_pago
         recurrente = self.get_queryset().get(pk=recurrente.pk)
-        serializer = self.get_serializer(recurrente)
+        serializer = self.get_serializer(recurrente, context=context)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="cuentas-atrasadas")
+    def cuentas_atrasadas(self, request):
+        res = obtener_cuentas_atrasadas(request.user, reference=date.today())
+        return Response(res)
 
 
 class MetaViewSet(viewsets.ModelViewSet):

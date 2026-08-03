@@ -1,6 +1,6 @@
 """Tests de API: auth, transacciones, presupuestos, recurrentes, ahorros y metas."""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -228,6 +228,101 @@ class RecurrenteTests(FinanzasAPITestCase):
         )
         self.assertEqual(duplicado.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_recurrente_periodo_activo_e_inactivo(self):
+        # Recurrente que ya terminó el mes pasado
+        mes_pasado = date.today().replace(day=1) - timedelta(days=1)
+        crear_finalizado = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Prestamo Expirado",
+                "monto": "100.00",
+                "tipo": "expense",
+                "dia_pago": 5,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": "2020-01-01",
+                "fecha_fin": mes_pasado.strftime("%Y-%m-%d"),
+            },
+            format="json",
+        )
+        self.assertEqual(crear_finalizado.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(crear_finalizado.data["activo_en_mes"])
+        self.assertEqual(crear_finalizado.data["estado_periodo"], "finalizado")
+        self.assertFalse(crear_finalizado.data["vencido"])
+
+        # Recurrente que empieza el mes que viene
+        mes_siguiente = (date.today().replace(day=28) + timedelta(days=10)).replace(day=1)
+        crear_futuro = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Gym Futuro",
+                "monto": "80.00",
+                "tipo": "expense",
+                "dia_pago": 10,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": mes_siguiente.strftime("%Y-%m-%d"),
+            },
+            format="json",
+        )
+        self.assertEqual(crear_futuro.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(crear_futuro.data["activo_en_mes"])
+        self.assertEqual(crear_futuro.data["estado_periodo"], "no_iniciado")
+        self.assertFalse(crear_futuro.data["vencido"])
+
+        # Validación: inicio no puede ser posterior a fin
+        crear_invalido = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Invalido",
+                "monto": "50.00",
+                "tipo": "expense",
+                "dia_pago": 10,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": "2026-12-31",
+                "fecha_fin": "2026-01-01",
+            },
+            format="json",
+        )
+        self.assertEqual(crear_invalido.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cuentas_atrasadas_y_pago_mes_especifico(self):
+        # Recurrente creado el mes pasado (ej: hace 30 días)
+        fecha_hace_un_mes = date.today() - timedelta(days=30)
+        crear = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Servicio Luz",
+                "monto": "150.00",
+                "tipo": "expense",
+                "dia_pago": 10,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": fecha_hace_un_mes.strftime("%Y-%m-%d"),
+            },
+            format="json",
+        )
+        self.assertEqual(crear.status_code, status.HTTP_201_CREATED)
+        recurrente_id = crear.data["id"]
+
+        # 1. Consultar deudas atrasadas. Debe haber al menos 1 deuda correspondiente al mes pasado
+        res = self.client.get("/api/recurrentes/cuentas-atrasadas/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(res.data["deudas"]), 0)
+        deuda_item = res.data["deudas"][0]
+        self.assertEqual(deuda_item["id_recurrente"], recurrente_id)
+        
+        # 2. Registrar pago para la fecha de esa deuda
+        pago_fecha = deuda_item["fecha_pago"]
+        registrar = self.client.post(
+            f"/api/recurrentes/{recurrente_id}/registrar-pago/",
+            {"fecha": pago_fecha},
+            format="json",
+        )
+        self.assertEqual(registrar.status_code, status.HTTP_200_OK)
+        
+        # 3. Consultar deudas de nuevo. Esa deuda ya no debe existir
+        res_nuevo = self.client.get("/api/recurrentes/cuentas-atrasadas/")
+        deudas_restantes = [d for d in res_nuevo.data["deudas"] if d["id_recurrente"] == recurrente_id]
+        self.assertEqual(len(deudas_restantes), 0)
+
 
 class AhorrosYMetasTests(FinanzasAPITestCase):
     def setUp(self):
@@ -329,6 +424,41 @@ class AhorrosYMetasTests(FinanzasAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_meta_periodo_y_ahorro_sugerido(self):
+        # Crear meta con fecha_inicio y fecha_limite
+        inicio = date.today().strftime("%Y-%m-%d")
+        # Fecha límite dentro de 3 meses
+        limite = (date.today().replace(day=28) + timedelta(days=90)).strftime("%Y-%m-%d")
+
+        meta = self.client.post(
+            "/api/metas/",
+            {
+                "nombre": "Computadora",
+                "monto_objetivo": "1000.00",
+                "fecha_inicio": inicio,
+                "fecha_limite": limite,
+            },
+            format="json",
+        )
+        self.assertEqual(meta.status_code, status.HTTP_201_CREATED)
+        self.assertIsNotNone(meta.data["monto_sugerido_mensual"])
+        # Debe calcular el monto sugerido mensual: 1000 / meses_restantes
+        sugerido = Decimal(str(meta.data["monto_sugerido_mensual"]))
+        self.assertGreater(sugerido, Decimal("0"))
+
+        # Validar que fecha_inicio <= fecha_limite
+        meta_invalid = self.client.post(
+            "/api/metas/",
+            {
+                "nombre": "Invalida",
+                "monto_objetivo": "500.00",
+                "fecha_inicio": "2026-12-31",
+                "fecha_limite": "2026-01-01",
+            },
+            format="json",
+        )
+        self.assertEqual(meta_invalid.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class PreferenciasTests(FinanzasAPITestCase):

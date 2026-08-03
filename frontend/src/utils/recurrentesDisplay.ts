@@ -13,6 +13,10 @@ export function mapRecurrenteToCard(r: ApiRecurrente): RecurrenteCardView {
     registradoMes: r.registrado_mes,
     vencido: r.vencido,
     mesAnteriorSinRegistrar: r.mes_anterior_sin_registrar,
+    fechaInicio: r.fecha_inicio,
+    fechaFin: r.fecha_fin,
+    activoEnMes: r.activo_en_mes,
+    estadoPeriodo: r.estado_periodo,
   }
 }
 

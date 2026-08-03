@@ -7,6 +7,7 @@ type MetaModalProps = {
   mode: 'create' | 'edit'
   nombre: string
   montoObjetivo: string
+  fechaInicio: string
   fechaLimite: string
   categoriaReferenciaId: number | ''
   categoriasGasto: ApiCategory[]
@@ -14,6 +15,7 @@ type MetaModalProps = {
   error?: string
   onNombreChange: (value: string) => void
   onMontoObjetivoChange: (value: string) => void
+  onFechaInicioChange: (value: string) => void
   onFechaLimiteChange: (value: string) => void
   onCategoriaReferenciaChange: (value: number | '') => void
   onClose: () => void
@@ -25,6 +27,7 @@ export function MetaModal({
   mode,
   nombre,
   montoObjetivo,
+  fechaInicio,
   fechaLimite,
   categoriaReferenciaId,
   categoriasGasto,
@@ -32,6 +35,7 @@ export function MetaModal({
   error,
   onNombreChange,
   onMontoObjetivoChange,
+  onFechaInicioChange,
   onFechaLimiteChange,
   onCategoriaReferenciaChange,
   onClose,
@@ -71,28 +75,40 @@ export function MetaModal({
             />
           </div>
 
+          <div>
+            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+              Monto objetivo (S/)
+            </label>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="2000"
+              value={montoObjetivo}
+              onChange={(e) => onMontoObjetivoChange(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              required
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
-                Monto objetivo (S/)
+                Fecha de inicio (opcional)
               </label>
               <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="2000"
-                value={montoObjetivo}
-                onChange={(e) => onMontoObjetivoChange(e.target.value)}
+                type="month"
+                value={fechaInicio}
+                onChange={(e) => onFechaInicioChange(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                required
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
-                Fecha límite
+                Fecha límite (opcional)
               </label>
               <input
-                type="date"
+                type="month"
                 value={fechaLimite}
                 onChange={(e) => onFechaLimiteChange(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"

@@ -17,10 +17,14 @@ import {
   type EnrichedTransaction,
 } from '../../utils/dashboardMetrics'
 import { formatSoles } from '../../utils/financeFormat'
-import { DashboardChartsSection } from './DashboardChartsSection'
+import { DashboardCategoryExpenses } from './DashboardCategoryExpenses'
+import { DashboardMonthlyChart } from './DashboardMonthlyChart'
 import { DashboardMonthCard } from './DashboardMonthCard'
 import { DashboardRecentTransactions } from './DashboardRecentTransactions'
 import { DashboardSummaryCard } from './DashboardSummaryCard'
+import { fetchRecurrentes } from '../../api/recurrentes'
+import { mapRecurrenteToCard } from '../../utils/recurrentesDisplay'
+import type { RecurrenteCardView } from '../recurrentes/recurrentesTypes'
 
 type OutletContext = {
   transactionsVersion: number
@@ -32,19 +36,30 @@ export function DashboardPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [allTransactions, setAllTransactions] = useState<EnrichedTransaction[]>([])
+  const [recurrentes, setRecurrentes] = useState<RecurrenteCardView[]>([])
 
   const dateFilter = useDateFilter({ defaultPreset: 'month' })
+
+  const dateStart = dateFilter.range.start || new Date()
+  const mesIso = useMemo(() => {
+    const dObj = typeof dateStart === 'string' ? new Date(dateStart) : dateStart
+    const y = dObj.getFullYear()
+    const m = String(dObj.getMonth() + 1).padStart(2, '0')
+    const d = String(dObj.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }, [dateStart])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
 
-    Promise.all([fetchTransactions(), fetchCategories()])
-      .then(([transactions, categories]) => {
+    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes(mesIso)])
+      .then(([transactions, categories, recs]) => {
         if (cancelled) return
         const categoryMap = buildCategoryMap(categories)
         setAllTransactions(enrichTransactions(transactions, categoryMap))
+        setRecurrentes(recs.map(mapRecurrenteToCard))
       })
       .catch(() => {
         if (!cancelled) setError('No se pudieron cargar los datos del dashboard.')
@@ -56,7 +71,7 @@ export function DashboardPanel() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion])
+  }, [transactionsVersion, mesIso])
 
   const filtered = useMemo(
     () => filterByDateRange(allTransactions, dateFilter.range),
@@ -87,6 +102,16 @@ export function DashboardPanel() {
     [filtered],
   )
   const recent = useMemo(() => sortByDateDesc(filtered).slice(0, 8), [filtered])
+
+  const totalPendienteGastos = useMemo(() => {
+    const gastos = recurrentes.filter((r) => r.tipo === 'expense')
+    return gastos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
+  }, [recurrentes])
+
+  const totalPendienteIngresos = useMemo(() => {
+    const ingresos = recurrentes.filter((r) => r.tipo === 'income')
+    return ingresos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
+  }, [recurrentes])
 
   if (error) {
     return (
@@ -149,27 +174,40 @@ export function DashboardPanel() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardMonthCard
-          variant="income"
-          transactions={periodIncome}
-          loading={loading}
-          periodLabel={dateFilter.label}
-        />
-        <DashboardMonthCard
-          variant="expense"
-          transactions={periodExpense}
-          loading={loading}
-          periodLabel={dateFilter.label}
-        />
+        {/* Columna Izquierda */}
+        <div className="space-y-4">
+          <DashboardMonthCard
+            variant="income"
+            transactions={periodIncome}
+            loading={loading}
+            periodLabel={dateFilter.label}
+          />
+          <DashboardMonthCard
+            variant="expense"
+            transactions={periodExpense}
+            loading={loading}
+            periodLabel={dateFilter.label}
+          />
+          <DashboardCategoryExpenses
+            categoryExpenses={categoryExpenses}
+            loading={loading}
+          />
+        </div>
+
+        {/* Columna Derecha */}
+        <div className="space-y-4">
+          <DashboardRecentTransactions
+            transactions={recent}
+            loading={loading}
+            totalPendienteGastos={totalPendienteGastos}
+            totalPendienteIngresos={totalPendienteIngresos}
+          />
+          <DashboardMonthlyChart
+            data={monthlyChart}
+            loading={loading}
+          />
+        </div>
       </div>
-
-      <DashboardChartsSection
-        categoryExpenses={categoryExpenses}
-        monthlyChart={monthlyChart}
-        loading={loading}
-      />
-
-      <DashboardRecentTransactions transactions={recent} loading={loading} />
     </section>
   )
 }

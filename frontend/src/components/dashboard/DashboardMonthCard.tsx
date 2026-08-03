@@ -1,4 +1,5 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { MovementType } from '../../types/finance'
 import type { EnrichedTransaction } from '../../utils/dashboardMetrics'
 import { getCategoryDisplay } from '../../utils/categoryDisplay'
@@ -12,6 +13,7 @@ type DashboardMonthCardProps = {
 }
 
 export function DashboardMonthCard({ variant, transactions, loading, periodLabel }: DashboardMonthCardProps) {
+  const navigate = useNavigate()
   const isIncome = variant === 'income'
   const title = isIncome ? 'Ingresos' : 'Gastos'
   const totalAmount = transactions.reduce((sum, item) => sum + item.montoNum, 0)
@@ -19,15 +21,18 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
   const emptyText = isIncome ? 'Sin ingresos en el período' : 'Sin gastos en el período'
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md duration-200">
+    <article
+      onClick={() => navigate(isIncome ? '/ingresos' : '/gastos')}
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:scale-[1.005] duration-200 cursor-pointer"
+    >
       <div
         className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4 ${
           isIncome ? 'border-emerald-100 bg-emerald-50/10' : 'border-rose-100 bg-rose-50/10'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
               isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
             }`}
           >
@@ -37,12 +42,12 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
               <TrendingDown className="h-5 w-5" aria-hidden />
             )}
           </div>
-          <div>
-            <h3 className="font-semibold text-slate-800">{title}</h3>
-            {periodLabel && <p className="text-xs text-slate-400">{periodLabel}</p>}
+          <div className="min-w-0">
+            <h3 className="font-semibold text-slate-800 truncate">{title}</h3>
+            {periodLabel && <p className="text-xs text-slate-400 truncate">{periodLabel}</p>}
           </div>
         </div>
-        <p className={`text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <p className={`shrink-0 text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
           {formattedTotal}
         </p>
       </div>
@@ -57,7 +62,7 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
         )}
 
         {!loading && transactions.length > 0 && (
-          <div className="max-h-[280px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
+          <div className="max-h-[280px] overflow-y-auto overflow-x-hidden pr-2" style={{ scrollbarWidth: 'thin' }}>
             <ul className="flex flex-col gap-1.5">
               {transactions.map((item) => {
                 const catInfo = getCategoryDisplay(item.categoriaNombre)

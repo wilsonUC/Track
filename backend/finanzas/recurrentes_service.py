@@ -65,6 +65,25 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
     today = reference or date.today()
     inicio, fin = _bounds_mes(today)
 
+    activo_en_mes = True
+    estado_periodo = "activo"
+
+    ref_inicio_mes = today.replace(day=1)
+
+    if recurrente.fecha_inicio and ref_inicio_mes < recurrente.fecha_inicio.replace(day=1):
+        activo_en_mes = False
+        estado_periodo = "no_iniciado"
+
+    if recurrente.fecha_fin and ref_inicio_mes > recurrente.fecha_fin.replace(day=1):
+        activo_en_mes = False
+        estado_periodo = "finalizado"
+
+    # Si es un mes del futuro relativo al mes real actual, se bloquea el pago/cobro
+    real_today = date.today()
+    if activo_en_mes and ref_inicio_mes > real_today.replace(day=1):
+        activo_en_mes = False
+        estado_periodo = "futuro"
+
     if hasattr(recurrente, "registrado_este_mes"):
         registrado_mes = recurrente.registrado_este_mes
     else:
@@ -73,7 +92,7 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
     vencido = False
     mes_anterior_sin_registrar = None
 
-    if not registrado_mes:
+    if activo_en_mes and not registrado_mes:
         creado = (
             recurrente.creado_en.date()
             if hasattr(recurrente.creado_en, "date")
@@ -91,10 +110,88 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
             registrado_anterior = tiene_registro_en_rango(recurrente, prev_inicio, prev_fin)
 
         if creado <= prev_fin and not registrado_anterior:
-            mes_anterior_sin_registrar = MESES_ES[prev_inicio.month - 1]
+            # Solo alertar si el mes anterior estaba dentro del periodo de vigencia
+            mes_anterior_activo = True
+            if recurrente.fecha_inicio and prev_fin < recurrente.fecha_inicio:
+                mes_anterior_activo = False
+            if recurrente.fecha_fin and prev_inicio > recurrente.fecha_fin:
+                mes_anterior_activo = False
+            
+            if mes_anterior_activo:
+                mes_anterior_sin_registrar = MESES_ES[prev_inicio.month - 1]
 
     return {
-        "registrado_mes": registrado_mes,
+        "registrado_mes": registrado_mes if activo_en_mes else False,
         "vencido": vencido,
         "mes_anterior_sin_registrar": mes_anterior_sin_registrar,
+        "activo_en_mes": activo_en_mes,
+        "estado_periodo": estado_periodo,
+    }
+
+
+def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
+    from .models import Recurrente
+
+    reference = reference or date.today()
+    primer_dia_actual = reference.replace(day=1)
+
+    deudas = []
+    cobros = []
+
+    recurrentes = Recurrente.objects.filter(usuario=usuario, activo=True).select_related("categoria")
+
+    for r in recurrentes:
+        creado = r.creado_en.date() if hasattr(r.creado_en, "date") else r.creado_en
+        fecha_start = r.fecha_inicio if r.fecha_inicio else creado
+
+        # Alinear iter_date al primer día de fecha_start
+        iter_date = fecha_start.replace(day=1)
+
+        while iter_date < primer_dia_actual:
+            if r.fecha_fin and iter_date > r.fecha_fin.replace(day=1):
+                break
+
+            ultimo_dia = calendar.monthrange(iter_date.year, iter_date.month)[1]
+            inicio_mes = iter_date
+            fin_mes = iter_date.replace(day=ultimo_dia)
+
+            registrado = Transaction.objects.filter(
+                recurrente=r,
+                fecha__gte=inicio_mes,
+                fecha__lte=fin_mes,
+            ).exists()
+
+            if not registrado:
+                mes_nombre = MESES_ES[iter_date.month - 1].capitalize()
+                dia_vencimiento = dia_efectivo(r.dia_pago, iter_date)
+                fecha_venc = iter_date.replace(day=dia_vencimiento)
+
+                atraso_item = {
+                    "id": f"{r.id}-{iter_date.strftime('%Y-%m')}",
+                    "id_recurrente": r.id,
+                    "nombre": r.nombre,
+                    "categoria": r.categoria.nombre,
+                    "mes_atraso": f"{mes_nombre} {iter_date.year}",
+                    "fecha_pago": fecha_venc.strftime("%Y-%m-%d"),
+                    "acumulado": float(r.monto),
+                }
+
+                if r.tipo == Transaction.Tipo.INGRESO:
+                    cobros.append(atraso_item)
+                else:
+                    deudas.append(atraso_item)
+
+            if iter_date.month == 12:
+                iter_date = iter_date.replace(year=iter_date.year + 1, month=1)
+            else:
+                iter_date = iter_date.replace(month=iter_date.month + 1)
+
+    total_pagar = sum(item["acumulado"] for item in deudas)
+    total_cobrar = sum(item["acumulado"] for item in cobros)
+
+    return {
+        "total_pagar": total_pagar,
+        "total_cobrar": total_cobrar,
+        "deudas": deudas,
+        "cobros": cobros,
     }

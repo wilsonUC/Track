@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
+import { User } from 'lucide-react'
 import { menuItems } from '../../constants/navigation'
-import { sectionPaths } from '../../constants/routes'
+import { sectionPaths, cuentaPath } from '../../constants/routes'
 import type { Section } from '../../types/finance'
 import { NavIcon } from './navIcons'
 
@@ -60,6 +61,26 @@ export function MobileNav({ isStaff }: MobileNavProps) {
             </NavLink>
           )
         })}
+
+        <NavLink
+          to={cuentaPath}
+          className={({ isActive }) =>
+            `flex min-w-17 max-w-23 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition ${
+              isActive
+                ? 'bg-indigo-100 font-semibold text-indigo-900 dark:bg-slate-800 dark:text-slate-100'
+                : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-slate-800'
+            }`
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <span className={isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'}>
+                <User className="h-5 w-5 shrink-0" aria-hidden />
+              </span>
+              <span className="line-clamp-2 w-full text-center">Usuario</span>
+            </>
+          )}
+        </NavLink>
       </div>
     </nav>
   )

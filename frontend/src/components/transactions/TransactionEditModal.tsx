@@ -105,9 +105,6 @@ export function TransactionEditModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-tx-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
     >
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-center bg-white pt-3 sm:hidden">

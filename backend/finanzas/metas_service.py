@@ -38,3 +38,36 @@ def calcular_estado_meta(meta, reference: date | None = None) -> str:
     if meta.fecha_limite and meta.fecha_limite < today:
         return "vencida"
     return "en_progreso"
+
+
+def calcular_ahorro_sugerido(meta, reference: date | None = None) -> Decimal | None:
+    """Calcula la cuota mensual sugerida de ahorro para cumplir la meta.
+
+    Fórmula: (objetivo - acumulado) / meses_restantes.
+    Si no hay fecha de inicio o fecha limite, retorna None.
+    """
+    today = reference or date.today()
+    acumulado = calcular_acumulado(meta)
+    restante = meta.monto_objetivo - acumulado
+
+    if restante <= 0:
+        return Decimal("0")
+
+    if not meta.fecha_inicio or not meta.fecha_limite:
+        return None
+
+    # Si la fecha límite ya venció en el pasado, sugerir todo el monto restante
+    if meta.fecha_limite < today:
+        return restante
+
+    # El cálculo empieza desde hoy, o desde fecha_inicio si es futura
+    desde = max(today, meta.fecha_inicio)
+
+    diff_anios = meta.fecha_limite.year - desde.year
+    diff_meses = meta.fecha_limite.month - desde.month
+    total_meses = diff_anios * 12 + diff_meses + 1
+
+    if total_meses <= 0:
+        total_meses = 1
+
+    return restante / Decimal(str(total_meses))

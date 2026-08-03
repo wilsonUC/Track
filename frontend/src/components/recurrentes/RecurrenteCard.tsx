@@ -26,16 +26,28 @@ export function RecurrenteCard({
     vencido,
     mesAnteriorSinRegistrar,
     tipo,
+    fechaInicio,
+    fechaFin,
+    activoEnMes,
+    estadoPeriodo,
   } = recurrente
   const esIngreso = tipo === 'income'
   const catInfo = getCategoryDisplay(categoriaNombre)
   const etiquetaFecha = esIngreso ? 'Se cobra el día' : 'Vence el día'
 
+  const formatPeriodoText = () => {
+    if (fechaInicio && fechaFin) return `${fechaInicio} a ${fechaFin}`
+    if (fechaInicio) return `Desde ${fechaInicio}`
+    if (fechaFin) return `Hasta ${fechaFin}`
+    return null
+  }
+  const periodoText = formatPeriodoText()
+
   return (
     <article
       className={`flex flex-col justify-between space-y-4 rounded-2xl border bg-white p-5 shadow-sm transition-all hover:shadow-md ${
         esIngreso ? 'border-emerald-100' : 'border-slate-100'
-      }`}
+      } ${!activoEnMes ? 'opacity-80' : ''}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-3">
@@ -45,6 +57,11 @@ export function RecurrenteCard({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               {categoriaNombre}
             </span>
+            {periodoText && (
+              <span className="mt-0.5 block text-[10px] text-slate-500">
+                Periodo: {periodoText}
+              </span>
+            )}
           </div>
         </div>
 
@@ -52,6 +69,14 @@ export function RecurrenteCard({
           {registradoMes ? (
             <span className="rounded-md border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-600">
               {esIngreso ? 'COBRADO' : 'PAGADO'}
+            </span>
+          ) : !activoEnMes ? (
+            <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">
+              {estadoPeriodo === 'no_iniciado'
+                ? 'NO INICIADO'
+                : estadoPeriodo === 'futuro'
+                  ? 'PRÓXIMAMENTE'
+                  : 'FINALIZADO'}
             </span>
           ) : (
             <span
@@ -99,18 +124,22 @@ export function RecurrenteCard({
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={procesando}
+          disabled={procesando || !activoEnMes}
           onClick={() => onAlternarPago(id)}
           className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-60 ${
-            registradoMes
-              ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              : esIngreso
-                ? 'border-emerald-100 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50'
-                : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
+            !activoEnMes
+              ? 'border-slate-100 bg-slate-100 text-slate-400 cursor-not-allowed'
+              : registradoMes
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                : esIngreso
+                  ? 'border-emerald-100 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-50'
+                  : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600'
           }`}
         >
           {procesando ? (
             <span>Procesando…</span>
+          ) : !activoEnMes ? (
+            <span>{estadoPeriodo === 'futuro' ? 'Aún no disponible' : 'Fuera de período'}</span>
           ) : registradoMes ? (
             <>
               <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />

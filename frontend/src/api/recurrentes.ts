@@ -9,16 +9,21 @@ export type ApiRecurrente = {
   categoria: number
   categoria_nombre: string
   permite_parciales: boolean
+  fecha_inicio: string | null
+  fecha_fin: string | null
   activo: boolean
   registrado_mes: boolean
   vencido: boolean
   mes_anterior_sin_registrar: string | null
+  activo_en_mes: boolean
+  estado_periodo: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro'
   creado_en: string
   actualizado_en: string
 }
 
-export async function fetchRecurrentes(): Promise<ApiRecurrente[]> {
-  const res = await authFetch('/api/recurrentes/')
+export async function fetchRecurrentes(mes?: string): Promise<ApiRecurrente[]> {
+  const url = mes ? `/api/recurrentes/?mes=${mes}` : '/api/recurrentes/'
+  const res = await authFetch(url)
   if (!res.ok) throw new Error('No se pudieron cargar los recurrentes')
   return res.json()
 }
@@ -29,6 +34,8 @@ export async function createRecurrente(data: {
   tipo: 'income' | 'expense'
   dia_pago: number
   categoria: number
+  fecha_inicio?: string | null
+  fecha_fin?: string | null
 }): Promise<ApiRecurrente> {
   const res = await authFetch('/api/recurrentes/', {
     method: 'POST',
@@ -49,6 +56,8 @@ export async function updateRecurrente(
     tipo?: 'income' | 'expense'
     dia_pago?: number
     categoria?: number
+    fecha_inicio?: string | null
+    fecha_fin?: string | null
   },
 ): Promise<ApiRecurrente> {
   const res = await authFetch(`/api/recurrentes/${id}/`, {
@@ -65,10 +74,14 @@ export async function updateRecurrente(
 export async function registrarPagoRecurrente(
   id: number,
   monto?: string,
+  fecha?: string,
 ): Promise<ApiRecurrente> {
   const res = await authFetch(`/api/recurrentes/${id}/registrar-pago/`, {
     method: 'POST',
-    body: JSON.stringify(monto ? { monto } : {}),
+    body: JSON.stringify({
+      ...(monto ? { monto } : {}),
+      ...(fecha ? { fecha } : {}),
+    }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -77,13 +90,38 @@ export async function registrarPagoRecurrente(
   return res.json()
 }
 
-export async function desmarcarPagoRecurrente(id: number): Promise<ApiRecurrente> {
+export async function desmarcarPagoRecurrente(id: number, fecha?: string): Promise<ApiRecurrente> {
   const res = await authFetch(`/api/recurrentes/${id}/desmarcar-pago/`, {
     method: 'POST',
+    body: JSON.stringify(fecha ? { fecha } : {}),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(JSON.stringify(err))
   }
+  return res.json()
+}
+
+export type ApiCuentasAtrasadasItem = {
+  id: string
+  id_recurrente: number
+  nombre: string
+  categoria: string
+  mes_atraso: string
+  fecha_pago: string
+  acumulado: number
+}
+
+export type ApiCuentasAtrasadas = {
+  total_pagar: number
+  total_cobrar: number
+  deudas: ApiCuentasAtrasadasItem[]
+  cobros: ApiCuentasAtrasadasItem[]
+}
+
+export async function fetchCuentasAtrasadas(mes?: string): Promise<ApiCuentasAtrasadas> {
+  const url = mes ? `/api/recurrentes/cuentas-atrasadas/?mes=${mes}` : '/api/recurrentes/cuentas-atrasadas/'
+  const res = await authFetch(url)
+  if (!res.ok) throw new Error('No se pudieron cargar las cuentas atrasadas')
   return res.json()
 }

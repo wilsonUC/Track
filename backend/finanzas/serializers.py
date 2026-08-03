@@ -1,5 +1,4 @@
-# Aquí se prepara lo que entra y sale por la API: leer datos del usuario,
-# comprobar que tengan sentido y pasarlos a la base de datos (o al revés).
+import calendar
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
@@ -19,6 +18,7 @@ from .metas_service import (
     calcular_completada,
     calcular_estado_meta,
     calcular_porcentaje as calcular_porcentaje_meta,
+    calcular_ahorro_sugerido,
 )
 from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
 from .recurrentes_service import calcular_estado_recurrente
@@ -167,6 +167,8 @@ class RecurrenteSerializer(serializers.ModelSerializer):
     registrado_mes = serializers.SerializerMethodField()
     vencido = serializers.SerializerMethodField()
     mes_anterior_sin_registrar = serializers.SerializerMethodField()
+    activo_en_mes = serializers.SerializerMethodField()
+    estado_periodo = serializers.SerializerMethodField()
 
     class Meta:
         model = Recurrente
@@ -179,10 +181,14 @@ class RecurrenteSerializer(serializers.ModelSerializer):
             "categoria",
             "categoria_nombre",
             "permite_parciales",
+            "fecha_inicio",
+            "fecha_fin",
             "activo",
             "registrado_mes",
             "vencido",
             "mes_anterior_sin_registrar",
+            "activo_en_mes",
+            "estado_periodo",
             "creado_en",
             "actualizado_en",
         ]
@@ -192,12 +198,15 @@ class RecurrenteSerializer(serializers.ModelSerializer):
             "registrado_mes",
             "vencido",
             "mes_anterior_sin_registrar",
+            "activo_en_mes",
+            "estado_periodo",
             "creado_en",
             "actualizado_en",
         ]
 
     def _estado(self, obj: Recurrente):
-        return calcular_estado_recurrente(obj)
+        reference_date = self.context.get("reference_date")
+        return calcular_estado_recurrente(obj, reference=reference_date)
 
     def get_registrado_mes(self, obj):
         return self._estado(obj)["registrado_mes"]
@@ -207,6 +216,12 @@ class RecurrenteSerializer(serializers.ModelSerializer):
 
     def get_mes_anterior_sin_registrar(self, obj):
         return self._estado(obj)["mes_anterior_sin_registrar"]
+
+    def get_activo_en_mes(self, obj):
+        return self._estado(obj)["activo_en_mes"]
+
+    def get_estado_periodo(self, obj):
+        return self._estado(obj)["estado_periodo"]
 
     def validate_monto(self, value):
         if value <= 0:
@@ -221,20 +236,45 @@ class RecurrenteSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         categoria = attrs.get("categoria")
         tipo = attrs.get("tipo")
+
+        # Ajustar fecha_inicio al día 1 del mes
+        if "fecha_inicio" in attrs and attrs["fecha_inicio"] is not None:
+            attrs["fecha_inicio"] = attrs["fecha_inicio"].replace(day=1)
+
+        # Ajustar fecha_fin al último día del mes
+        if "fecha_fin" in attrs and attrs["fecha_fin"] is not None:
+            ultimo_dia = calendar.monthrange(attrs["fecha_fin"].year, attrs["fecha_fin"].month)[1]
+            attrs["fecha_fin"] = attrs["fecha_fin"].replace(day=ultimo_dia)
+
+        fecha_inicio = attrs.get("fecha_inicio")
+        fecha_fin = attrs.get("fecha_fin")
+
         if self.instance:
             if categoria is None:
                 categoria = self.instance.categoria
             if tipo is None:
                 tipo = self.instance.tipo
+            if fecha_inicio is None and "fecha_inicio" not in attrs:
+                fecha_inicio = self.instance.fecha_inicio
+            if fecha_fin is None and "fecha_fin" not in attrs:
+                fecha_fin = self.instance.fecha_fin
+
         if categoria and tipo and categoria.tipo != tipo:
             raise serializers.ValidationError(
                 {"categoria": "La categoría debe coincidir con el tipo (ingreso/gasto)."}
             )
+
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+            raise serializers.ValidationError(
+                {"fecha_inicio": "La fecha de inicio no puede ser posterior a la fecha de fin."}
+            )
+
         return attrs
 
 
 class RecurrenteRegistrarPagoSerializer(serializers.Serializer):
     monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    fecha = serializers.DateField(required=False)
 
 
 class MetaSerializer(serializers.ModelSerializer):
@@ -242,6 +282,7 @@ class MetaSerializer(serializers.ModelSerializer):
     porcentaje = serializers.SerializerMethodField()
     completada = serializers.SerializerMethodField()
     estado = serializers.SerializerMethodField()
+    monto_sugerido_mensual = serializers.SerializerMethodField()
     categoria_referencia_nombre = serializers.CharField(
         source="categoria_referencia.nombre",
         read_only=True,
@@ -254,6 +295,7 @@ class MetaSerializer(serializers.ModelSerializer):
             "id",
             "nombre",
             "monto_objetivo",
+            "fecha_inicio",
             "fecha_limite",
             "categoria_referencia",
             "categoria_referencia_nombre",
@@ -262,6 +304,7 @@ class MetaSerializer(serializers.ModelSerializer):
             "porcentaje",
             "completada",
             "estado",
+            "monto_sugerido_mensual",
             "creado_en",
             "actualizado_en",
         ]
@@ -271,6 +314,7 @@ class MetaSerializer(serializers.ModelSerializer):
             "porcentaje",
             "completada",
             "estado",
+            "monto_sugerido_mensual",
             "creado_en",
             "actualizado_en",
         ]
@@ -290,6 +334,9 @@ class MetaSerializer(serializers.ModelSerializer):
     def get_estado(self, obj):
         return calcular_estado_meta(obj)
 
+    def get_monto_sugerido_mensual(self, obj):
+        return calcular_ahorro_sugerido(obj)
+
     def validate_monto_objetivo(self, value):
         if value <= 0:
             raise serializers.ValidationError("El monto objetivo debe ser mayor que cero.")
@@ -299,6 +346,32 @@ class MetaSerializer(serializers.ModelSerializer):
         if value and value.tipo != Category.Tipo.GASTO:
             raise serializers.ValidationError("La categoría de referencia debe ser de gasto.")
         return value
+
+    def validate(self, attrs):
+        # Ajustar fecha_inicio al día 1 del mes
+        if "fecha_inicio" in attrs and attrs["fecha_inicio"] is not None:
+            attrs["fecha_inicio"] = attrs["fecha_inicio"].replace(day=1)
+
+        # Ajustar fecha_limite al último día del mes
+        if "fecha_limite" in attrs and attrs["fecha_limite"] is not None:
+            ultimo_dia = calendar.monthrange(attrs["fecha_limite"].year, attrs["fecha_limite"].month)[1]
+            attrs["fecha_limite"] = attrs["fecha_limite"].replace(day=ultimo_dia)
+
+        fecha_inicio = attrs.get("fecha_inicio")
+        fecha_limite = attrs.get("fecha_limite")
+
+        if self.instance:
+            if fecha_inicio is None and "fecha_inicio" not in attrs:
+                fecha_inicio = self.instance.fecha_inicio
+            if fecha_limite is None and "fecha_limite" not in attrs:
+                fecha_limite = self.instance.fecha_limite
+
+        if fecha_inicio and fecha_limite and fecha_inicio > fecha_limite:
+            raise serializers.ValidationError(
+                {"fecha_inicio": "La fecha de inicio no puede ser posterior a la fecha límite."}
+            )
+
+        return attrs
 
 
 class MetaAsignarSerializer(serializers.Serializer):

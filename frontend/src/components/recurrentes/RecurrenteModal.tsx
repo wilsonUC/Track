@@ -10,6 +10,8 @@ type RecurrenteModalProps = {
   monto: string
   diaPago: string
   categoriaId: number | ''
+  fechaInicio: string
+  fechaFin: string
   categorias: ApiCategory[]
   saving?: boolean
   error?: string
@@ -18,6 +20,8 @@ type RecurrenteModalProps = {
   onMontoChange: (value: string) => void
   onDiaPagoChange: (value: string) => void
   onCategoriaIdChange: (value: number | '') => void
+  onFechaInicioChange: (value: string) => void
+  onFechaFinChange: (value: string) => void
   onClose: () => void
   onSubmit: (e: FormEvent) => void
 }
@@ -30,6 +34,8 @@ export function RecurrenteModal({
   monto,
   diaPago,
   categoriaId,
+  fechaInicio,
+  fechaFin,
   categorias,
   saving,
   error,
@@ -38,6 +44,8 @@ export function RecurrenteModal({
   onMontoChange,
   onDiaPagoChange,
   onCategoriaIdChange,
+  onFechaInicioChange,
+  onFechaFinChange,
   onClose,
   onSubmit,
 }: RecurrenteModalProps) {
@@ -125,6 +133,31 @@ export function RecurrenteModal({
               <p className="mt-1 text-[10px] text-slate-400">
                 Si eliges 31, en febrero se usa el último día del mes.
               </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+                Comienza en (opcional)
+              </label>
+              <input
+                type="month"
+                value={fechaInicio}
+                onChange={(e) => onFechaInicioChange(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+                Termina en (opcional)
+              </label>
+              <input
+                type="month"
+                value={fechaFin}
+                onChange={(e) => onFechaFinChange(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
             </div>
           </div>
 
