@@ -40,21 +40,12 @@ export function DashboardPanel() {
 
   const dateFilter = useDateFilter({ defaultPreset: 'month' })
 
-  const dateStart = dateFilter.range.start || new Date()
-  const mesIso = useMemo(() => {
-    const dObj = typeof dateStart === 'string' ? new Date(dateStart) : dateStart
-    const y = dObj.getFullYear()
-    const m = String(dObj.getMonth() + 1).padStart(2, '0')
-    const d = String(dObj.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }, [dateStart])
-
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
 
-    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes(mesIso)])
+    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes()])
       .then(([transactions, categories, recs]) => {
         if (cancelled) return
         const categoryMap = buildCategoryMap(categories)
@@ -71,7 +62,7 @@ export function DashboardPanel() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion, mesIso])
+  }, [transactionsVersion])
 
   const filtered = useMemo(
     () => filterByDateRange(allTransactions, dateFilter.range),
