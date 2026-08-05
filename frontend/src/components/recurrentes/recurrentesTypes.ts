@@ -13,4 +13,5 @@ export type RecurrenteCardView = {
   fechaFin: string | null
   activoEnMes: boolean
   estadoPeriodo: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro'
+  activo: boolean
 }

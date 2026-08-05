@@ -101,12 +101,14 @@ export function AppLayout() {
       <div className="flex h-full min-h-0 flex-col md:pl-64">
         <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
           <div className="mx-auto max-w-6xl">
-            <MainHeader
-              section={section}
-              displayName={displayName}
-              onOpenNewTransaction={handleOpenNewTransaction}
-              secondaryAction={secondaryHeaderAction}
-            />
+            <div className="sticky -top-5 md:-top-8 z-30 -mt-5 bg-slate-100/80 pb-3 pt-5 backdrop-blur-md dark:bg-slate-950/80 md:-mt-8 md:pt-8">
+              <MainHeader
+                section={section}
+                displayName={displayName}
+                onOpenNewTransaction={handleOpenNewTransaction}
+                secondaryAction={secondaryHeaderAction}
+              />
+            </div>
             <Outlet
               context={{
                 transactionsVersion,

@@ -5,6 +5,7 @@ type RecurrentesGridProps = {
   recurrentes: RecurrenteCardView[]
   onAlternarPago: (id: number) => void
   onEditar: (recurrente: RecurrenteCardView) => void
+  onAlternarActivo: (id: number, activo: boolean) => void
   procesandoId?: number | null
 }
 
@@ -12,6 +13,7 @@ export function RecurrentesGrid({
   recurrentes,
   onAlternarPago,
   onEditar,
+  onAlternarActivo,
   procesandoId,
 }: RecurrentesGridProps) {
   return (
@@ -22,6 +24,7 @@ export function RecurrentesGrid({
           recurrente={recurrente}
           onAlternarPago={onAlternarPago}
           onEditar={onEditar}
+          onAlternarActivo={onAlternarActivo}
           procesando={procesandoId === recurrente.id}
         />
       ))}

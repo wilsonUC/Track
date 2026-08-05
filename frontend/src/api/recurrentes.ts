@@ -21,8 +21,12 @@ export type ApiRecurrente = {
   actualizado_en: string
 }
 
-export async function fetchRecurrentes(mes?: string): Promise<ApiRecurrente[]> {
-  const url = mes ? `/api/recurrentes/?mes=${mes}` : '/api/recurrentes/'
+export async function fetchRecurrentes(mes?: string, incluirInactivos?: boolean): Promise<ApiRecurrente[]> {
+  const params = new URLSearchParams()
+  if (mes) params.append('mes', mes)
+  if (incluirInactivos) params.append('incluir_inactivos', 'true')
+  const queryStr = params.toString()
+  const url = queryStr ? `/api/recurrentes/?${queryStr}` : '/api/recurrentes/'
   const res = await authFetch(url)
   if (!res.ok) throw new Error('No se pudieron cargar los recurrentes')
   return res.json()
@@ -58,6 +62,7 @@ export async function updateRecurrente(
     categoria?: number
     fecha_inicio?: string | null
     fecha_fin?: string | null
+    activo?: boolean
   },
 ): Promise<ApiRecurrente> {
   const res = await authFetch(`/api/recurrentes/${id}/`, {

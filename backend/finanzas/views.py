@@ -172,9 +172,14 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             fecha__lte=fin_anterior,
         )
 
+        incluir_inactivos = self.request.query_params.get("incluir_inactivos") in ("true", "1", "yes")
+        es_detalle = self.action in ("retrieve", "update", "partial_update", "destroy") or "pk" in self.kwargs
+        base_qs = Recurrente.objects.filter(usuario=self.request.user)
+        if not incluir_inactivos and not es_detalle:
+            base_qs = base_qs.filter(activo=True)
+
         return (
-            Recurrente.objects.filter(usuario=self.request.user, activo=True)
-            .select_related("categoria")
+            base_qs.select_related("categoria")
             .annotate(
                 registrado_este_mes=Exists(txs_este_mes),
                 registrado_mes_anterior=Exists(txs_mes_anterior),

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { Power, PowerOff } from 'lucide-react'
 import { fetchCategories } from '../api/finanzas'
 import {
   createRecurrente,
@@ -55,6 +56,7 @@ export function RecurrentesPage() {
   })
   const [cuentasAtrasadas, setCuentasAtrasadas] = useState<ApiCuentasAtrasadas | null>(null)
   const [procesandoAtrasadaId, setProcesandoAtrasadaId] = useState<string | null>(null)
+  const [mostrarInactivos, setMostrarInactivos] = useState(false)
 
   const formatIsoDate = (date: Date) => {
     const y = date.getFullYear()
@@ -71,7 +73,7 @@ export function RecurrentesPage() {
     const mesIso = formatIsoDate(fechaRef)
 
     Promise.all([
-      fetchRecurrentes(mesIso),
+      fetchRecurrentes(mesIso, mostrarInactivos),
       fetchCuentasAtrasadas(),
       fetchCategories(),
     ])
@@ -91,7 +93,7 @@ export function RecurrentesPage() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion, fechaRef])
+  }, [transactionsVersion, fechaRef, mostrarInactivos])
 
   const gastos = useMemo(() => recurrentes.filter((r) => r.tipo === 'expense'), [recurrentes])
   const ingresos = useMemo(() => recurrentes.filter((r) => r.tipo === 'income'), [recurrentes])
@@ -167,6 +169,38 @@ export function RecurrentesPage() {
       bumpTransactions()
     } catch {
       setError('No se pudo actualizar el estado del recurrente.')
+    } finally {
+      setProcesandoId(null)
+    }
+  }
+
+  const manejarAlternarActivo = async (id: number, nuevoEstadoActivo: boolean) => {
+    if (!nuevoEstadoActivo) {
+      if (
+        !window.confirm(
+          '¿Estás seguro de que deseas desactivar este recurrente? Dejará de figurar como pendiente, pero tus registros de pagos pasados se conservarán.'
+        )
+      ) {
+        return
+      }
+    }
+    setProcesandoId(id)
+    setError('')
+    try {
+      const actualizado = await updateRecurrente(id, { activo: nuevoEstadoActivo })
+      setRecurrentes((prev) =>
+        prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r))
+      )
+      if (!nuevoEstadoActivo && !mostrarInactivos) {
+        setRecurrentes((prev) => prev.filter((r) => r.id !== id))
+      }
+      bumpTransactions()
+    } catch {
+      setError(
+        nuevoEstadoActivo
+          ? 'No se pudo reactivar el recurrente.'
+          : 'No se pudo desactivar el recurrente.'
+      )
     } finally {
       setProcesandoId(null)
     }
@@ -257,13 +291,16 @@ export function RecurrentesPage() {
 
   return (
     <section className="space-y-6 text-slate-800">
-      <FiltroMesRecurrentes fechaRef={fechaRef} onChangeFecha={setFechaRef} />
+      <div className="sticky top-[52px] z-20 -mx-4 -mt-4 bg-slate-100/80 px-4 pb-4 pt-4 backdrop-blur-md dark:bg-slate-950/80 md:top-[40px] md:-mx-8 md:-mt-6 md:px-8">
+        <FiltroMesRecurrentes fechaRef={fechaRef} onChangeFecha={setFechaRef} />
+      </div>
 
-      {loading && <p className="text-sm text-slate-500">Cargando recurrentes…</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
-      {!loading && !error && (
-        <>
+      {loading && recurrentes.length === 0 ? (
+        <p className="text-sm text-slate-500">Cargando recurrentes…</p>
+      ) : (
+        <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <RecurrentesSummaryCard
             totalPendienteGastos={totalPendienteGastos}
             totalPendienteIngresos={totalPendienteIngresos}
@@ -277,6 +314,35 @@ export function RecurrentesPage() {
             onPagar={manejarPagarAtrasada}
             procesandoId={procesandoAtrasadaId}
           />
+
+          <div className="flex items-center justify-end pr-1">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-500">
+                Mostrar recurrentes desactivados
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={mostrarInactivos}
+                onClick={() => setMostrarInactivos(!mostrarInactivos)}
+                className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer ${
+                  mostrarInactivos ? 'bg-indigo-600' : 'bg-slate-200'
+                }`}
+              >
+                <span className="absolute left-1.5 flex h-4 w-4 items-center justify-center text-slate-400">
+                  <PowerOff className="h-3.5 w-3.5" />
+                </span>
+                <span className="absolute right-1.5 flex h-4 w-4 items-center justify-center text-white/80">
+                  <Power className="h-3.5 w-3.5" />
+                </span>
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    mostrarInactivos ? 'translate-x-8' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
@@ -294,6 +360,7 @@ export function RecurrentesPage() {
                 recurrentes={gastos}
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
+                onAlternarActivo={manejarAlternarActivo}
                 procesandoId={procesandoId}
               />
             )}
@@ -315,11 +382,12 @@ export function RecurrentesPage() {
                 recurrentes={ingresos}
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
+                onAlternarActivo={manejarAlternarActivo}
                 procesandoId={procesandoId}
               />
             )}
           </div>
-        </>
+        </div>
       )}
 
       <RecurrenteModal

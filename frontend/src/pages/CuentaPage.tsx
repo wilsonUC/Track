@@ -54,7 +54,7 @@ export function CuentaPage() {
 
   return (
     <section className="grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
-      <div className="lg:sticky lg:top-0 lg:self-start">
+      <div className="lg:sticky lg:top-[48px] lg:self-start">
         <CuentaProfileCard profile={profile} />
       </div>
 

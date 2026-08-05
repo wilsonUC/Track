@@ -17,6 +17,7 @@ export function mapRecurrenteToCard(r: ApiRecurrente): RecurrenteCardView {
     fechaFin: r.fecha_fin,
     activoEnMes: r.activo_en_mes,
     estadoPeriodo: r.estado_periodo,
+    activo: r.activo,
   }
 }
 
