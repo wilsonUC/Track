@@ -257,3 +257,13 @@ export async function updateAdminUser(id: number, data: AdminUserUpdatePayload):
   }
   return res.json()
 }
+
+export async function deleteAdminUser(id: number): Promise<void> {
+  const res = await authFetch(`/api/admin/usuarios/${id}/`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(JSON.stringify(err))
+  }
+}

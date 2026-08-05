@@ -25,6 +25,7 @@ export function ConfiguracionPage() {
   const [vistaCompacta, setVistaCompacta] = useState(false)
   const [moneda, setMoneda] = useState('PEN')
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
+  const [limitarSaldoNegativo, setLimitarSaldoNegativo] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
@@ -34,6 +35,7 @@ export function ConfiguracionPage() {
     setVistaCompacta(preferences.vista_compacta)
     setMoneda(preferences.moneda)
     setMostrarDecimales(preferences.mostrar_decimales)
+    setLimitarSaldoNegativo(preferences.limitar_saldo_negativo ?? false)
   }, [preferences])
 
   async function handleSave() {
@@ -45,6 +47,7 @@ export function ConfiguracionPage() {
         vista_compacta: vistaCompacta,
         moneda,
         mostrar_decimales: mostrarDecimales,
+        limitar_saldo_negativo: limitarSaldoNegativo,
       })
       setSaveMessage('Preferencias guardadas correctamente.')
     } catch (err) {
@@ -107,6 +110,16 @@ export function ConfiguracionPage() {
                 { value: 'USD', label: 'Dólares (US$) — próximamente' },
               ]}
               disabled
+            />
+          </ConfigRow>
+          <ConfigRow
+            label="Evitar saldo negativo"
+            hint="Impide registrar gastos o recurrentes si superan tus ingresos disponibles actuales."
+          >
+            <ConfigToggle
+              checked={limitarSaldoNegativo}
+              onChange={setLimitarSaldoNegativo}
+              label="Evitar saldo negativo"
             />
           </ConfigRow>
         </ConfigSection>

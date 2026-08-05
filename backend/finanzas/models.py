@@ -288,7 +288,9 @@ class PreferenciasUsuario(models.Model):
     moneda = models.CharField(max_length=3, default="PEN")
     dia_inicio_mes = models.PositiveSmallIntegerField(default=1)
     mostrar_decimales = models.BooleanField(default=True)
+    limitar_saldo_negativo = models.BooleanField(default=False)
     actualizado_en = models.DateTimeField(auto_now=True)
+
 
     class Meta:
         verbose_name = "Preferencias de usuario"

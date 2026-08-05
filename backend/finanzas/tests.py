@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Category, PerfilUsuario, Presupuesto, Transaction
+from .models import Category, PerfilUsuario, Presupuesto, Transaction, PreferenciasUsuario, Recurrente
 
 User = get_user_model()
 
@@ -510,4 +510,188 @@ class IAConResilienciaTests(FinanzasAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("asistente avanzado de IA no se encuentra disponible", response.data["respuesta"])
+
+
+class AdminUsuariosTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.admin = self.crear_usuario(username="admin_user", telefono="900000080", is_staff=True)
+        self.regular = self.crear_usuario(username="regular_user", telefono="900000081", is_staff=False)
+
+    def test_admin_can_list_users(self):
+        self.autenticar(self.admin)
+        response = self.client.get("/api/admin/usuarios/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 2)
+
+    def test_regular_user_cannot_list_users(self):
+        self.autenticar(self.regular)
+        response = self.client.get("/api/admin/usuarios/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_delete_regular_user(self):
+        self.autenticar(self.admin)
+        response = self.client.delete(f"/api/admin/usuarios/{self.regular.id}/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(User.objects.filter(id=self.regular.id).exists())
+
+    def test_admin_cannot_delete_self(self):
+        self.autenticar(self.admin)
+        response = self.client.delete(f"/api/admin/usuarios/{self.admin.id}/")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(User.objects.filter(id=self.admin.id).exists())
+
+    def test_regular_user_cannot_delete_users(self):
+        self.autenticar(self.regular)
+        response = self.client.delete(f"/api/admin/usuarios/{self.admin.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ControlSaldoEstrictoTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.user = self.crear_usuario(username="saldo_user", telefono="900000090")
+        self.autenticar(self.user)
+        self.crear_categorias()
+        self.prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=self.user)
+
+    def test_gasto_libre_si_desactivado(self):
+        # Por defecto limitar_saldo_negativo es False. Gasto debe crearse.
+        response = self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_gasto.id,
+                "tipo": Transaction.Tipo.GASTO,
+                "monto": "100.00",
+                "fecha": str(date.today()),
+                "descripcion": "Gasto sin saldo",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_gasto_bloqueado_si_activado_y_sin_saldo(self):
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+
+        response = self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_gasto.id,
+                "tipo": Transaction.Tipo.GASTO,
+                "monto": "100.00",
+                "fecha": str(date.today()),
+                "descripcion": "Gasto bloqueado",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_gasto_permitido_si_activado_y_con_saldo(self):
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+
+        # Primero ingreso de 200
+        self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_ingreso.id,
+                "tipo": Transaction.Tipo.INGRESO,
+                "monto": "200.00",
+                "fecha": str(date.today()),
+            },
+            format="json",
+        )
+
+        # Gasto de 150 -> Debe permitirse
+        res1 = self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_gasto.id,
+                "tipo": Transaction.Tipo.GASTO,
+                "monto": "150.00",
+                "fecha": str(date.today()),
+            },
+            format="json",
+        )
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+
+        # Gasto de 60 -> Debe bloquearse (sobran 50)
+        res2 = self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_gasto.id,
+                "tipo": Transaction.Tipo.GASTO,
+                "monto": "60.00",
+                "fecha": str(date.today()),
+            },
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_editar_gasto_permitido_si_mejora_saldo(self):
+        # Crear gasto de 100 libremente
+        gasto = Transaction.objects.create(
+            usuario=self.user,
+            categoria=self.cat_gasto,
+            tipo=Transaction.Tipo.GASTO,
+            monto=Decimal("100.00"),
+            fecha=date.today(),
+        )
+
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+        # Saldo actual = -100
+
+        # Editar para gastar menos (70) -> mejora balance a -70. Debe permitirse.
+        response = self.client.patch(
+            f"/api/transacciones/{gasto.id}/",
+            {"monto": "70.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        gasto.refresh_from_db()
+        self.assertEqual(gasto.monto, Decimal("70.00"))
+
+    def test_editar_gasto_bloqueado_si_empeora_saldo(self):
+        # Crear gasto de 100 libremente
+        gasto = Transaction.objects.create(
+            usuario=self.user,
+            categoria=self.cat_gasto,
+            tipo=Transaction.Tipo.GASTO,
+            monto=Decimal("100.00"),
+            fecha=date.today(),
+        )
+
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+        # Saldo actual = -100
+
+        # Editar para gastar más (120) -> empeora balance a -120. Debe bloquearse.
+        response = self.client.patch(
+            f"/api/transacciones/{gasto.id}/",
+            {"monto": "120.00"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_pago_recurrente_bloqueado_si_sin_saldo(self):
+        recurrente = Recurrente.objects.create(
+            usuario=self.user,
+            nombre="Netflix",
+            monto=Decimal("50.00"),
+            tipo=Category.Tipo.GASTO,
+            dia_pago=5,
+            categoria=self.cat_gasto,
+        )
+
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+
+        # Registrar pago de recurrente de gasto -> debe bloquearse por no tener saldo.
+        response = self.client.post(
+            f"/api/recurrentes/{recurrente.id}/registrar-pago/",
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
 

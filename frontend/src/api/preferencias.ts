@@ -8,12 +8,14 @@ export type PreferenciasUsuario = {
   moneda: string
   dia_inicio_mes: number
   mostrar_decimales: boolean
+  limitar_saldo_negativo: boolean
   actualizado_en: string
 }
 
 export type PreferenciasUpdate = Partial<
-  Pick<PreferenciasUsuario, 'tema' | 'vista_compacta' | 'moneda' | 'dia_inicio_mes' | 'mostrar_decimales'>
+  Pick<PreferenciasUsuario, 'tema' | 'vista_compacta' | 'moneda' | 'dia_inicio_mes' | 'mostrar_decimales' | 'limitar_saldo_negativo'>
 >
+
 
 function formatError(body: unknown, fallback: string): string {
   if (!body || typeof body !== 'object') return fallback

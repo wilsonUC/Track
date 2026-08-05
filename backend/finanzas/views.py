@@ -126,6 +126,9 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="gasto-rapido")
     def gasto_rapido(self, request, pk=None):
         presupuesto = self.get_object()
+        from .ahorros_service import validar_limite_saldo
+        validar_limite_saldo(request.user, Transaction.Tipo.GASTO, presupuesto.monto_rapido)
+
         Transaction.objects.create(
             usuario=request.user,
             presupuesto=presupuesto,
@@ -219,6 +222,9 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             )
 
         monto = body.validated_data.get("monto") or recurrente.monto
+        from .ahorros_service import validar_limite_saldo
+        validar_limite_saldo(request.user, recurrente.tipo, monto)
+
         etiqueta = "cobro" if recurrente.tipo == Transaction.Tipo.INGRESO else "pago"
         Transaction.objects.create(
             usuario=request.user,
@@ -511,6 +517,27 @@ class AdminUsuarioDetalleView(APIView):
         updated_user = serializer.save()
         updated_user = User.objects.select_related("perfil").get(pk=updated_user.pk)
         return Response(AdminUsuarioSerializer(updated_user).data)
+
+    def delete(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"detalle": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_superuser and not request.user.is_superuser:
+            return Response(
+                {"detalle": "Solo un superusuario puede eliminar a otro superusuario."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if user.pk == request.user.pk:
+            return Response(
+                {"detalle": "No puedes eliminar tu propia cuenta."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.delete()
+        return Response({"mensaje": "Usuario eliminado correctamente."}, status=status.HTTP_200_OK)
+
 
 
 class RegistroView(APIView):

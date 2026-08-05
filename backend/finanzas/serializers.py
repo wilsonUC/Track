@@ -415,6 +415,14 @@ class AhorroSerializer(serializers.ModelSerializer):
                         )
                     }
                 )
+        if user and monto is not None:
+            from .ahorros_service import validar_limite_saldo
+            validar_limite_saldo(
+                user=user,
+                tipo=Transaction.Tipo.AHORRO,
+                monto=monto,
+                transaccion_id=self.instance.id if self.instance else None
+            )
         return attrs
 
 
@@ -513,6 +521,18 @@ class TransactionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"tipo": "El tipo debe coincidir con el de la categoría (ingreso/gasto)."}
             )
+
+        if user and tipo:
+            monto = attrs.get("monto", self.instance.monto if self.instance else None)
+            if monto is not None:
+                from .ahorros_service import validar_limite_saldo
+                validar_limite_saldo(
+                    user=user,
+                    tipo=tipo,
+                    monto=monto,
+                    transaccion_id=self.instance.id if self.instance else None
+                )
+
         return attrs
 
 
@@ -525,6 +545,7 @@ class PreferenciasSerializer(serializers.ModelSerializer):
             "moneda",
             "dia_inicio_mes",
             "mostrar_decimales",
+            "limitar_saldo_negativo",
             "actualizado_en",
         ]
         read_only_fields = ["actualizado_en"]

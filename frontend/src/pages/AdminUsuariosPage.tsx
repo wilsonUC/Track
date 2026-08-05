@@ -3,6 +3,7 @@ import {
   fetchProfile,
   fetchAdminUsers,
   updateAdminUser,
+  deleteAdminUser,
   type AdminAccountStatus,
   type AdminUser,
   type AdminUserUpdatePayload,
@@ -29,6 +30,7 @@ export function AdminUsuariosPage() {
   const [drafts, setDrafts] = useState<Record<number, AdminUserUpdatePayload>>({})
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -89,6 +91,29 @@ export function AdminUsuariosPage() {
       setError(formatApiError(raw, 'No se pudo actualizar el usuario.'))
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function handleDeleteUser(user: AdminUser) {
+    if (
+      !window.confirm(
+        `¿Estás completamente seguro de que deseas eliminar permanentemente al usuario @${user.username}? Esta acción no se puede deshacer y borrará todos sus datos financieros.`
+      )
+    ) {
+      return
+    }
+    setDeletingId(user.id)
+    setError('')
+    setSuccess('')
+    try {
+      await deleteAdminUser(user.id)
+      setUsers((current) => current.filter((item) => item.id !== user.id))
+      setSuccess(`Usuario @${user.username} eliminado correctamente.`)
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : ''
+      setError(formatApiError(raw, 'No se pudo eliminar el usuario.'))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -198,7 +223,7 @@ export function AdminUsuariosPage() {
                 <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/60 pt-3 dark:border-slate-800/40">
                   <button
                     type="button"
-                    disabled={isSaving}
+                    disabled={isSaving || deletingId === user.id}
                     onClick={() => saveUser(user, values)}
                     className="flex-1 min-w-[70px] rounded-lg bg-indigo-600 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                   >
@@ -213,7 +238,7 @@ export function AdminUsuariosPage() {
                       {user.estado_cuenta !== 'active' && (
                         <button
                           type="button"
-                          disabled={isSaving}
+                          disabled={isSaving || deletingId === user.id}
                           onClick={() => saveUser(user, { estado_cuenta: 'active' })}
                           className="flex-1 min-w-[70px] rounded-lg border border-emerald-200 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/30 dark:text-emerald-400"
                         >
@@ -223,13 +248,21 @@ export function AdminUsuariosPage() {
                       {user.estado_cuenta !== 'blocked' && (
                         <button
                           type="button"
-                          disabled={isSaving}
+                          disabled={isSaving || deletingId === user.id}
                           onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
                           className="flex-1 min-w-[70px] rounded-lg border border-red-200 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400"
                         >
                           Bloquear
                         </button>
                       )}
+                      <button
+                        type="button"
+                        disabled={isSaving || deletingId !== null}
+                        onClick={() => handleDeleteUser(user)}
+                        className="flex-1 min-w-[70px] rounded-lg border border-red-200 bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 disabled:opacity-60"
+                      >
+                        {deletingId === user.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
                     </>
                   )}
                 </div>
@@ -308,7 +341,7 @@ export function AdminUsuariosPage() {
                     <td className="space-y-2 px-5 py-4 text-right">
                       <button
                         type="button"
-                        disabled={isSaving}
+                        disabled={isSaving || deletingId === user.id}
                         onClick={() => saveUser(user, values)}
                         className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
                       >
@@ -320,26 +353,34 @@ export function AdminUsuariosPage() {
                         </p>
                       ) : (
                         <>
-                      {user.estado_cuenta !== 'active' && (
-                        <button
-                          type="button"
-                          disabled={isSaving}
-                          onClick={() => saveUser(user, { estado_cuenta: 'active' })}
-                          className="w-full rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
-                        >
-                          Aprobar
-                        </button>
-                      )}
-                      {user.estado_cuenta !== 'blocked' && (
-                        <button
-                          type="button"
-                          disabled={isSaving}
-                          onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
-                          className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Bloquear
-                        </button>
-                      )}
+                          {user.estado_cuenta !== 'active' && (
+                            <button
+                              type="button"
+                              disabled={isSaving || deletingId !== null}
+                              onClick={() => saveUser(user, { estado_cuenta: 'active' })}
+                              className="w-full rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60"
+                            >
+                              Aprobar
+                            </button>
+                          )}
+                          {user.estado_cuenta !== 'blocked' && (
+                            <button
+                              type="button"
+                              disabled={isSaving || deletingId !== null}
+                              onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
+                              className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                            >
+                              Bloquear
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isSaving || deletingId !== null}
+                            onClick={() => handleDeleteUser(user)}
+                            className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400 disabled:opacity-60"
+                          >
+                            {deletingId === user.id ? 'Eliminando…' : 'Eliminar'}
+                          </button>
                         </>
                       )}
                     </td>
