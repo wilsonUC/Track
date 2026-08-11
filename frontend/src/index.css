@@ -33,18 +33,10 @@ body {
   width: 100%;
 }
 
-/* La app usa Tailwind para títulos; el template Vite los sobrescribía en producción */
-#root h1,
-#root h2,
-#root h3 {
-  font-size: unset;
-  margin: 0;
-  letter-spacing: unset;
-  line-height: unset;
-  font-weight: unset;
-}
-
-#root p {
+h1,
+h2,
+h3,
+p {
   margin: 0;
 }
 
@@ -79,19 +71,19 @@ html.dark [data-app-shell] .border-slate-300 {
   border-color: var(--ft-border-subtle) !important;
 }
 
-html.dark [data-app-shell] .divide-slate-50 > :not([hidden]) ~ :not([hidden]),
-html.dark [data-app-shell] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+html.dark [data-app-shell] .divide-slate-50> :not([hidden])~ :not([hidden]),
+html.dark [data-app-shell] .divide-slate-100> :not([hidden])~ :not([hidden]) {
   border-color: var(--ft-divide-subtle) !important;
   border-top-color: var(--ft-divide-subtle) !important;
 }
 
 /* divide-y en listas, tablas y filas sueltas */
-html.dark [data-app-shell] .divide-y > :not([hidden]) ~ :not([hidden]) {
+html.dark [data-app-shell] .divide-y> :not([hidden])~ :not([hidden]) {
   border-top-color: var(--ft-divide-subtle) !important;
 }
 
-html.dark [data-app-shell] table tbody > tr + tr,
-html.dark [data-app-shell] table.divide-y > :not([hidden]) ~ :not([hidden]) {
+html.dark [data-app-shell] table tbody>tr+tr,
+html.dark [data-app-shell] table.divide-y> :not([hidden])~ :not([hidden]) {
   border-top: 1px solid var(--ft-divide-subtle) !important;
 }
 
@@ -256,8 +248,8 @@ html.dark [data-app-shell] .bg-slate-100.rounded-full .bg-indigo-600 {
   box-shadow: none !important;
 }
 
-html.dark [data-app-shell] .bg-slate-100 > button.bg-white,
-html.dark [data-app-shell] .bg-slate-100.rounded-lg > button.bg-white {
+html.dark [data-app-shell] .bg-slate-100>button.bg-white,
+html.dark [data-app-shell] .bg-slate-100.rounded-lg>button.bg-white {
   background-color: rgb(51 65 85) !important;
   color: rgb(199 210 254) !important;
   box-shadow: none !important;
@@ -310,4 +302,125 @@ html.dark [data-app-shell] [class*="shadow-slate"] {
 
 html.dark [data-app-shell] .hover\:shadow-md:hover {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.15);
+}
+
+/* Custom Sleek Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+html.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Custom Select Dropdown Styling */
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+html.dark select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+select option:checked {
+  background-color: #4f46e5;
+  color: #ffffff;
+}
+
+html.dark select option:checked {
+  background-color: #6366f1;
+  color: #ffffff;
+}
+
+/* Auth Growth Chart Animations */
+@keyframes drawLine {
+  0% {
+    stroke-dashoffset: 320;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes moveTip {
+  0% {
+    offset-distance: 0%;
+  }
+
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+.animate-move-tip {
+  offset-path: path("M 10,160 C 60,155 110,135 150,95 C 190,55 230,25 268,12");
+  animation: moveTip 2.99s ease-in-out forwards;
+}
+
+@keyframes growUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.85);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-150%) rotate(25deg);
+  }
+  50%, 100% {
+    transform: translateX(150%) rotate(25deg);
+  }
+}
+
+@keyframes moveMiniTip {
+  0% {
+    offset-distance: 0%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+.animate-mini-tip {
+  offset-path: path("M 5,32 C 25,28 45,22 65,14 C 75,10 85,7 95,5");
+  animation: moveMiniTip 2.5s ease-in-out forwards;
 }
