@@ -29,15 +29,19 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
     return (
       <article
         onClick={onClick}
-        className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-4 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150 sm:p-5`}
+        className={`overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-3.5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150 sm:p-4`}
       >
-        <div className="absolute top-4 right-4 rounded-xl bg-white/15 p-2.5 text-white">
-          <CardIcon variant={variant} />
+        <div>
+          <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/80">{title}</p>
+          <p className="mt-0.5 text-lg font-bold tracking-tight tabular-nums text-white sm:text-xl leading-tight">
+            {amount}
+          </p>
         </div>
-        <div className="pr-12">
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{title}</p>
-          <p className="mt-2 text-xl font-bold tabular-nums sm:text-2xl">{amount}</p>
-          {subtitle && <p className="mt-1 text-sm text-white/80 truncate">{subtitle}</p>}
+        <div className="mt-1.5 flex items-end justify-between gap-2">
+          <p className="text-xs font-semibold text-white/80 truncate">{subtitle || ' '}</p>
+          <div className="shrink-0 rounded-xl bg-white/20 p-2 text-white shadow-sm">
+            <CardIcon variant={variant} />
+          </div>
         </div>
       </article>
     )
@@ -64,15 +68,19 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
   return (
     <article
       onClick={onClick}
-      className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01] sm:p-5"
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01] sm:p-4"
     >
-      <div className={`absolute top-4 right-4 rounded-xl p-2.5 ${iconBg}`}>
-        <CardIcon variant={variant} />
+      <div>
+        <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{title}</p>
+        <p className={`mt-0.5 text-lg font-bold tracking-tight tabular-nums sm:text-xl leading-tight ${amountColor}`}>
+          {amount}
+        </p>
       </div>
-      <div className="pr-12">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
-        <p className={`mt-2 text-xl font-bold tabular-nums sm:text-2xl ${amountColor}`}>{amount}</p>
-        {subtitle && <p className="mt-1 text-sm text-slate-500 truncate">{subtitle}</p>}
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-400 truncate">{subtitle || ' '}</p>
+        <div className={`shrink-0 rounded-xl p-2 ${iconBg}`}>
+          <CardIcon variant={variant} />
+        </div>
       </div>
     </article>
   )

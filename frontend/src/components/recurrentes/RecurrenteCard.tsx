@@ -1,4 +1,5 @@
-import { AlertCircle, AlertTriangle, Calendar, CheckCircle2, Pencil, Power } from 'lucide-react'
+import { useState } from 'react'
+import { AlertCircle, AlertTriangle, Calendar, CheckCircle2, Pencil, Power, Trash2 } from 'lucide-react'
 import { getCategoryDisplay } from '../../utils/categoryDisplay'
 import { textoDiaPago } from '../../utils/recurrentesDisplay'
 import type { RecurrenteCardView } from './recurrentesTypes'
@@ -8,6 +9,8 @@ type RecurrenteCardProps = {
   onAlternarPago: (id: number) => void
   onEditar: (recurrente: RecurrenteCardView) => void
   onAlternarActivo: (id: number, activo: boolean) => void
+  onEliminarAbono: (transactionId: number) => void
+  onDesmarcarTodo: (id: number) => void
   procesando?: boolean
 }
 
@@ -16,8 +19,11 @@ export function RecurrenteCard({
   onAlternarPago,
   onEditar,
   onAlternarActivo,
+  onEliminarAbono,
+  onDesmarcarTodo,
   procesando,
 }: RecurrenteCardProps) {
+  const [mostrarHistorial, setMostrarHistorial] = useState(true)
   const {
     id,
     nombre,
@@ -33,15 +39,21 @@ export function RecurrenteCard({
     activoEnMes,
     estadoPeriodo,
     activo,
+    permiteParciales,
+    montoPagado,
+    abonos,
   } = recurrente
   const esIngreso = tipo === 'income'
   const catInfo = getCategoryDisplay(categoriaNombre)
   const etiquetaFecha = esIngreso ? 'Se cobra el día' : 'Vence el día'
 
   const formatPeriodoText = () => {
-    if (fechaInicio && fechaFin) return `${fechaInicio} a ${fechaFin}`
-    if (fechaInicio) return `Desde ${fechaInicio}`
-    if (fechaFin) return `Hasta ${fechaFin}`
+    const shorten = (d: string) => d.replace(/^(\d{4})/, (m) => m.slice(2))
+    const fIni = fechaInicio ? shorten(fechaInicio) : ''
+    const fFin = fechaFin ? shorten(fechaFin) : ''
+    if (fIni && fFin) return `${fIni} a ${fFin}`
+    if (fIni) return `Desde ${fIni}`
+    if (fFin) return `Hasta ${fFin}`
     return null
   }
   const periodoText = formatPeriodoText()
@@ -61,14 +73,19 @@ export function RecurrenteCard({
           <div className={`shrink-0 rounded-xl p-2.5 ${catInfo.bg}`}>{catInfo.icon}</div>
           <div className="min-w-0">
             <h3 className="text-sm font-bold leading-tight text-slate-800">{nombre}</h3>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {categoriaNombre}
-            </span>
-            {periodoText && (
-              <span className="mt-0.5 block text-[10px] text-slate-500">
-                Periodo: {periodoText}
+            <div className="flex items-center gap-x-1 text-[9.5px] whitespace-nowrap overflow-hidden text-ellipsis">
+              <span className="font-bold uppercase tracking-wider text-slate-400">
+                {categoriaNombre}
               </span>
-            )}
+              {periodoText && (
+                <>
+                  <span className="text-slate-300 select-none">·</span>
+                  <span className="text-slate-500 truncate">
+                    {periodoText}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -132,6 +149,84 @@ export function RecurrenteCard({
         </div>
       </div>
 
+      {activo && (permiteParciales || (abonos && abonos.length > 0)) && (
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="font-semibold text-slate-500">
+                {esIngreso ? 'Cobrado este mes:' : 'Abonado este mes:'}
+              </span>
+              <span className="font-black text-slate-750">
+                S/ {montoPagado.toFixed(2)} / S/ {monto.toFixed(2)} ({Math.min(100, Math.round((montoPagado / monto) * 100))}%)
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  registradoMes ? 'bg-emerald-500' : 'bg-indigo-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.round((montoPagado / monto) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          {abonos && abonos.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 text-xs">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
+                <span className="font-bold text-[9px] uppercase tracking-wider text-slate-400">
+                  Historial de abonos
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMostrarHistorial(!mostrarHistorial)}
+                    className="text-[9px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-wide cursor-pointer"
+                  >
+                    {mostrarHistorial ? 'Ocultar' : `Ver (${abonos.length})`}
+                  </button>
+                  {mostrarHistorial && (
+                    <>
+                      <span className="text-[9px] text-slate-350 select-none">|</span>
+                      <button
+                        type="button"
+                        onClick={() => onDesmarcarTodo(id)}
+                        className="text-[9px] font-bold text-rose-600 hover:text-rose-800 uppercase tracking-wide cursor-pointer"
+                        title="Eliminar todos los abonos de este mes"
+                      >
+                        Limpiar todo
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              
+              {mostrarHistorial && (
+                <ul className="divide-y divide-slate-100/50 max-h-[110px] overflow-y-auto pr-1">
+                  {abonos.map((abono) => (
+                    <li key={abono.id} className="flex items-center justify-between py-1.5 first:pt-0 last:pb-0">
+                      <span className="font-bold text-slate-700">
+                        S/ {Number(abono.monto).toFixed(2)}{' '}
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          ({abono.fecha.slice(8, 10)}/{abono.fecha.slice(5, 7)})
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onEliminarAbono(abono.id)}
+                        className="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        title="Eliminar abono"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2">
         {!activo ? (
           <button
@@ -167,6 +262,14 @@ export function RecurrenteCard({
                 <>
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
                   <span>Marcar como pendiente</span>
+                </>
+              ) : permiteParciales ? (
+                <>
+                  <AlertCircle
+                    className={`h-4 w-4 ${esIngreso ? 'text-emerald-500' : 'text-slate-400'}`}
+                    aria-hidden
+                  />
+                  <span>{esIngreso ? 'Registrar cobro' : 'Registrar abono'}</span>
                 </>
               ) : (
                 <>

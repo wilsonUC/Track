@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Power, PowerOff } from 'lucide-react'
-import { fetchCategories } from '../api/finanzas'
+import { fetchCategories, deleteTransaction } from '../api/finanzas'
 import {
   createRecurrente,
   desmarcarPagoRecurrente,
@@ -13,6 +13,7 @@ import {
   type ApiCuentasAtrasadasItem,
 } from '../api/recurrentes'
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
+import { AbonoRecurrenteModal } from '../components/recurrentes/AbonoRecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
 import { ResumenCuentasAtrasadas } from '../components/recurrentes/ResumenCuentasAtrasadas'
@@ -45,9 +46,15 @@ export function RecurrentesPage() {
   const [categoriaId, setCategoriaId] = useState<number | ''>('')
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
+  const [permiteParciales, setPermiteParciales] = useState(false)
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
   const [procesandoId, setProcesandoId] = useState<number | null>(null)
+
+  const [isAbonoModalOpen, setIsAbonoModalOpen] = useState(false)
+  const [abonoRecurrente, setAbonoRecurrente] = useState<RecurrenteCardView | null>(null)
+  const [abonoSaving, setAbonoSaving] = useState(false)
+  const [abonoError, setAbonoError] = useState('')
 
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
@@ -122,6 +129,7 @@ export function RecurrentesPage() {
     setFechaInicio('')
     setFechaFin('')
     setTipo('expense')
+    setPermiteParciales(false)
     setEditingId(null)
     setModalError('')
   }
@@ -142,6 +150,7 @@ export function RecurrentesPage() {
     setCategoriaId(recurrente.categoriaId)
     setFechaInicio(recurrente.fechaInicio ? recurrente.fechaInicio.slice(0, 7) : '')
     setFechaFin(recurrente.fechaFin ? recurrente.fechaFin.slice(0, 7) : '')
+    setPermiteParciales(recurrente.permiteParciales)
     setModalError('')
     setIsModalOpen(true)
   }
@@ -160,10 +169,19 @@ export function RecurrentesPage() {
     const recurrente = recurrentes.find((r) => r.id === id)
     if (!recurrente) return
 
+    const mesIso = formatIsoDate(fechaRef)
+
+    // Si permite abonos parciales y no está completamente registrado
+    if (recurrente.permiteParciales && !recurrente.registradoMes) {
+      setAbonoRecurrente(recurrente)
+      setAbonoError('')
+      setIsAbonoModalOpen(true)
+      return
+    }
+
     setProcesandoId(id)
     setError('')
     try {
-      const mesIso = formatIsoDate(fechaRef)
       const actualizado = recurrente.registradoMes
         ? await desmarcarPagoRecurrente(id, mesIso)
         : await registrarPagoRecurrente(id, undefined, mesIso)
@@ -180,6 +198,68 @@ export function RecurrentesPage() {
     }
   }
 
+  const manejarEliminarAbono = async (transactionId: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este abono?')) {
+      return
+    }
+    setError('')
+    try {
+      await deleteTransaction(transactionId)
+      const mesIso = formatIsoDate(fechaRef)
+      const data = await fetchRecurrentes(mesIso, mostrarInactivos)
+      setRecurrentes(data.map(mapRecurrenteToCard))
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el abono.')
+    }
+  }
+
+  const manejarDesmarcarTodo = async (id: number) => {
+    const recurrente = recurrentes.find((r) => r.id === id)
+    if (!recurrente) return
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar todos los abonos de este mes para "${recurrente.nombre}"?`)) {
+      return
+    }
+    setProcesandoId(id)
+    setError('')
+    try {
+      const mesIso = formatIsoDate(fechaRef)
+      const actualizado = await desmarcarPagoRecurrente(id, mesIso)
+      setRecurrentes((prev) => prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)))
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
+    } catch {
+      setError('No se pudo limpiar los abonos.')
+    } finally {
+      setProcesandoId(null)
+    }
+  }
+
+  const manejarGuardarAbono = async (montoAbono: string) => {
+    if (!abonoRecurrente) return
+    const id = abonoRecurrente.id
+    const mesIso = formatIsoDate(fechaRef)
+
+    setAbonoSaving(true)
+    setAbonoError('')
+    try {
+      const actualizado = await registrarPagoRecurrente(id, montoAbono, mesIso)
+      setRecurrentes((prev) => prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)))
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
+      setIsAbonoModalOpen(false)
+      setAbonoRecurrente(null)
+    } catch (err) {
+      setAbonoError('No se pudo registrar el abono.')
+    } finally {
+      setAbonoSaving(false)
+    }
+  }
+
   const manejarAlternarActivo = async (id: number, nuevoEstadoActivo: boolean) => {
     if (!nuevoEstadoActivo) {
       if (
@@ -193,7 +273,8 @@ export function RecurrentesPage() {
     setProcesandoId(id)
     setError('')
     try {
-      const actualizado = await updateRecurrente(id, { activo: nuevoEstadoActivo })
+      const mesIso = formatIsoDate(fechaRef)
+      const actualizado = await updateRecurrente(id, { activo: nuevoEstadoActivo }, mesIso)
       setRecurrentes((prev) =>
         prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r))
       )
@@ -248,15 +329,17 @@ export function RecurrentesPage() {
         categoria: categoriaId,
         fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
         fecha_fin: fechaFin ? `${fechaFin}-01` : null,
+        permite_parciales: permiteParciales,
       }
 
+      const mesIso = formatIsoDate(fechaRef)
       if (modalMode === 'edit' && editingId !== null) {
-        const actualizado = await updateRecurrente(editingId, payload)
+        const actualizado = await updateRecurrente(editingId, payload, mesIso)
         setRecurrentes((prev) =>
           prev.map((r) => (r.id === editingId ? mapRecurrenteToCard(actualizado) : r)),
         )
       } else {
-        const creado = await createRecurrente(payload)
+        const creado = await createRecurrente(payload, mesIso)
         setRecurrentes((prev) => [...prev, mapRecurrenteToCard(creado)])
       }
 
@@ -367,6 +450,8 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onEliminarAbono={manejarEliminarAbono}
+                onDesmarcarTodo={manejarDesmarcarTodo}
                 procesandoId={procesandoId}
               />
             )}
@@ -389,6 +474,8 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onEliminarAbono={manejarEliminarAbono}
+                onDesmarcarTodo={manejarDesmarcarTodo}
                 procesandoId={procesandoId}
               />
             )}
@@ -407,6 +494,7 @@ export function RecurrentesPage() {
         fechaInicio={fechaInicio}
         fechaFin={fechaFin}
         categorias={categorias}
+        permiteParciales={permiteParciales}
         saving={saving}
         error={modalError}
         onTipoChange={manejarCambioTipo}
@@ -416,8 +504,21 @@ export function RecurrentesPage() {
         onCategoriaIdChange={setCategoriaId}
         onFechaInicioChange={setFechaInicio}
         onFechaFinChange={setFechaFin}
+        onPermiteParcialesChange={setPermiteParciales}
         onClose={cerrarModal}
         onSubmit={manejarGuardar}
+      />
+
+      <AbonoRecurrenteModal
+        open={isAbonoModalOpen}
+        recurrente={abonoRecurrente}
+        saving={abonoSaving}
+        error={abonoError}
+        onClose={() => {
+          setIsAbonoModalOpen(false)
+          setAbonoRecurrente(null)
+        }}
+        onSubmit={manejarGuardarAbono}
       />
     </section>
   )

@@ -13,6 +13,7 @@ type RecurrenteModalProps = {
   fechaInicio: string
   fechaFin: string
   categorias: ApiCategory[]
+  permiteParciales: boolean
   saving?: boolean
   error?: string
   onTipoChange: (value: 'income' | 'expense') => void
@@ -22,6 +23,7 @@ type RecurrenteModalProps = {
   onCategoriaIdChange: (value: number | '') => void
   onFechaInicioChange: (value: string) => void
   onFechaFinChange: (value: string) => void
+  onPermiteParcialesChange: (value: boolean) => void
   onClose: () => void
   onSubmit: (e: FormEvent) => void
 }
@@ -37,6 +39,7 @@ export function RecurrenteModal({
   fechaInicio,
   fechaFin,
   categorias,
+  permiteParciales,
   saving,
   error,
   onTipoChange,
@@ -46,6 +49,7 @@ export function RecurrenteModal({
   onCategoriaIdChange,
   onFechaInicioChange,
   onFechaFinChange,
+  onPermiteParcialesChange,
   onClose,
   onSubmit,
 }: RecurrenteModalProps) {
@@ -178,6 +182,33 @@ export function RecurrenteModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3.5">
+            <div className="space-y-0.5">
+              <label className="text-xs font-bold text-slate-700 select-none cursor-pointer" htmlFor="permiteParciales">
+                Permitir abonos parciales
+              </label>
+              <p className="text-[10px] text-slate-400">
+                Permite registrar pagos en partes durante el mes.
+              </p>
+            </div>
+            <button
+              type="button"
+              id="permiteParciales"
+              role="switch"
+              aria-checked={permiteParciales}
+              onClick={() => onPermiteParcialesChange(!permiteParciales)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+                permiteParciales ? 'bg-indigo-600' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  permiteParciales ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {error && <p className="text-sm text-rose-600">{error}</p>}

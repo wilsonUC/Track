@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, CheckCircle2, MinusCircle, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, Calendar, CheckCircle2, MinusCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { getCategoryChartColors, getCategoryDisplay } from '../../utils/categoryDisplay'
 import type { MetaCardView } from '../../utils/metasDisplay'
 
@@ -7,9 +7,10 @@ type MetaCardProps = {
   onAsignar: (meta: MetaCardView) => void
   onDesasignar: (meta: MetaCardView) => void
   onEditar: (meta: MetaCardView) => void
+  onEliminar: (id: number) => void
 }
 
-export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardProps) {
+export function MetaCard({ meta, onAsignar, onDesasignar, onEditar, onEliminar }: MetaCardProps) {
   const {
     nombre,
     objetivo,
@@ -127,6 +128,15 @@ export function MetaCard({ meta, onAsignar, onDesasignar, onEditar }: MetaCardPr
           title="Editar meta"
         >
           <Pencil className="h-3.5 w-3.5" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => onEliminar(meta.id)}
+          className="flex shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+          aria-label={`Eliminar meta ${nombre}`}
+          title="Eliminar meta"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
     </article>

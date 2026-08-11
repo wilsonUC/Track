@@ -18,6 +18,9 @@ export function mapRecurrenteToCard(r: ApiRecurrente): RecurrenteCardView {
     activoEnMes: r.activo_en_mes,
     estadoPeriodo: r.estado_periodo,
     activo: r.activo,
+    permiteParciales: r.permite_parciales,
+    montoPagado: r.monto_pagado,
+    abonos: r.abonos,
   }
 }
 

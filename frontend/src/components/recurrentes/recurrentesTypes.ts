@@ -14,4 +14,7 @@ export type RecurrenteCardView = {
   activoEnMes: boolean
   estadoPeriodo: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro'
   activo: boolean
+  permiteParciales: boolean
+  montoPagado: number
+  abonos: { id: number; monto: number; fecha: string; descripcion: string }[]
 }

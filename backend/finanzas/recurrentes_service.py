@@ -34,7 +34,9 @@ def fecha_vencimiento_mes(dia_pago: int, reference: date) -> date:
 
 def _bounds_mes(reference: date) -> tuple[date, date]:
     inicio = reference.replace(day=1)
-    return inicio, reference
+    ultimo_dia = calendar.monthrange(reference.year, reference.month)[1]
+    fin = reference.replace(day=ultimo_dia)
+    return inicio, fin
 
 
 def _bounds_mes_anterior(reference: date) -> tuple[date, date]:
@@ -84,10 +86,22 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         activo_en_mes = False
         estado_periodo = "futuro"
 
-    if hasattr(recurrente, "registrado_este_mes"):
-        registrado_mes = recurrente.registrado_este_mes
+    # Calcular abonos de este mes
+    from django.db.models import Sum
+    from decimal import Decimal
+    
+    if hasattr(recurrente, "monto_pagado_anotado"):
+        monto_pagado = recurrente.monto_pagado_anotado
     else:
-        registrado_mes = tiene_registro_en_rango(recurrente, inicio, fin)
+        monto_pagado = Transaction.objects.filter(
+            recurrente=recurrente,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+        ).aggregate(total=Sum("monto"))["total"]
+        
+    monto_pagado = Decimal(str(monto_pagado or 0))
+
+    registrado_mes = monto_pagado >= recurrente.monto
 
     vencido = False
     mes_anterior_sin_registrar = None
@@ -126,6 +140,7 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         "mes_anterior_sin_registrar": mes_anterior_sin_registrar,
         "activo_en_mes": activo_en_mes,
         "estado_periodo": estado_periodo,
+        "monto_pagado": float(monto_pagado),
     }
 
 

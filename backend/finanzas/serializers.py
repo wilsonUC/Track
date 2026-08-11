@@ -169,6 +169,8 @@ class RecurrenteSerializer(serializers.ModelSerializer):
     mes_anterior_sin_registrar = serializers.SerializerMethodField()
     activo_en_mes = serializers.SerializerMethodField()
     estado_periodo = serializers.SerializerMethodField()
+    monto_pagado = serializers.SerializerMethodField()
+    abonos = serializers.SerializerMethodField()
 
     class Meta:
         model = Recurrente
@@ -189,6 +191,8 @@ class RecurrenteSerializer(serializers.ModelSerializer):
             "mes_anterior_sin_registrar",
             "activo_en_mes",
             "estado_periodo",
+            "monto_pagado",
+            "abonos",
             "creado_en",
             "actualizado_en",
         ]
@@ -222,6 +226,30 @@ class RecurrenteSerializer(serializers.ModelSerializer):
 
     def get_estado_periodo(self, obj):
         return self._estado(obj)["estado_periodo"]
+
+    def get_monto_pagado(self, obj):
+        return self._estado(obj)["monto_pagado"]
+
+    def get_abonos(self, obj):
+        from .recurrentes_service import _bounds_mes
+        from .models import Transaction
+        from datetime import date
+        reference_date = self.context.get("reference_date") or date.today()
+        inicio, fin = _bounds_mes(reference_date)
+        txs = Transaction.objects.filter(
+            recurrente=obj,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+        ).order_by("fecha", "creado_en")
+        return [
+            {
+                "id": t.id,
+                "monto": float(t.monto),
+                "fecha": t.fecha.strftime("%Y-%m-%d"),
+                "descripcion": t.descripcion,
+            }
+            for t in txs
+        ]
 
     def validate_monto(self, value):
         if value <= 0:

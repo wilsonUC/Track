@@ -100,3 +100,13 @@ export async function desasignarAhorroMeta(metaId: number, monto: string): Promi
   }
   return res.json()
 }
+
+export async function deleteMeta(id: number): Promise<void> {
+  const res = await authFetch(`/api/metas/${id}/`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatError(err, 'No se pudo eliminar la meta.'))
+  }
+}

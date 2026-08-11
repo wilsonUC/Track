@@ -200,7 +200,7 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user, permite_parciales=False)
+        serializer.save(usuario=self.request.user)
 
     def perform_destroy(self, instance):
         instance.activo = False
@@ -212,21 +212,57 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         body = RecurrenteRegistrarPagoSerializer(data=request.data)
         body.is_valid(raise_exception=True)
 
-        if recurrente.permite_parciales:
-            return Response(
-                {"detalle": "Abonos parciales aún no están disponibles."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         fecha_pago = body.validated_data.get("fecha") or date.today()
 
-        if transacciones_mes_actual(recurrente, reference=fecha_pago).exists():
-            return Response(
-                {"detalle": "Ya hay un registro de este mes para este recurrente."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Calcular el monto ya pagado este mes
+        inicio_mes, fin_mes = _bounds_mes(fecha_pago)
+        from django.db.models import Sum
+        monto_pagado = Transaction.objects.filter(
+            recurrente=recurrente,
+            fecha__gte=inicio_mes,
+            fecha__lte=fin_mes,
+        ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        
+        monto_restante = recurrente.monto - Decimal(str(monto_pagado))
 
-        monto = body.validated_data.get("monto") or recurrente.monto
+        # Si permite abonos parciales
+        if recurrente.permite_parciales:
+            monto = body.validated_data.get("monto")
+            if monto is None:
+                monto = monto_restante
+            
+            if monto_restante <= 0:
+                return Response(
+                    {"detalle": "Este recurrente ya ha sido pagado/cobrado por completo este mes."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if monto <= 0:
+                return Response(
+                    {"detalle": "El monto del abono debe ser mayor que cero."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if monto > monto_restante:
+                return Response(
+                    {"detalle": f"El monto ingresado (S/ {monto:.2f}) supera el saldo restante (S/ {monto_restante:.2f})."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # Si NO permite abonos parciales
+            monto = body.validated_data.get("monto")
+            if monto is None:
+                monto = monto_restante
+
+            if transacciones_mes_actual(recurrente, reference=fecha_pago).exists() and monto_restante <= 0:
+                return Response(
+                    {"detalle": "Ya hay un registro de este mes para este recurrente."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if monto <= 0:
+                return Response(
+                    {"detalle": "El monto del pago debe ser mayor que cero."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         from .ahorros_service import validar_limite_saldo
         validar_limite_saldo(request.user, recurrente.tipo, monto)
 
@@ -293,6 +329,12 @@ class MetaViewSet(viewsets.ModelViewSet):
         serializer.save(usuario=self.request.user)
 
     def perform_destroy(self, instance):
+        # Liberamos el dinero asignado borrando el registro de asignación
+        try:
+            if hasattr(instance, "asignacion"):
+                instance.asignacion.delete()
+        except Exception:
+            pass
         instance.activo = False
         instance.save(update_fields=["activo", "actualizado_en"])
 

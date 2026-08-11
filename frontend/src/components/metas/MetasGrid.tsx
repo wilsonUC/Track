@@ -6,9 +6,10 @@ type MetasGridProps = {
   onAsignar: (meta: MetaCardView) => void
   onDesasignar: (meta: MetaCardView) => void
   onEditar: (meta: MetaCardView) => void
+  onEliminar: (id: number) => void
 }
 
-export function MetasGrid({ metas, onAsignar, onDesasignar, onEditar }: MetasGridProps) {
+export function MetasGrid({ metas, onAsignar, onDesasignar, onEditar, onEliminar }: MetasGridProps) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {metas.map((meta) => (
@@ -18,6 +19,7 @@ export function MetasGrid({ metas, onAsignar, onDesasignar, onEditar }: MetasGri
           onAsignar={onAsignar}
           onDesasignar={onDesasignar}
           onEditar={onEditar}
+          onEliminar={onEliminar}
         />
       ))}
     </div>

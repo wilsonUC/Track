@@ -6,6 +6,7 @@ import { fetchCategories } from '../api/finanzas'
 import {
   asignarAhorroMeta,
   createMeta,
+  deleteMeta,
   desasignarAhorroMeta,
   fetchMetas,
   updateMeta,
@@ -185,6 +186,23 @@ export function MetasPage() {
     }
   }
 
+  const manejarEliminarMeta = async (id: number) => {
+    const meta = metas.find((m) => m.id === id)
+    if (!meta) return
+    const mensaje = `¿Estás seguro de que deseas eliminar la meta "${meta.nombre}"?\nTodo el ahorro que tiene asignado (S/ ${meta.acumulado.toFixed(2)}) se liberará y regresará al Ahorro Libre.`
+    if (!window.confirm(mensaje)) {
+      return
+    }
+    try {
+      await deleteMeta(id)
+      setMetas((prev) => prev.filter((m) => m.id !== id))
+      refrescarLibre()
+      bumpTransactions()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo eliminar la meta.')
+    }
+  }
+
   useEffect(() => {
     setSecondaryHeaderAction({
       label: 'Nueva meta',
@@ -232,6 +250,7 @@ export function MetasPage() {
               onAsignar={(m) => abrirAsignacion(m, 'asignar')}
               onDesasignar={(m) => abrirAsignacion(m, 'desasignar')}
               onEditar={abrirModalEditar}
+              onEliminar={manejarEliminarMeta}
             />
           )}
         </>
