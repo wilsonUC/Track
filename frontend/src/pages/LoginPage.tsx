@@ -53,18 +53,18 @@ export function LoginPage() {
         <p className="mt-2 text-sm text-[#3b5f9a] sm:text-base">Ingrese sus credenciales para acceder al panel.</p>
 
         {/* Mini Mobile Financial Growth Banner */}
-        <div className="mt-4 mb-6 flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-emerald-50/90 p-3 shadow-sm md:hidden">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm shadow-emerald-500/30">
-              <TrendingUp className="h-4 w-4 stroke-[3]" />
+        <div className="mt-3 mb-4 flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-emerald-50/90 p-2.5 shadow-sm md:hidden">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm shadow-emerald-500/30">
+              <TrendingUp className="h-3.5 w-3.5 stroke-[3]" />
             </div>
             <div>
-              <p className="text-xs font-black tracking-wide text-[#0f2d6e]">+38.5% Crecimiento</p>
-              <p className="text-[11px] text-[#3b5f9a]">Control inteligente de finanzas</p>
+              <p className="text-[11px] font-black tracking-wide text-[#0f2d6e]">+38.5% Crecimiento</p>
+              <p className="text-[10px] text-[#3b5f9a]">Control inteligente de finanzas</p>
             </div>
           </div>
 
-          <div className="w-24 shrink-0">
+          <div className="w-20 shrink-0">
             <svg viewBox="0 0 280 170" className="w-full overflow-visible">
               <defs>
                 <linearGradient id="growthGradMini" x1="0" y1="0" x2="0" y2="1">
@@ -106,12 +106,12 @@ export function LoginPage() {
         </div>
 
         {successMessage && (
-          <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-800">
             {successMessage}
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4 sm:mt-8 sm:space-y-5">
           <AuthField
             id="login-username"
             label="USUARIO"
@@ -135,21 +135,21 @@ export function LoginPage() {
           />
 
           {error && (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">{error}</p>
           )}
 
-          <div className="pt-2">
+          <div className="pt-1 sm:pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-[#0f2d6e] py-3.5 text-sm font-bold tracking-wide text-white shadow-lg shadow-[#0f2d6e]/25 transition hover:bg-[#1a3d7c] disabled:opacity-60"
+              className="w-full rounded-xl bg-[#0f2d6e] py-3 text-sm font-bold tracking-wide text-white shadow-lg shadow-[#0f2d6e]/25 transition hover:bg-[#1a3d7c] disabled:opacity-60 sm:py-3.5"
             >
               {loading ? 'ENTRANDO…' : 'INICIAR SESIÓN'}
             </button>
           </div>
         </form>
 
-        <div className="mt-10 space-y-6 text-center">
+        <div className="mt-5 space-y-2.5 text-center sm:mt-10 sm:space-y-6">
           <p className="text-sm text-slate-500">
             ¿No tiene una cuenta?{' '}
             <Link to="/register" className="font-semibold text-[#2563eb] hover:text-[#1d4ed8]">

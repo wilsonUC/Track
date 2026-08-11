@@ -129,13 +129,13 @@ type AuthSplitCardProps = {
 
 export function AuthSplitCard({ tagline, children, accent = 'login' }: AuthSplitCardProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#e8edf5] px-4 py-8">
-      <div className="relative flex w-full max-w-5xl overflow-hidden rounded-[1.75rem] bg-white shadow-2xl shadow-slate-300/50">
+    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-[#e8edf5] p-3.5 sm:p-6">
+      <div className="relative flex w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl shadow-slate-300/50">
         {accent === 'register' && (
           <div className="absolute bottom-0 right-0 top-0 w-1.5 bg-[#2563eb]" aria-hidden />
         )}
         <AuthBrandingPanel tagline={tagline} />
-        <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 md:px-12 lg:px-14">
+        <div className="flex flex-1 flex-col justify-center px-5 py-6 sm:px-10 md:px-12 lg:px-14">
           {children}
         </div>
       </div>
