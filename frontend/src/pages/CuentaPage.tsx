@@ -8,10 +8,11 @@ import { CuentaResetDatos } from '../components/cuenta/CuentaResetDatos'
 
 type OutletContext = {
   refreshProfile: () => Promise<void>
+  onLogout?: () => void
 }
 
 export function CuentaPage() {
-  const { refreshProfile } = useOutletContext<OutletContext>()
+  const { refreshProfile, onLogout } = useOutletContext<OutletContext>()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -55,7 +56,7 @@ export function CuentaPage() {
   return (
     <section className="grid gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr]">
       <div className="lg:sticky lg:top-[48px] lg:self-start">
-        <CuentaProfileCard profile={profile} />
+        <CuentaProfileCard profile={profile} onLogout={onLogout} />
       </div>
 
       <div className="space-y-6">

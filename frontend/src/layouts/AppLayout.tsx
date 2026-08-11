@@ -115,6 +115,7 @@ export function AppLayout() {
                 bumpTransactions: () => setTransactionsVersion((v) => v + 1),
                 refreshProfile,
                 setSecondaryHeaderAction,
+                onLogout: handleLogout,
               }}
             />
           </div>

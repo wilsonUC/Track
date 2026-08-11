@@ -1,11 +1,12 @@
-import { Camera, Mail, Phone, Shield, User } from 'lucide-react'
+import { Camera, LogOut, Mail, Phone, Shield, User } from 'lucide-react'
 import { profileFullName, type UserProfile } from '../../api/auth'
 
 type CuentaProfileCardProps = {
   profile: UserProfile
+  onLogout?: () => void
 }
 
-export function CuentaProfileCard({ profile }: CuentaProfileCardProps) {
+export function CuentaProfileCard({ profile, onLogout }: CuentaProfileCardProps) {
   const fullName = profileFullName(profile)
 
   return (
@@ -43,7 +44,7 @@ export function CuentaProfileCard({ profile }: CuentaProfileCardProps) {
           </span>
         </div>
 
-        <div className="mx-1 mt-6 border-t border-slate-100" />
+        <div className="mx-1 mt-6 border-t border-slate-100 dark:border-slate-700" />
 
         <ul className="mt-5 space-y-4">
           <li className="flex items-center gap-3">
@@ -65,6 +66,19 @@ export function CuentaProfileCard({ profile }: CuentaProfileCardProps) {
             </span>
           </li>
         </ul>
+
+        {onLogout && (
+          <div className="mt-6 pt-2">
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50/80 py-3 text-sm font-bold text-red-600 shadow-sm transition hover:bg-red-100 active:scale-95 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/60"
+            >
+              <LogOut className="h-4 w-4 stroke-[2.25]" />
+              Cerrar sesión
+            </button>
+          </div>
+        )}
       </div>
     </article>
   )
