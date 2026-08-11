@@ -29,7 +29,7 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
     return (
       <article
         onClick={onClick}
-        className={`overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-3.5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150 sm:p-4`}
+        className={`overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-4 sm:p-5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150`}
       >
         <div>
           <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/80">{title}</p>
@@ -68,7 +68,7 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
   return (
     <article
       onClick={onClick}
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01] sm:p-4"
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01]"
     >
       <div>
         <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{title}</p>

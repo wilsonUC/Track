@@ -11,20 +11,20 @@ export function DashboardCategoryExpenses({ categoryExpenses, loading }: Dashboa
   const insight = getTopCategoryInsight(categoryExpenses)
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between dark:border-slate-700/40 dark:bg-slate-900/60">
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col justify-between dark:border-slate-800 dark:bg-slate-900">
       <div>
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-5 dark:border-slate-700/30">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5 sm:py-4 dark:border-slate-800">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
             <PieChart className="h-5 w-5" aria-hidden />
           </div>
           <h3 className="font-semibold text-slate-800 dark:text-slate-100">Gastos por categoría</h3>
         </div>
 
-        <div className="space-y-4 p-4 sm:p-6">
+        <div className="space-y-4 p-4 sm:p-5">
           {loading && <p className="py-12 text-center text-sm text-slate-500">Cargando…</p>}
 
           {!loading && categoryExpenses.length === 0 && (
-            <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-700/40 dark:bg-slate-800/40">
+            <div className="flex min-h-[180px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-800/40">
               <p className="text-sm text-slate-500 dark:text-slate-400">No hay gastos este mes</p>
             </div>
           )}
@@ -53,7 +53,7 @@ export function DashboardCategoryExpenses({ categoryExpenses, loading }: Dashboa
       </div>
 
       {insight && (
-        <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4 rounded-b-2xl dark:border-slate-700/30 dark:bg-slate-800/20">
+        <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3.5 sm:px-5 sm:py-4 rounded-b-2xl dark:border-slate-800 dark:bg-slate-800/20">
           <p className="text-xs text-slate-500 text-center dark:text-slate-400">{insight}</p>
         </div>
       )}

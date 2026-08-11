@@ -23,17 +23,21 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
   return (
     <article
       onClick={() => navigate(isIncome ? '/ingresos' : '/gastos')}
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:scale-[1.005] duration-200 cursor-pointer"
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 transition hover:shadow-md hover:scale-[1.005] duration-200 cursor-pointer"
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4 ${
-          isIncome ? 'border-emerald-100 bg-emerald-50/10' : 'border-rose-100 bg-rose-50/10'
+        className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5 sm:py-4 ${
+          isIncome
+            ? 'border-emerald-100 bg-emerald-50/10 dark:border-slate-800 dark:bg-emerald-950/20'
+            : 'border-rose-100 bg-rose-50/10 dark:border-slate-800 dark:bg-rose-950/20'
         }`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-              isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+              isIncome
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400'
             }`}
           >
             {isIncome ? (
@@ -43,16 +47,16 @@ export function DashboardMonthCard({ variant, transactions, loading, periodLabel
             )}
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-slate-800 truncate">{title}</h3>
-            {periodLabel && <p className="text-xs text-slate-400 truncate">{periodLabel}</p>}
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{title}</h3>
+            {periodLabel && <p className="text-xs text-slate-400 dark:text-slate-400 truncate">{periodLabel}</p>}
           </div>
         </div>
-        <p className={`shrink-0 text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <p className={`shrink-0 text-base font-bold tabular-nums sm:text-lg ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
           {formattedTotal}
         </p>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 sm:p-5">
         {loading && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}
 
         {!loading && transactions.length === 0 && (

@@ -60,21 +60,24 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
   const lastPoint = points[points.length - 1]
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5 sm:py-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${activeBgColor}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeBgColor}`}>
             <ChartColumn className="h-5 w-5" aria-hidden />
           </div>
-          <h3 className="font-semibold text-slate-800">Resumen mensual</h3>
+          <div>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Tendencia mensual</h3>
+            <p className="text-xs text-slate-400">Últimos 6 meses</p>
+          </div>
         </div>
 
-        <div className="flex rounded-lg bg-slate-100 p-0.5">
+        <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
           <button
             type="button"
             onClick={() => setChartType('income')}
             className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-              isIncome ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              isIncome ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Ingresos
@@ -83,7 +86,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
             type="button"
             onClick={() => setChartType('expense')}
             className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
-              !isIncome ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              !isIncome ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             Gastos
@@ -91,7 +94,7 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
         </div>
       </div>
 
-      <div className="px-4 py-6 sm:px-6">
+      <div className="p-4 sm:p-5">
         {loading && <p className="py-16 text-center text-sm text-slate-500">Cargando…</p>}
 
         {!loading && (

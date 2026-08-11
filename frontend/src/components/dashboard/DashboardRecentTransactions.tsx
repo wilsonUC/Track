@@ -17,17 +17,17 @@ export function DashboardRecentTransactions({
   totalPendienteIngresos,
 }: DashboardRecentTransactionsProps) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/40 dark:bg-slate-900/60">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 dark:border-slate-700/30 sm:px-5 min-w-0">
+    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5 sm:py-4 dark:border-slate-800 min-w-0">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
           <History className="h-5 w-5" aria-hidden />
         </div>
         <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">Todas las transacciones recientes</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-4 py-4 border-b border-slate-100 dark:border-slate-700/30 sm:px-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 dark:border-slate-800">
         {/* Card 1: Gastos Fijos Por Pagar */}
-        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-700/20 dark:bg-slate-800/40">
+        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
           <div className="absolute top-3 right-3 rounded-lg bg-rose-50 p-1.5 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
             <TrendingDown className="h-4 w-4" aria-hidden />
           </div>
@@ -41,7 +41,7 @@ export function DashboardRecentTransactions({
         </div>
 
         {/* Card 2: Ingresos Fijos Por Cobrar */}
-        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-700/20 dark:bg-slate-800/40">
+        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
           <div className="absolute top-3 right-3 rounded-lg bg-emerald-50 p-1.5 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
             <TrendingUp className="h-4 w-4" aria-hidden />
           </div>

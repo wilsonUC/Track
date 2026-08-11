@@ -123,7 +123,7 @@ export function DashboardPanel() {
         onCustomEndChange={dateFilter.setCustomEnd}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid w-full min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardSummaryCard
           title="Balance"
           amount={formatSoles(balance)}
@@ -164,9 +164,9 @@ export function DashboardPanel() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid w-full min-w-0 gap-4 lg:grid-cols-2">
         {/* Columna Izquierda */}
-        <div className="space-y-4">
+        <div className="w-full min-w-0 space-y-4">
           <DashboardMonthCard
             variant="income"
             transactions={periodIncome}
@@ -186,7 +186,7 @@ export function DashboardPanel() {
         </div>
 
         {/* Columna Derecha */}
-        <div className="space-y-4">
+        <div className="w-full min-w-0 space-y-4">
           <DashboardRecentTransactions
             transactions={recent}
             loading={loading}
