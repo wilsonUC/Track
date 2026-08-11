@@ -95,8 +95,14 @@ export function RecurrentesPage() {
     }
   }, [transactionsVersion, fechaRef, mostrarInactivos])
 
-  const gastos = useMemo(() => recurrentes.filter((r) => r.tipo === 'expense'), [recurrentes])
-  const ingresos = useMemo(() => recurrentes.filter((r) => r.tipo === 'income'), [recurrentes])
+  const visibleRecurrentes = useMemo(() => {
+    return recurrentes.filter(
+      (r) => r.estadoPeriodo !== 'no_iniciado' && r.estadoPeriodo !== 'finalizado'
+    )
+  }, [recurrentes])
+
+  const gastos = useMemo(() => visibleRecurrentes.filter((r) => r.tipo === 'expense'), [visibleRecurrentes])
+  const ingresos = useMemo(() => visibleRecurrentes.filter((r) => r.tipo === 'income'), [visibleRecurrentes])
 
   const totalPendienteGastos = useMemo(
     () => gastos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
