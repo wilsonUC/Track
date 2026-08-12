@@ -346,12 +346,14 @@ class MetaViewSet(viewsets.ModelViewSet):
         body.is_valid(raise_exception=True)
         monto = body.validated_data["monto"]
 
-        libre = ahorro_libre(request.user)
-        if monto > libre:
-            return Response(
-                {"detalle": f"Solo tienes S/ {libre:.2f} de ahorro libre para asignar."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        preferencias, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
+        if not preferencias.permitir_asignacion_directa_metas:
+            libre = ahorro_libre(request.user)
+            if monto > libre:
+                return Response(
+                    {"detalle": f"Solo tienes S/ {libre:.2f} de ahorro libre para asignar."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         asignacion, _ = AsignacionMeta.objects.get_or_create(
             meta=meta,

@@ -9,6 +9,7 @@ type AsignacionModalProps = {
   meta: MetaCardView | null
   /** Ahorro libre disponible para asignar. */
   libre: number
+  permitirAsignacionDirecta?: boolean
   saving?: boolean
   error?: string
   onClose: () => void
@@ -23,6 +24,7 @@ export function AsignacionModal({
   mode,
   meta,
   libre,
+  permitirAsignacionDirecta = false,
   saving,
   error,
   onClose,
@@ -42,7 +44,9 @@ export function AsignacionModal({
 
   const esAsignar = mode === 'asignar'
   const restanteMeta = Math.max(0, meta.objetivo - meta.acumulado)
-  const topeAsignar = Math.min(libre, restanteMeta)
+  const topeAsignar = permitirAsignacionDirecta
+    ? (restanteMeta > 0 ? restanteMeta : Number.MAX_SAFE_INTEGER)
+    : Math.min(libre, restanteMeta)
   const tope = esAsignar ? topeAsignar : meta.acumulado
 
   function handleSubmit() {
@@ -55,7 +59,9 @@ export function AsignacionModal({
     if (montoNum > tope + 0.0001) {
       setLocalError(
         esAsignar
-          ? `Máximo asignable: ${formatSoles(tope)} (ahorro libre o lo que falta para la meta).`
+          ? permitirAsignacionDirecta
+            ? `Máximo asignable: ${formatSoles(tope)} (monto pendiente para la meta).`
+            : `Máximo asignable: ${formatSoles(tope)} (ahorro libre o lo que falta para la meta).`
           : `Máximo a quitar: ${formatSoles(tope)}.`,
       )
       return
@@ -74,7 +80,7 @@ export function AsignacionModal({
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h3 className="text-xl font-bold text-slate-900">
-                {esAsignar ? 'Asignar ahorro' : 'Quitar asignación'}
+                {esAsignar ? 'Asignar a la meta' : 'Quitar asignación'}
               </h3>
               <p className="mt-0.5 text-xs text-slate-500">
                 Meta: <span className="font-semibold">{meta.nombre}</span>
@@ -92,10 +98,15 @@ export function AsignacionModal({
 
           <div className="mb-3 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
             {esAsignar ? (
-              <>
-                Ahorro libre: <span className="font-bold">{formatSoles(libre)}</span> · Falta para la
-                meta: <span className="font-bold">{formatSoles(restanteMeta)}</span>
-              </>
+              permitirAsignacionDirecta ? (
+                <>
+                  <span className="font-semibold text-indigo-600">Asignación libre activa</span> · Falta para la meta: <span className="font-bold">{formatSoles(restanteMeta)}</span>
+                </>
+              ) : (
+                <>
+                  Ahorro libre: <span className="font-bold">{formatSoles(libre)}</span> · Falta para la meta: <span className="font-bold">{formatSoles(restanteMeta)}</span>
+                </>
+              )
             ) : (
               <>
                 Asignado actualmente: <span className="font-bold">{formatSoles(meta.acumulado)}</span>

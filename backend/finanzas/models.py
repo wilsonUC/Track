@@ -289,6 +289,7 @@ class PreferenciasUsuario(models.Model):
     dia_inicio_mes = models.PositiveSmallIntegerField(default=1)
     mostrar_decimales = models.BooleanField(default=True)
     limitar_saldo_negativo = models.BooleanField(default=False)
+    permitir_asignacion_directa_metas = models.BooleanField(default=False)
     actualizado_en = models.DateTimeField(auto_now=True)
 
 

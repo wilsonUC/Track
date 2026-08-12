@@ -9,11 +9,21 @@ export type PreferenciasUsuario = {
   dia_inicio_mes: number
   mostrar_decimales: boolean
   limitar_saldo_negativo: boolean
+  permitir_asignacion_directa_metas: boolean
   actualizado_en: string
 }
 
 export type PreferenciasUpdate = Partial<
-  Pick<PreferenciasUsuario, 'tema' | 'vista_compacta' | 'moneda' | 'dia_inicio_mes' | 'mostrar_decimales' | 'limitar_saldo_negativo'>
+  Pick<
+    PreferenciasUsuario,
+    | 'tema'
+    | 'vista_compacta'
+    | 'moneda'
+    | 'dia_inicio_mes'
+    | 'mostrar_decimales'
+    | 'limitar_saldo_negativo'
+    | 'permitir_asignacion_directa_metas'
+  >
 >
 
 

@@ -473,12 +473,33 @@ class PreferenciasTests(FinanzasAPITestCase):
 
         patch_resp = self.client.patch(
             "/api/preferencias/",
-            {"tema": "oscuro", "vista_compacta": True},
+            {"tema": "oscuro", "vista_compacta": True, "permitir_asignacion_directa_metas": True},
             format="json",
         )
         self.assertEqual(patch_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(patch_resp.data["tema"], "oscuro")
         self.assertTrue(patch_resp.data["vista_compacta"])
+        self.assertTrue(patch_resp.data["permitir_asignacion_directa_metas"])
+
+    def test_asignar_meta_modo_directo(self):
+        meta_resp = self.client.post(
+            "/api/metas/",
+            {"nombre": "Viaje Directo", "monto_objetivo": "1000.00"},
+            format="json",
+        )
+        meta_id = meta_resp.data["id"]
+
+        # Sin la preferencia activada y sin ahorro libre, falla
+        fail_resp = self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "200.00"}, format="json")
+        self.assertEqual(fail_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Activar asignación directa a metas
+        self.client.patch("/api/preferencias/", {"permitir_asignacion_directa_metas": True}, format="json")
+
+        # Ahora asignar debe ser exitoso incluso sin ahorro libre
+        ok_resp = self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "200.00"}, format="json")
+        self.assertEqual(ok_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(str(ok_resp.data["acumulado"])), Decimal("200.00"))
 
 
 from unittest.mock import patch

@@ -16,6 +16,7 @@ import { MetaModal } from '../components/metas/MetaModal'
 import { MetasGrid } from '../components/metas/MetasGrid'
 import { MetasSummaryCard } from '../components/metas/MetasSummaryCard'
 import { sectionPaths } from '../constants/routes'
+import { usePreferences } from '../context/PreferencesContext'
 import { formatSoles } from '../utils/financeFormat'
 import { mapMetaToCard, type MetaCardView } from '../utils/metasDisplay'
 
@@ -29,6 +30,7 @@ type ModalMode = 'create' | 'edit'
 type AsignacionMode = 'asignar' | 'desasignar'
 
 export function MetasPage() {
+  const { preferences } = usePreferences()
   const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
     useOutletContext<OutletContext>()
   const [metas, setMetas] = useState<MetaCardView[]>([])
@@ -221,10 +223,16 @@ export function MetasPage() {
           <div className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-sm text-indigo-800">
               <PiggyBank className="h-5 w-5 shrink-0 text-indigo-500" aria-hidden />
-              <span>
-                Tienes <span className="font-bold">{formatSoles(libre)}</span> libres en Ahorros para
-                asignar a metas.
-              </span>
+              {preferences?.permitir_asignacion_directa_metas ? (
+                <span>
+                  <span className="font-bold">Asignación libre activa:</span> Puedes sumar acumulado a tus metas directamente sin requerir saldo en Ahorros.
+                </span>
+              ) : (
+                <span>
+                  Tienes <span className="font-bold">{formatSoles(libre)}</span> libres en Ahorros para
+                  asignar a metas.
+                </span>
+              )}
             </div>
             <Link
               to={sectionPaths.ahorros}
@@ -281,6 +289,7 @@ export function MetasPage() {
         mode={asignModo}
         meta={asignMeta}
         libre={libre}
+        permitirAsignacionDirecta={preferences?.permitir_asignacion_directa_metas ?? false}
         saving={asignSaving}
         error={asignError}
         onClose={() => setAsignOpen(false)}

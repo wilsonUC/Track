@@ -10,9 +10,8 @@ type ConfigRowProps = {
 export function ConfigRow({ label, hint, children, disabled = false }: ConfigRowProps) {
   return (
     <div
-      className={`flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${
-        disabled ? 'opacity-60' : ''
-      }`}
+      className={`flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${disabled ? 'opacity-60' : ''
+        }`}
     >
       <div className="min-w-0 sm:max-w-[55%]">
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
@@ -39,14 +38,12 @@ export function ConfigToggle({ checked, onChange, disabled = false, label }: Con
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed ${
-        checked ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
-      }`}
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed ${checked ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
+        }`}
     >
       <span
-        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform dark:bg-slate-200 dark:shadow-none ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform dark:bg-slate-200 dark:shadow-none ${checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
       />
     </button>
   )
@@ -95,11 +92,10 @@ export function ConfigSegmented({ value, onChange, options, disabled = false }: 
           type="button"
           disabled={disabled}
           onClick={() => onChange(opt.value)}
-          className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition sm:px-3 sm:text-sm ${
-            value === opt.value
+          className={`flex-1 rounded-md px-2 py-1.5 text-xs font-semibold transition sm:px-3 sm:text-sm ${value === opt.value
               ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-700 dark:text-indigo-200 dark:shadow-none'
               : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-          } disabled:cursor-not-allowed`}
+            } disabled:cursor-not-allowed`}
         >
           {opt.label}
         </button>

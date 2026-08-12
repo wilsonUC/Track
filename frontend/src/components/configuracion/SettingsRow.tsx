@@ -10,9 +10,8 @@ type SettingsRowProps = {
 export function SettingsRow({ label, hint, children, disabled = false }: SettingsRowProps) {
   return (
     <div
-      className={`flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${
-        disabled ? 'opacity-60' : ''
-      }`}
+      className={`flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 ${disabled ? 'opacity-60' : ''
+        }`}
     >
       <div className="min-w-0 sm:max-w-[55%]">
         <p className="text-sm font-medium text-slate-800">{label}</p>

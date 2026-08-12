@@ -574,6 +574,7 @@ class PreferenciasSerializer(serializers.ModelSerializer):
             "dia_inicio_mes",
             "mostrar_decimales",
             "limitar_saldo_negativo",
+            "permitir_asignacion_directa_metas",
             "actualizado_en",
         ]
         read_only_fields = ["actualizado_en"]

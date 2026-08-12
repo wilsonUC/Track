@@ -26,6 +26,7 @@ export function ConfiguracionPage() {
   const [moneda, setMoneda] = useState('PEN')
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
   const [limitarSaldoNegativo, setLimitarSaldoNegativo] = useState(false)
+  const [permitirAsignacionDirectaMetas, setPermitirAsignacionDirectaMetas] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
@@ -36,6 +37,7 @@ export function ConfiguracionPage() {
     setMoneda(preferences.moneda)
     setMostrarDecimales(preferences.mostrar_decimales)
     setLimitarSaldoNegativo(preferences.limitar_saldo_negativo ?? false)
+    setPermitirAsignacionDirectaMetas(preferences.permitir_asignacion_directa_metas ?? false)
   }, [preferences])
 
   async function handleSave() {
@@ -48,6 +50,7 @@ export function ConfiguracionPage() {
         moneda,
         mostrar_decimales: mostrarDecimales,
         limitar_saldo_negativo: limitarSaldoNegativo,
+        permitir_asignacion_directa_metas: permitirAsignacionDirectaMetas,
       })
       setSaveMessage('Preferencias guardadas correctamente.')
     } catch (err) {
@@ -120,6 +123,16 @@ export function ConfiguracionPage() {
               checked={limitarSaldoNegativo}
               onChange={setLimitarSaldoNegativo}
               label="Evitar saldo negativo"
+            />
+          </ConfigRow>
+          <ConfigRow
+            label="Asignación libre a metas"
+            hint="Permite acumular o asignar fondos a tus metas directamente sin requerir saldo en Ahorros."
+          >
+            <ConfigToggle
+              checked={permitirAsignacionDirectaMetas}
+              onChange={setPermitirAsignacionDirectaMetas}
+              label="Asignación libre a metas"
             />
           </ConfigRow>
         </ConfigSection>
