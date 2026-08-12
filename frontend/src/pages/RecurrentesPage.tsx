@@ -112,12 +112,28 @@ export function RecurrentesPage() {
   const ingresos = useMemo(() => visibleRecurrentes.filter((r) => r.tipo === 'income'), [visibleRecurrentes])
 
   const totalPendienteGastos = useMemo(
-    () => gastos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
+    () =>
+      gastos
+        .filter((r) => r.activoEnMes)
+        .reduce((acc, r) => acc + (r.registradoMes ? 0 : Math.max(0, r.monto - r.montoPagado)), 0),
+    [gastos],
+  )
+
+  const totalGastosMes = useMemo(
+    () => gastos.filter((r) => r.activoEnMes).reduce((acc, r) => acc + r.monto, 0),
     [gastos],
   )
 
   const totalPendienteIngresos = useMemo(
-    () => ingresos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0),
+    () =>
+      ingresos
+        .filter((r) => r.activoEnMes)
+        .reduce((acc, r) => acc + (r.registradoMes ? 0 : Math.max(0, r.monto - r.montoPagado)), 0),
+    [ingresos],
+  )
+
+  const totalIngresosMes = useMemo(
+    () => ingresos.filter((r) => r.activoEnMes).reduce((acc, r) => acc + r.monto, 0),
     [ingresos],
   )
 
@@ -392,7 +408,9 @@ export function RecurrentesPage() {
         <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <RecurrentesSummaryCard
             totalPendienteGastos={totalPendienteGastos}
+            totalGastosMes={totalGastosMes}
             totalPendienteIngresos={totalPendienteIngresos}
+            totalIngresosMes={totalIngresosMes}
           />
 
           <ResumenCuentasAtrasadas

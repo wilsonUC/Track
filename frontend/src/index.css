@@ -16,6 +16,7 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  color-scheme: light;
 }
 
 body {
@@ -40,9 +41,30 @@ p {
   margin: 0;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
 html.dark body {
   background-color: #0f172a;
   color: #e2e8f0;
+}
+
+/* Ocultar las flechas (spin buttons) nativas blancas en inputs de tipo número */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Ajustar íconos nativos de date/time pickers en modo oscuro */
+html.dark ::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
 }
 
 html[data-compact="true"] [data-app-shell] .list-row-compact {
