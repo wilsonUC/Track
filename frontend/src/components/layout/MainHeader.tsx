@@ -12,9 +12,10 @@ type MainHeaderProps = {
     label: string
     onClick: () => void
   } | null
+  hasExtra?: boolean
 }
 
-export function MainHeader({ section, displayName, onOpenNewTransaction, secondaryAction }: MainHeaderProps) {
+export function MainHeader({ section, displayName, onOpenNewTransaction, secondaryAction, hasExtra }: MainHeaderProps) {
   const { pathname } = useLocation()
   const isDashboard = section === 'dashboard'
   const isCuenta = pathname === cuentaPath
@@ -22,7 +23,7 @@ export function MainHeader({ section, displayName, onOpenNewTransaction, seconda
   const isConfiguracion = section === 'configuracion'
 
   return (
-    <header className="mb-5 flex flex-col gap-4 sm:mb-6 lg:flex-row lg:items-start lg:justify-between">
+    <header className={`flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between ${hasExtra ? 'mb-2.5 sm:mb-3.5' : 'mb-5 sm:mb-6'}`}>
       <div className="min-w-0 space-y-1">
         {isCuenta ? (
           <>

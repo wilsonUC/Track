@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { PreferencesProvider } from '../context/PreferencesContext'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { fetchProfile, logout, profileDisplayName, profileInitial, type UserProfile } from '../api/auth'
@@ -30,6 +30,7 @@ export function AppLayout() {
     label: string
     onClick: () => void
   } | null>(null)
+  const [headerExtra, setHeaderExtra] = useState<ReactNode | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
 
@@ -107,7 +108,9 @@ export function AppLayout() {
                 displayName={displayName}
                 onOpenNewTransaction={handleOpenNewTransaction}
                 secondaryAction={secondaryHeaderAction}
+                hasExtra={Boolean(headerExtra)}
               />
+              {headerExtra && <div className="mt-2">{headerExtra}</div>}
             </div>
             <Outlet
               context={{
@@ -115,6 +118,7 @@ export function AppLayout() {
                 bumpTransactions: () => setTransactionsVersion((v) => v + 1),
                 refreshProfile,
                 setSecondaryHeaderAction,
+                setHeaderExtra,
                 onLogout: handleLogout,
               }}
             />

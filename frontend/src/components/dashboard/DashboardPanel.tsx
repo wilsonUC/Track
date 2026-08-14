@@ -28,10 +28,11 @@ import type { RecurrenteCardView } from '../recurrentes/recurrentesTypes'
 
 type OutletContext = {
   transactionsVersion: number
+  setHeaderExtra?: (extra: React.ReactNode | null) => void
 }
 
 export function DashboardPanel() {
-  const { transactionsVersion } = useOutletContext<OutletContext>()
+  const { transactionsVersion, setHeaderExtra } = useOutletContext<OutletContext>()
   const [activeCard, setActiveCard] = useState<'balance' | 'income' | 'expense' | 'savings'>('balance')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -104,6 +105,39 @@ export function DashboardPanel() {
     return ingresos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
   }, [recurrentes])
 
+  useEffect(() => {
+    if (!setHeaderExtra) return
+    setHeaderExtra(
+      <DateFilterToolbar
+        preset={dateFilter.preset}
+        onPresetChange={dateFilter.setPreset}
+        customStart={dateFilter.customStart}
+        customEnd={dateFilter.customEnd}
+        onCustomStartChange={dateFilter.setCustomStart}
+        onCustomEndChange={dateFilter.setCustomEnd}
+        onPrevPeriod={dateFilter.prevPeriod}
+        onNextPeriod={dateFilter.nextPeriod}
+        onResetToCurrent={dateFilter.resetToCurrent}
+        isCurrentPeriod={dateFilter.isCurrentPeriod}
+        periodLabel={dateFilter.periodLabel}
+      />
+    )
+    return () => setHeaderExtra(null)
+  }, [
+    setHeaderExtra,
+    dateFilter.preset,
+    dateFilter.customStart,
+    dateFilter.customEnd,
+    dateFilter.isCurrentPeriod,
+    dateFilter.periodLabel,
+    dateFilter.setPreset,
+    dateFilter.setCustomStart,
+    dateFilter.setCustomEnd,
+    dateFilter.prevPeriod,
+    dateFilter.nextPeriod,
+    dateFilter.resetToCurrent,
+  ])
+
   if (error) {
     return (
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
@@ -114,15 +148,6 @@ export function DashboardPanel() {
 
   return (
     <section className="space-y-6">
-      <DateFilterToolbar
-        preset={dateFilter.preset}
-        onPresetChange={dateFilter.setPreset}
-        customStart={dateFilter.customStart}
-        customEnd={dateFilter.customEnd}
-        onCustomStartChange={dateFilter.setCustomStart}
-        onCustomEndChange={dateFilter.setCustomEnd}
-      />
-
       <div className="grid w-full min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardSummaryCard
           title="Balance"

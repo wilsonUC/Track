@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { AlertCircle, ArrowDownRight, ArrowUpRight, Calendar, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, ArrowDownRight, ArrowUpRight, Calendar, ChevronDown, CheckCircle2, X } from 'lucide-react'
 import type { ApiCuentasAtrasadasItem } from '../../api/recurrentes'
+import { useDismissibleBanner } from '../../hooks/useDismissibleBanner'
 
 type ResumenCuentasAtrasadasProps = {
   deudas: ApiCuentasAtrasadasItem[]
@@ -21,22 +22,33 @@ export function ResumenCuentasAtrasadas({
 }: ResumenCuentasAtrasadasProps) {
   const [pagarExpanded, setPagarExpanded] = useState(false)
   const [cobrarExpanded, setCobrarExpanded] = useState(false)
+  const { isVisible: showAtrasadasHeader, dismiss: dismissAtrasadasHeader } =
+    useDismissibleBanner('recurrentes_atrasadas_header', 7)
 
   return (
     <div className="space-y-6">
       {/* Cabecera Informativa */}
-      {(deudas.length > 0 || cobros.length > 0) && (
-        <div className="rounded-2xl bg-indigo-950 p-5 text-white shadow-lg border border-indigo-900/50">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+      {(deudas.length > 0 || cobros.length > 0) && showAtrasadasHeader && (
+        <div className="rounded-2xl bg-indigo-950 p-4 sm:p-5 text-white shadow-lg border border-indigo-900/50 transition-all duration-300">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
               <h2 className="text-base font-bold flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-indigo-400" />
+                <AlertCircle className="h-5 w-5 text-indigo-400 shrink-0" />
                 Cuentas Atrasadas de Meses Anteriores
               </h2>
-              <p className="text-xs text-indigo-200 mt-0.5">
+              <p className="text-xs text-indigo-200">
                 Tienes saldos acumulados de periodos anteriores pendientes de registrar. Puedes liquidarlos aquí.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={dismissAtrasadasHeader}
+              className="shrink-0 rounded-lg p-1 text-indigo-300 hover:bg-indigo-900/80 hover:text-white transition-colors"
+              title="Ocultar aviso por 7 días"
+              aria-label="Ocultar aviso por 7 días"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}

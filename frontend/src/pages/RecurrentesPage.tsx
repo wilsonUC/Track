@@ -25,12 +25,13 @@ type OutletContext = {
   transactionsVersion: number
   bumpTransactions: () => void
   setSecondaryHeaderAction: (action: { label: string; onClick: () => void } | null) => void
+  setHeaderExtra: (node: React.ReactNode | null) => void
 }
 
 type ModalMode = 'create' | 'edit'
 
 export function RecurrentesPage() {
-  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
+  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction, setHeaderExtra } =
     useOutletContext<OutletContext>()
   const [recurrentes, setRecurrentes] = useState<RecurrenteCardView[]>([])
   const [categorias, setCategorias] = useState<Awaited<ReturnType<typeof fetchCategories>>>([])
@@ -394,12 +395,15 @@ export function RecurrentesPage() {
     return () => setSecondaryHeaderAction(null)
   }, [setSecondaryHeaderAction])
 
-  return (
-    <section className="space-y-6 text-slate-800">
-      <div className="sticky top-[52px] z-20 -mx-4 -mt-4 bg-slate-100/80 px-4 pb-4 pt-4 backdrop-blur-md dark:bg-slate-950/80 md:top-[40px] md:-mx-8 md:-mt-6 md:px-8">
-        <FiltroMesRecurrentes fechaRef={fechaRef} onChangeFecha={setFechaRef} />
-      </div>
+  useEffect(() => {
+    setHeaderExtra(
+      <FiltroMesRecurrentes fechaRef={fechaRef} onChangeFecha={setFechaRef} />
+    )
+    return () => setHeaderExtra(null)
+  }, [setHeaderExtra, fechaRef])
 
+  return (
+    <section className="space-y-6 text-slate-800 dark:text-slate-100">
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       {loading && recurrentes.length === 0 ? (

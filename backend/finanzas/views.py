@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
@@ -584,7 +585,10 @@ class AdminUsuarioDetalleView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user.delete()
+        with transaction.atomic():
+            Transaction.objects.filter(usuario=user).delete()
+            user.delete()
+
         return Response({"mensaje": "Usuario eliminado correctamente."}, status=status.HTTP_200_OK)
 
 

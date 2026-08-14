@@ -18,15 +18,16 @@ import { buildCategoryMap, enrichTransactions, filterByDateRange } from '../util
 
 type OutletContext = {
   transactionsVersion: number
+  setHeaderExtra?: (extra: React.ReactNode | null) => void
 }
 
 export function ReportesPage() {
-  const { transactionsVersion } = useOutletContext<OutletContext>()
+  const { transactionsVersion, setHeaderExtra } = useOutletContext<OutletContext>()
   const [typeFilter, setTypeFilter] = useState<ReportFilter>('todos')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const dateFilter = useDateFilter({ defaultPreset: 'total' })
+  const dateFilter = useDateFilter({ defaultPreset: 'month' })
 
   const [categoryRows, setCategoryRows] = useState<ReturnType<typeof prepareReportData>['categoryRows']>([])
   const [monthlyBars, setMonthlyBars] = useState<ReturnType<typeof prepareReportData>['monthlyBars']>([])
@@ -72,6 +73,39 @@ export function ReportesPage() {
     downloadReportCsv(filteredCategories, monthlyBars, typeFilter, dateFilter.label)
   }
 
+  useEffect(() => {
+    if (!setHeaderExtra) return
+    setHeaderExtra(
+      <DateFilterToolbar
+        preset={dateFilter.preset}
+        onPresetChange={dateFilter.setPreset}
+        customStart={dateFilter.customStart}
+        customEnd={dateFilter.customEnd}
+        onCustomStartChange={dateFilter.setCustomStart}
+        onCustomEndChange={dateFilter.setCustomEnd}
+        onPrevPeriod={dateFilter.prevPeriod}
+        onNextPeriod={dateFilter.nextPeriod}
+        onResetToCurrent={dateFilter.resetToCurrent}
+        isCurrentPeriod={dateFilter.isCurrentPeriod}
+        periodLabel={dateFilter.periodLabel}
+      />
+    )
+    return () => setHeaderExtra(null)
+  }, [
+    setHeaderExtra,
+    dateFilter.preset,
+    dateFilter.customStart,
+    dateFilter.customEnd,
+    dateFilter.isCurrentPeriod,
+    dateFilter.periodLabel,
+    dateFilter.setPreset,
+    dateFilter.setCustomStart,
+    dateFilter.setCustomEnd,
+    dateFilter.prevPeriod,
+    dateFilter.nextPeriod,
+    dateFilter.resetToCurrent,
+  ])
+
   if (error) {
     return (
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
@@ -82,15 +116,6 @@ export function ReportesPage() {
 
   return (
     <section className="space-y-5">
-      <DateFilterToolbar
-        preset={dateFilter.preset}
-        onPresetChange={dateFilter.setPreset}
-        customStart={dateFilter.customStart}
-        customEnd={dateFilter.customEnd}
-        onCustomStartChange={dateFilter.setCustomStart}
-        onCustomEndChange={dateFilter.setCustomEnd}
-      />
-
       <ReportesHeader filter={typeFilter} onFilterChange={setTypeFilter} onExport={handleExport} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
