@@ -106,7 +106,11 @@ export function AppLayout() {
               <MainHeader
                 section={section}
                 displayName={displayName}
+                userEmail={userEmail}
+                userInitial={userInitial}
+                isStaff={isStaff}
                 onOpenNewTransaction={handleOpenNewTransaction}
+                onLogout={handleLogout}
                 secondaryAction={secondaryHeaderAction}
                 hasExtra={Boolean(headerExtra)}
               />
