@@ -16,7 +16,7 @@ from django.db.models.functions import Coalesce
 from .models import MetaAhorro, Presupuesto, Recurrente, Transaction
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 MAX_HISTORY = 10
 MAX_RECENT_TX = 25
 

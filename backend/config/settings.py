@@ -160,7 +160,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # Asistente IA (Groq) — la clave nunca va al frontend
 GROQ_API_KEY = config("GROQ_API_KEY", default="")
-GROQ_MODEL = config("GROQ_MODEL", default="llama-3.1-8b-instant")
+GROQ_MODEL = config("GROQ_MODEL", default="openai/gpt-oss-20b")
 
 # Tests: SQLite en memoria (no requiere PostgreSQL ni toca la DB real)
 import sys
