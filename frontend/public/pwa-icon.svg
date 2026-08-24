@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo sólido oscuro con degradado sutil para icono de app / PWA -->
+  <defs>
+    <linearGradient id="pwa-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <filter id="pwa-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#pwa-bg)"/>
+
+  <!-- Isotipo FinanzasTrack centrado con sombra suave -->
+  <g transform="translate(156, 97.5) scale(0.48)" filter="url(#pwa-glow)">
+    <path d="M125.435 412.868V481.291L84.2256 445.524V412.868H125.435Z" fill="#ffffff"/>
+    <path d="M146.428 499.951L186.082 537.273V376.324H146.428V499.951Z" fill="#ffffff"/>
+    <path d="M249.062 448.634L208.63 484.401V335.893H249.062V448.634Z" fill="#ffffff"/>
+    <path d="M207.075 660.9V591.7L53.1245 450.967C56.2346 359.53 135.283 319.565 174.419 311.012C246.574 292.973 298.824 331.487 315.93 352.999L373.467 339.781C276.431 221.596 150.575 255.289 99.7763 286.909C13.937 338.537 -2.33925 434.898 0.252512 476.626L207.075 660.9Z" fill="#ffffff"/>
+    <path d="M207.853 517.835V587.035L341.588 463.408L375.021 497.619L415.453 361.551L275.498 393.43L309.709 427.641L207.853 517.835Z" fill="#10b981"/>
+    <circle cx="207.853" cy="153.173" r="125.673" stroke="#ffffff" stroke-width="55"/>
+  </g>
+</svg>
