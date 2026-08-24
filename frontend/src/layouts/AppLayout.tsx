@@ -100,9 +100,10 @@ export function AppLayout() {
       />
 
       <div className="flex h-full min-h-0 flex-col md:pl-64">
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-24 pt-5 md:px-8 md:pb-8 md:pt-8">
-          <div className="mx-auto max-w-6xl">
-            <div className="sticky -top-5 md:-top-8 z-30 -mt-5 bg-slate-100/80 pb-3 pt-5 backdrop-blur-md dark:bg-slate-950/80 md:-mt-8 md:pt-8">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+          {/* Encabezado fijo con efecto blur (frosted glass) de ancho completo */}
+          <header className="sticky top-0 z-30 w-full bg-slate-100/75 px-4 py-3.5 backdrop-blur-xl backdrop-saturate-150 transition-colors dark:bg-slate-950/75 md:px-8">
+            <div className="mx-auto max-w-6xl">
               <MainHeader
                 section={section}
                 displayName={displayName}
@@ -114,8 +115,12 @@ export function AppLayout() {
                 secondaryAction={secondaryHeaderAction}
                 hasExtra={Boolean(headerExtra)}
               />
-              {headerExtra && <div className="mt-2">{headerExtra}</div>}
+              {headerExtra && <div className="mt-2.5">{headerExtra}</div>}
             </div>
+          </header>
+
+          {/* Contenido principal que se desliza por debajo del header con blur */}
+          <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:px-8 md:pb-8">
             <Outlet
               context={{
                 transactionsVersion,

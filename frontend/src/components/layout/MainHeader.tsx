@@ -88,47 +88,53 @@ export function MainHeader({
   }, [isMenuOpen])
 
   return (
-    <header
-      className={`flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between ${
-        hasExtra ? 'mb-2.5 sm:mb-3.5' : 'mb-5 sm:mb-6'
+    <div
+      className={`flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between ${
+        hasExtra ? 'mb-2 sm:mb-2.5' : 'mb-0'
       }`}
     >
       <div className="flex items-center justify-between gap-3">
-        {/* Lado izquierdo: Icono de módulo (en mobile) + Micro-tag contextual + Título */}
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50/80 text-indigo-600 shadow-xs backdrop-blur-sm dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400 sm:hidden">
+        {/* Lado izquierdo: Icono de módulo con badge estético + Micro-tag contextual + Título y subtítulo */}
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 to-indigo-100/60 text-indigo-600 shadow-xs backdrop-blur-sm transition-transform duration-200 hover:scale-105 dark:border-indigo-900/50 dark:from-indigo-950/60 dark:to-indigo-900/40 dark:text-indigo-400">
             {isCuenta ? <User className="h-5 w-5" /> : <NavIcon section={section} />}
           </div>
 
           <div className="min-w-0">
-            <span className="block text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 sm:hidden">
-              {isCuenta ? 'Seguridad & Perfil' : sectionCategoryTag[section]}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                {isCuenta ? 'Seguridad & Perfil' : sectionCategoryTag[section]}
+              </span>
+              <span className="hidden sm:inline-block h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+              <span className="hidden sm:inline-block text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                FinanzasTrack
+              </span>
+            </div>
 
             {isCuenta ? (
               <>
-                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+                <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                   Mi Cuenta
                 </h2>
-                <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
+                <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
                   Visualiza y actualiza la información de tu perfil y preferencias de seguridad.
                 </p>
               </>
             ) : isDashboard ? (
               <>
-                <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+                <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                   ¡Hola, {displayName}!
                 </h2>
-                <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
+                <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
                   Vista general de tus finanzas
                 </p>
               </>
             ) : (
               <>
-                <h2 className="text-xl font-black capitalize tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+                <h2 className="text-lg font-black capitalize tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
                   {sectionTitle[section]}
                 </h2>
-                <p className="hidden text-sm text-slate-500 dark:text-slate-400 sm:block">
+                <p className="hidden text-xs text-slate-500 dark:text-slate-400 sm:block">
                   {sectionSubtitle[section]}
                 </p>
               </>
@@ -267,6 +273,6 @@ export function MainHeader({
           </button>
         </div>
       )}
-    </header>
+    </div>
   )
 }

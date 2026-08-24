@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Inicialización inmediata de tema antes de renderizar (evita parpadeo de modo claro) -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('track_theme');
+          var isDark = false;
+          if (saved === 'oscuro') {
+            isDark = true;
+          } else if (saved === 'claro') {
+            isDark = false;
+          } else {
+            isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          }
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,7 +33,7 @@
     />
     <title>FinanzasTrack</title>
   </head>
-  <body>
+  <body class="bg-slate-100 dark:bg-slate-950">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
