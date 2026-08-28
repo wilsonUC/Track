@@ -24,7 +24,12 @@ from .models import (
 )
 from .ia_service import chat_with_groq
 from .consejos_service import get_or_generate_consejos
-from .ahorros_service import ahorro_libre, resumen_ahorros
+from .ahorros_service import (
+    ahorro_libre,
+    resumen_ahorros,
+    saldo_disponible_total,
+    sincronizar_ahorros_metas,
+)
 from .recurrentes_service import (
     transacciones_mes_actual,
     _bounds_mes,
@@ -96,8 +101,19 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
     serializer_class = PresupuestoSerializer
 
     def get_queryset(self):
-        today = date.today()
-        month_start = today.replace(day=1)
+        mes_param = self.request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(mes_param)
+            except ValueError:
+                try:
+                    parts = mes_param.split("-")
+                    reference_date = date(int(parts[0]), int(parts[1]), 1)
+                except Exception:
+                    pass
+
+        inicio_mes, fin_mes = _bounds_mes(reference_date)
         return (
             Presupuesto.objects.filter(usuario=self.request.user, activo=True)
             .select_related("categoria_referencia")
@@ -107,8 +123,8 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
                         "transacciones__monto",
                         filter=Q(
                             transacciones__tipo=Transaction.Tipo.GASTO,
-                            transacciones__fecha__gte=month_start,
-                            transacciones__fecha__lte=today,
+                            transacciones__fecha__gte=inicio_mes,
+                            transacciones__fecha__lte=fin_mes,
                         ),
                     ),
                     Decimal("0"),
@@ -116,6 +132,22 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
                 )
             )
         )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        mes_param = self.request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(mes_param)
+            except ValueError:
+                try:
+                    parts = mes_param.split("-")
+                    reference_date = date(int(parts[0]), int(parts[1]), 1)
+                except Exception:
+                    pass
+        context["reference_date"] = reference_date
+        return context
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
@@ -126,6 +158,19 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="gasto-rapido")
     def gasto_rapido(self, request, pk=None):
+        today = date.today()
+        mes_param = request.data.get("mes") or request.query_params.get("mes")
+        if mes_param:
+            try:
+                ref_date = date.fromisoformat(mes_param)
+                if ref_date.year != today.year or ref_date.month != today.month:
+                    return Response(
+                        {"error": "Solo se pueden registrar gastos en el mes en curso."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except ValueError:
+                pass
+
         presupuesto = self.get_object()
         from .ahorros_service import validar_limite_saldo
         validar_limite_saldo(request.user, Transaction.Tipo.GASTO, presupuesto.monto_rapido)
@@ -136,9 +181,35 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
             categoria=None,
             tipo=Transaction.Tipo.GASTO,
             monto=presupuesto.monto_rapido,
-            fecha=date.today(),
+            fecha=today,
             descripcion=f"Gasto presupuesto: {presupuesto.nombre}",
         )
+        presupuesto = self.get_queryset().get(pk=presupuesto.pk)
+        serializer = self.get_serializer(presupuesto)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="limpiar-consumos")
+    def limpiar_consumos(self, request, pk=None):
+        presupuesto = self.get_object()
+        mes_param = request.data.get("mes") or request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(mes_param)
+            except ValueError:
+                try:
+                    parts = mes_param.split("-")
+                    reference_date = date(int(parts[0]), int(parts[1]), 1)
+                except Exception:
+                    pass
+        inicio, fin = _bounds_mes(reference_date)
+        Transaction.objects.filter(
+            usuario=request.user,
+            presupuesto=presupuesto,
+            tipo=Transaction.Tipo.GASTO,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+        ).delete()
         presupuesto = self.get_queryset().get(pk=presupuesto.pk)
         serializer = self.get_serializer(presupuesto)
         return Response(serializer.data)
@@ -329,6 +400,37 @@ class MetaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        nuevo_libre = serializer.validated_data.get("es_asignacion_libre", instance.es_asignacion_libre)
+
+        # Si está cambiando de Libre (True) -> Ahorro Formal (False)
+        if not nuevo_libre and instance.es_asignacion_libre:
+            asignacion = AsignacionMeta.objects.filter(meta=instance).first()
+            monto_asignado = asignacion.monto if asignacion else Decimal("0")
+            if monto_asignado > Decimal("0"):
+                libre = ahorro_libre(self.request.user)
+                diferencia = monto_asignado - libre
+                if diferencia > Decimal("0"):
+                    disponible = saldo_disponible_total(self.request.user)
+                    if disponible < diferencia:
+                        from rest_framework.exceptions import ValidationError
+                        raise ValidationError(
+                            {
+                                "detalle": f"No puedes vincular esta meta a Fondo de Ahorros: tiene S/ {monto_asignado:.2f} acumulados y solo dispones de S/ {disponible:.2f} en tu balance disponible para respaldarla. Reduce el acumulado antes de cambiar a modo ahorro."
+                            }
+                        )
+                    # Auto apartar ahorro para respaldar la meta
+                    Transaction.objects.create(
+                        usuario=self.request.user,
+                        tipo=Transaction.Tipo.AHORRO,
+                        monto=diferencia,
+                        fecha=date.today(),
+                        descripcion=f"Ahorro formalizado para meta: {instance.nombre}",
+                    )
+
+        serializer.save()
+
     def perform_destroy(self, instance):
         # Liberamos el dinero asignado borrando el registro de asignación
         try:
@@ -341,14 +443,13 @@ class MetaViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="asignar")
     def asignar(self, request, pk=None):
-        """Asigna ahorro libre a la meta. No puede superar el ahorro libre."""
+        """Asigna ahorro a la meta. Si es modo formal, no puede superar el ahorro libre."""
         meta = self.get_object()
         body = MetaAsignarSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         monto = body.validated_data["monto"]
 
-        preferencias, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
-        if not preferencias.permitir_asignacion_directa_metas:
+        if not meta.es_asignacion_libre:
             libre = ahorro_libre(request.user)
             if monto > libre:
                 return Response(
@@ -386,6 +487,66 @@ class MetaViewSet(viewsets.ModelViewSet):
 
         return Response(self.get_serializer(meta).data)
 
+    @action(detail=True, methods=["post"], url_path="cambiar-modo")
+    def cambiar_modo(self, request, pk=None):
+        """Alterna entre Asignación Libre y Vinculada a Fondo de Ahorros."""
+        meta = self.get_object()
+        nuevo_modo = request.data.get("es_asignacion_libre")
+        if nuevo_modo is None:
+            return Response(
+                {"error": "Debe especificar es_asignacion_libre (true o false)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        asignacion = AsignacionMeta.objects.filter(meta=meta).first()
+        monto_asignado = asignacion.monto if asignacion else Decimal("0")
+
+        # Pasar de Libre (True) -> Ahorro Formal (False)
+        if not nuevo_modo and meta.es_asignacion_libre:
+            if monto_asignado > 0:
+                libre = ahorro_libre(request.user)
+                diferencia = monto_asignado - libre
+                if diferencia > 0:
+                    disponible = saldo_disponible_total(request.user)
+                    if disponible < diferencia:
+                        return Response(
+                            {
+                                "error": "saldo_insuficiente",
+                                "detalle": f"Para vincular esta meta a Ahorros necesitas S/ {monto_asignado:.2f}. Tu balance disponible es S/ {disponible:.2f}.",
+                                "requerido": float(monto_asignado),
+                                "disponible": float(disponible),
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    auto_apartar = request.data.get("auto_apartar", False)
+                    if not auto_apartar:
+                        return Response(
+                            {
+                                "error": "confirmacion_requerida",
+                                "detalle": f"Al vincular esta meta a Ahorros, se apartarán automáticamente S/ {diferencia:.2f} de tu balance disponible hacia tu fondo de Ahorros.",
+                                "monto_a_apartar": float(diferencia),
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    # Auto apartar ahorro para respaldar la meta
+                    Transaction.objects.create(
+                        usuario=request.user,
+                        tipo=Transaction.Tipo.AHORRO,
+                        monto=diferencia,
+                        fecha=date.today(),
+                        descripcion=f"Ahorro formalizado para meta: {meta.nombre}",
+                    )
+
+            meta.es_asignacion_libre = False
+            meta.save(update_fields=["es_asignacion_libre", "actualizado_en"])
+
+        # Pasar de Ahorro Formal (False) -> Libre (True)
+        elif nuevo_modo and not meta.es_asignacion_libre:
+            meta.es_asignacion_libre = True
+            meta.save(update_fields=["es_asignacion_libre", "actualizado_en"])
+
+        return Response(self.get_serializer(meta).data)
+
 
 class AhorroViewSet(viewsets.ModelViewSet):
     """Pool de ahorros del usuario (transacciones tipo saving, sin meta)."""
@@ -393,6 +554,7 @@ class AhorroViewSet(viewsets.ModelViewSet):
     serializer_class = AhorroSerializer
 
     def get_queryset(self):
+        sincronizar_ahorros_metas(self.request.user)
         return Transaction.objects.filter(
             usuario=self.request.user,
             tipo=Transaction.Tipo.AHORRO,

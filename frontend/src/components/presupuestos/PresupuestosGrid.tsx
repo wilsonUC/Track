@@ -6,6 +6,9 @@ type PresupuestosGridProps = {
   onRegistrarGasto: (id: number) => void
   onEditar: (presupuesto: PresupuestoCardView) => void
   registrandoId?: number | null
+  esMesActual?: boolean
+  esMesPasado?: boolean
+  esMesFuturo?: boolean
 }
 
 export function PresupuestosGrid({
@@ -13,6 +16,9 @@ export function PresupuestosGrid({
   onRegistrarGasto,
   onEditar,
   registrandoId,
+  esMesActual = true,
+  esMesPasado = false,
+  esMesFuturo = false,
 }: PresupuestosGridProps) {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -23,6 +29,9 @@ export function PresupuestosGrid({
           onRegistrarGasto={onRegistrarGasto}
           onEditar={onEditar}
           registrando={registrandoId === presupuesto.id}
+          esMesActual={esMesActual}
+          esMesPasado={esMesPasado}
+          esMesFuturo={esMesFuturo}
         />
       ))}
     </div>

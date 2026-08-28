@@ -10,9 +10,13 @@ from django.db.models import Sum
 from .models import Transaction
 
 
+import calendar
+
+
 def _month_bounds(reference: date | None = None) -> tuple[date, date]:
-    today = reference or date.today()
-    return today.replace(day=1), today
+    ref = reference or date.today()
+    ultimo_dia = calendar.monthrange(ref.year, ref.month)[1]
+    return ref.replace(day=1), ref.replace(day=ultimo_dia)
 
 
 def calcular_gastado_mes(presupuesto, reference: date | None = None) -> Decimal:

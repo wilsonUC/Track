@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { PiggyBank, X, Zap } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { ApiCategory } from '../../api/finanzas'
 
@@ -11,6 +11,7 @@ type MetaModalProps = {
   fechaLimite: string
   categoriaReferenciaId: number | ''
   categoriasGasto: ApiCategory[]
+  esAsignacionLibre: boolean
   saving?: boolean
   error?: string
   onNombreChange: (value: string) => void
@@ -18,6 +19,7 @@ type MetaModalProps = {
   onFechaInicioChange: (value: string) => void
   onFechaLimiteChange: (value: string) => void
   onCategoriaReferenciaChange: (value: number | '') => void
+  onEsAsignacionLibreChange: (value: boolean) => void
   onClose: () => void
   onSubmit: (e: FormEvent) => void
 }
@@ -31,6 +33,7 @@ export function MetaModal({
   fechaLimite,
   categoriaReferenciaId,
   categoriasGasto,
+  esAsignacionLibre,
   saving,
   error,
   onNombreChange,
@@ -38,6 +41,7 @@ export function MetaModal({
   onFechaInicioChange,
   onFechaLimiteChange,
   onCategoriaReferenciaChange,
+  onEsAsignacionLibreChange,
   onClose,
   onSubmit,
 }: MetaModalProps) {
@@ -45,15 +49,15 @@ export function MetaModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 p-5">
-          <h2 className="text-lg font-bold text-slate-900">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
             {mode === 'edit' ? 'Editar meta' : 'Crear nueva meta'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -62,7 +66,7 @@ export function MetaModal({
 
         <form onSubmit={onSubmit} className="space-y-4 p-5">
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+            <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
               Nombre del objetivo
             </label>
             <input
@@ -70,13 +74,13 @@ export function MetaModal({
               placeholder="Ej: Fondo de emergencia"
               value={nombre}
               onChange={(e) => onNombreChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+            <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
               Monto objetivo (S/)
             </label>
             <input
@@ -86,38 +90,82 @@ export function MetaModal({
               placeholder="2000"
               value={montoObjetivo}
               onChange={(e) => onMontoObjetivoChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               required
             />
           </div>
 
+          {/* Selector visual de Modo de Asignación */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+              Tipo de respaldo financiero
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onEsAsignacionLibreChange(false)}
+                className={`flex flex-col gap-1 rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                  !esAsignacionLibre
+                    ? 'border-emerald-500 bg-emerald-50/70 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-200 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <PiggyBank className={`h-4 w-4 shrink-0 ${!esAsignacionLibre ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                  <p className="text-xs font-bold">Fondo Ahorros</p>
+                </div>
+                <p className="text-[10px] leading-tight opacity-80">
+                  Usa y descuenta saldo de tu Ahorro Libre.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onEsAsignacionLibreChange(true)}
+                className={`flex flex-col gap-1 rounded-xl border p-3 text-left transition-all cursor-pointer ${
+                  esAsignacionLibre
+                    ? 'border-indigo-500 bg-indigo-50/70 text-indigo-950 dark:border-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-200 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/60 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Zap className={`h-4 w-4 shrink-0 ${esAsignacionLibre ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                  <p className="text-xs font-bold">Asignación Libre</p>
+                </div>
+                <p className="text-[10px] leading-tight opacity-80">
+                  Acumulado directo sin tocar tus ahorros.
+                </p>
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+              <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Fecha de inicio (opcional)
               </label>
               <input
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => onFechaInicioChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+              <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Fecha límite (opcional)
               </label>
               <input
                 type="date"
                 value={fechaLimite}
                 onChange={(e) => onFechaLimiteChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+            <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
               Categoría de referencia (opcional)
             </label>
             <select
@@ -125,7 +173,7 @@ export function MetaModal({
               onChange={(e) =>
                 onCategoriaReferenciaChange(e.target.value ? Number(e.target.value) : '')
               }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             >
               <option value="">Sin categoría (icono genérico)</option>
               {categoriasGasto.map((c) => (
@@ -136,13 +184,13 @@ export function MetaModal({
             </select>
           </div>
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
 
-          <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
+          <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               Cancelar
             </button>

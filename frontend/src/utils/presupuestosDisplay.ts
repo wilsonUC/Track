@@ -1,4 +1,4 @@
-import type { ApiPresupuesto } from '../api/presupuestos'
+import type { ApiPresupuesto, ApiPresupuestoConsumo } from '../api/presupuestos'
 
 export type PresupuestoCardView = {
   id: number
@@ -10,6 +10,7 @@ export type PresupuestoCardView = {
   estado: ApiPresupuesto['estado']
   iconCategory: string
   categoriaReferenciaId: number | null
+  consumos: ApiPresupuestoConsumo[]
 }
 
 export function mapPresupuestoToCard(p: ApiPresupuesto): PresupuestoCardView {
@@ -23,5 +24,6 @@ export function mapPresupuestoToCard(p: ApiPresupuesto): PresupuestoCardView {
     estado: p.estado,
     iconCategory: p.categoria_referencia_nombre ?? 'Otros',
     categoriaReferenciaId: p.categoria_referencia,
+    consumos: p.consumos ?? [],
   }
 }

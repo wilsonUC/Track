@@ -46,7 +46,12 @@ export function DashboardPanel() {
     setLoading(true)
     setError('')
 
-    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes()])
+    const refDate = dateFilter.refDate
+    const anio = refDate.getFullYear()
+    const mes = String(refDate.getMonth() + 1).padStart(2, '0')
+    const mesParam = dateFilter.preset === 'total' ? undefined : `${anio}-${mes}-01`
+
+    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes(mesParam)])
       .then(([transactions, categories, recs]) => {
         if (cancelled) return
         const categoryMap = buildCategoryMap(categories)
@@ -63,7 +68,7 @@ export function DashboardPanel() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion])
+  }, [transactionsVersion, dateFilter.refDate, dateFilter.preset])
 
   const filtered = useMemo(
     () => filterByDateRange(allTransactions, dateFilter.range),
@@ -97,13 +102,19 @@ export function DashboardPanel() {
 
   const totalPendienteGastos = useMemo(() => {
     const gastos = recurrentes.filter((r) => r.tipo === 'expense')
+    if (dateFilter.preset === 'total') {
+      return gastos.filter((r) => r.activo && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
+    }
     return gastos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
-  }, [recurrentes])
+  }, [recurrentes, dateFilter.preset])
 
   const totalPendienteIngresos = useMemo(() => {
     const ingresos = recurrentes.filter((r) => r.tipo === 'income')
+    if (dateFilter.preset === 'total') {
+      return ingresos.filter((r) => r.activo && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
+    }
     return ingresos.filter((r) => r.activoEnMes && !r.registradoMes).reduce((acc, r) => acc + r.monto, 0)
-  }, [recurrentes])
+  }, [recurrentes, dateFilter.preset])
 
   useEffect(() => {
     if (!setHeaderExtra) return

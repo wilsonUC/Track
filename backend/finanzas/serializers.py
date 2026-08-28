@@ -1,4 +1,5 @@
 import calendar
+from datetime import date
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
@@ -108,6 +109,7 @@ class PresupuestoSerializer(serializers.ModelSerializer):
     gastado = serializers.SerializerMethodField()
     porcentaje = serializers.SerializerMethodField()
     estado = serializers.SerializerMethodField()
+    consumos = serializers.SerializerMethodField()
     categoria_referencia_nombre = serializers.CharField(
         source="categoria_referencia.nombre",
         read_only=True,
@@ -127,15 +129,17 @@ class PresupuestoSerializer(serializers.ModelSerializer):
             "gastado",
             "porcentaje",
             "estado",
+            "consumos",
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "gastado", "porcentaje", "estado", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "gastado", "porcentaje", "estado", "consumos", "creado_en", "actualizado_en"]
 
     def _gastado(self, obj: Presupuesto):
         if hasattr(obj, "gastado") and obj.gastado is not None:
             return obj.gastado
-        return calcular_gastado_mes(obj)
+        reference_date = self.context.get("reference_date", date.today())
+        return calcular_gastado_mes(obj, reference=reference_date)
 
     def get_gastado(self, obj):
         return self._gastado(obj)
@@ -145,6 +149,27 @@ class PresupuestoSerializer(serializers.ModelSerializer):
 
     def get_estado(self, obj):
         return calcular_estado(self._gastado(obj), obj.limite)
+
+    def get_consumos(self, obj):
+        from .presupuestos_service import _month_bounds
+        from .models import Transaction
+        reference_date = self.context.get("reference_date", date.today())
+        inicio, fin = _month_bounds(reference_date)
+        txs = Transaction.objects.filter(
+            presupuesto=obj,
+            tipo=Transaction.Tipo.GASTO,
+            fecha__gte=inicio,
+            fecha__lte=fin,
+        ).order_by("-fecha", "-creado_en")
+        return [
+            {
+                "id": t.id,
+                "monto": float(t.monto),
+                "fecha": t.fecha.strftime("%Y-%m-%d"),
+                "descripcion": t.descripcion,
+            }
+            for t in txs
+        ]
 
     def validate_limite(self, value):
         if value <= 0:
@@ -327,6 +352,7 @@ class MetaSerializer(serializers.ModelSerializer):
             "fecha_limite",
             "categoria_referencia",
             "categoria_referencia_nombre",
+            "es_asignacion_libre",
             "activo",
             "acumulado",
             "porcentaje",
@@ -461,6 +487,8 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     presupuesto_nombre = serializers.CharField(source="presupuesto.nombre", read_only=True, default=None)
     recurrente_nombre = serializers.CharField(source="recurrente.nombre", read_only=True, default=None)
+    meta_liberar_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    liberar_de_ahorro_libre = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Transaction
@@ -475,6 +503,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             "monto",
             "fecha",
             "descripcion",
+            "meta_liberar_id",
+            "liberar_de_ahorro_libre",
             "creado_en",
             "actualizado_en",
         ]
@@ -554,11 +584,15 @@ class TransactionSerializer(serializers.ModelSerializer):
             monto = attrs.get("monto", self.instance.monto if self.instance else None)
             if monto is not None:
                 from .ahorros_service import validar_limite_saldo
+                meta_liberar_id = attrs.pop("meta_liberar_id", None)
+                liberar_de_ahorro_libre = attrs.pop("liberar_de_ahorro_libre", False)
                 validar_limite_saldo(
                     user=user,
                     tipo=tipo,
                     monto=monto,
-                    transaccion_id=self.instance.id if self.instance else None
+                    transaccion_id=self.instance.id if self.instance else None,
+                    meta_liberar_id=meta_liberar_id,
+                    liberar_de_ahorro_libre=liberar_de_ahorro_libre,
                 )
 
         return attrs

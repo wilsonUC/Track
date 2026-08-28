@@ -10,6 +10,7 @@ import {
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
 import { PresupuestosGrid } from '../components/presupuestos/PresupuestosGrid'
 import { PresupuestosSummaryCard } from '../components/presupuestos/PresupuestosSummaryCard'
+import { FiltroMesPresupuestos } from '../components/presupuestos/FiltroMesPresupuestos'
 import type { PresupuestoCardView } from '../components/presupuestos/presupuestosTypes'
 import { mapPresupuestoToCard } from '../utils/presupuestosDisplay'
 
@@ -17,12 +18,13 @@ type OutletContext = {
   transactionsVersion: number
   bumpTransactions: () => void
   setSecondaryHeaderAction: (action: { label: string; onClick: () => void } | null) => void
+  setHeaderExtra?: (extra: React.ReactNode | null) => void
 }
 
 type ModalMode = 'create' | 'edit'
 
 export function PresupuestosPage() {
-  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
+  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction, setHeaderExtra } =
     useOutletContext<OutletContext>()
   const [presupuestos, setPresupuestos] = useState<PresupuestoCardView[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,13 +40,62 @@ export function PresupuestosPage() {
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
   const [registrandoId, setRegistrandoId] = useState<number | null>(null)
+  const [fechaRef, setFechaRef] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d
+  })
+
+  const MESES = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ]
+
+  const mesTexto = `${MESES[fechaRef.getMonth()]} ${fechaRef.getFullYear()}`
+
+  // Determinación de período
+  const { esMesActual, esMesPasado, esMesFuturo } = useMemo(() => {
+    const hoy = new Date()
+    const anioHoy = hoy.getFullYear()
+    const mesHoy = hoy.getMonth()
+    const anioRef = fechaRef.getFullYear()
+    const mesRef = fechaRef.getMonth()
+
+    const esActual = anioHoy === anioRef && mesHoy === mesRef
+    const esPasado = anioRef < anioHoy || (anioRef === anioHoy && mesRef < mesHoy)
+    const esFuturo = anioRef > anioHoy || (anioRef === anioHoy && mesRef > mesHoy)
+
+    return { esMesActual: esActual, esMesPasado: esPasado, esMesFuturo: esFuturo }
+  }, [fechaRef])
+
+  useEffect(() => {
+    if (!setHeaderExtra) return
+    setHeaderExtra(
+      <FiltroMesPresupuestos fechaRef={fechaRef} onChangeFecha={setFechaRef} />
+    )
+    return () => setHeaderExtra(null)
+  }, [setHeaderExtra, fechaRef])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError('')
 
-    Promise.all([fetchPresupuestos(), fetchCategories()])
+    const anio = fechaRef.getFullYear()
+    const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+    const mesParam = `${anio}-${mes}-01`
+
+    Promise.all([fetchPresupuestos(mesParam), fetchCategories()])
       .then(([data, categories]) => {
         if (cancelled) return
         setPresupuestos(data.map(mapPresupuestoToCard))
@@ -60,7 +111,7 @@ export function PresupuestosPage() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion])
+  }, [transactionsVersion, fechaRef])
 
   const totalLimite = useMemo(
     () => presupuestos.reduce((acc, p) => acc + p.limite, 0),
@@ -104,6 +155,7 @@ export function PresupuestosPage() {
   }
 
   const registrarGasto = async (id: number) => {
+    if (!esMesActual) return
     setRegistrandoId(id)
     try {
       const actualizado = await registrarGastoRapido(id)
@@ -163,20 +215,21 @@ export function PresupuestosPage() {
   }, [setSecondaryHeaderAction])
 
   return (
-    <section className="space-y-6 text-slate-800">
-      {loading && <p className="text-sm text-slate-500">Cargando presupuestos…</p>}
+    <section className="space-y-6 text-slate-800 dark:text-slate-100">
+      {loading && presupuestos.length === 0 && <p className="text-sm text-slate-500">Cargando presupuestos…</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
-      {!loading && !error && (
-        <>
+      {(!loading || presupuestos.length > 0) && (
+        <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <PresupuestosSummaryCard
             totalGastado={totalGastado}
             totalLimite={totalLimite}
             porcentajeGlobal={porcentajeGlobal}
+            mesLabel={mesTexto}
           />
 
           {presupuestos.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
               Aún no tienes presupuestos. Crea uno para apartar dinero de un gasto concreto.
             </p>
           ) : (
@@ -185,9 +238,12 @@ export function PresupuestosPage() {
               onRegistrarGasto={registrarGasto}
               onEditar={abrirModalEditar}
               registrandoId={registrandoId}
+              esMesActual={esMesActual}
+              esMesPasado={esMesPasado}
+              esMesFuturo={esMesFuturo}
             />
           )}
-        </>
+        </div>
       )}
 
       <PresupuestoModal

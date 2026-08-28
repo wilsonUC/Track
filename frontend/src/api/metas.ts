@@ -10,6 +10,7 @@ export type ApiMeta = {
   fecha_limite: string | null
   categoria_referencia: number | null
   categoria_referencia_nombre: string | null
+  es_asignacion_libre: boolean
   activo: boolean
   acumulado: string
   porcentaje: number
@@ -18,6 +19,14 @@ export type ApiMeta = {
   monto_sugerido_mensual: string | null
   creado_en: string
   actualizado_en: string
+}
+
+export type CambiarModoMetaError = {
+  error: 'saldo_insuficiente' | 'confirmacion_requerida' | string
+  detalle: string
+  requerido?: number
+  disponible?: number
+  monto_a_apartar?: number
 }
 
 function formatError(body: unknown, fallback: string): string {
@@ -44,6 +53,7 @@ export async function createMeta(data: {
   fecha_inicio?: string | null
   fecha_limite?: string | null
   categoria_referencia?: number | null
+  es_asignacion_libre?: boolean
 }): Promise<ApiMeta> {
   const res = await authFetch('/api/metas/', {
     method: 'POST',
@@ -64,6 +74,7 @@ export async function updateMeta(
     fecha_inicio?: string | null
     fecha_limite?: string | null
     categoria_referencia?: number | null
+    es_asignacion_libre?: boolean
   },
 ): Promise<ApiMeta> {
   const res = await authFetch(`/api/metas/${id}/`, {
@@ -73,6 +84,24 @@ export async function updateMeta(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(formatError(err, 'No se pudo actualizar la meta.'))
+  }
+  return res.json()
+}
+
+export async function cambiarModoMeta(
+  metaId: number,
+  esAsignacionLibre: boolean,
+  autoApartar: boolean = false,
+): Promise<ApiMeta> {
+  const res = await authFetch(`/api/metas/${metaId}/cambiar-modo/`, {
+    method: 'POST',
+    body: JSON.stringify({ es_asignacion_libre: esAsignacionLibre, auto_apartar: autoApartar }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const errorObj = new Error(formatError(err, 'No se pudo cambiar el modo de la meta.')) as Error & { data?: CambiarModoMetaError }
+    errorObj.data = err
+    throw errorObj
   }
   return res.json()
 }

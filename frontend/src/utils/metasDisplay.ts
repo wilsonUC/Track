@@ -9,6 +9,7 @@ export type MetaCardView = {
   porcentaje: number
   completada: boolean
   estado: ApiMeta['estado']
+  esAsignacionLibre: boolean
   fechaInicio: string | null
   fechaInicioLabel: string | null
   fechaLimite: string | null
@@ -27,6 +28,7 @@ export function mapMetaToCard(m: ApiMeta): MetaCardView {
     porcentaje: m.porcentaje,
     completada: m.completada,
     estado: m.estado,
+    esAsignacionLibre: m.es_asignacion_libre ?? false,
     fechaInicio: m.fecha_inicio,
     fechaInicioLabel: m.fecha_inicio ? formatShortDate(m.fecha_inicio) : null,
     fechaLimite: m.fecha_limite,

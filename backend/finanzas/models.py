@@ -126,6 +126,7 @@ class MetaAhorro(models.Model):
         blank=True,
         related_name="metas_referencia",
     )
+    es_asignacion_libre = models.BooleanField(default=False)
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)

@@ -484,17 +484,19 @@ class PreferenciasTests(FinanzasAPITestCase):
     def test_asignar_meta_modo_directo(self):
         meta_resp = self.client.post(
             "/api/metas/",
-            {"nombre": "Viaje Directo", "monto_objetivo": "1000.00"},
+            {"nombre": "Viaje Directo", "monto_objetivo": "1000.00", "es_asignacion_libre": False},
             format="json",
         )
         meta_id = meta_resp.data["id"]
 
-        # Sin la preferencia activada y sin ahorro libre, falla
+        # En modo formal y sin ahorro libre, falla
         fail_resp = self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "200.00"}, format="json")
         self.assertEqual(fail_resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Activar asignación directa a metas
-        self.client.patch("/api/preferencias/", {"permitir_asignacion_directa_metas": True}, format="json")
+        # Cambiar a asignación libre
+        cambio_resp = self.client.post(f"/api/metas/{meta_id}/cambiar-modo/", {"es_asignacion_libre": True}, format="json")
+        self.assertEqual(cambio_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(cambio_resp.data["es_asignacion_libre"])
 
         # Ahora asignar debe ser exitoso incluso sin ahorro libre
         ok_resp = self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "200.00"}, format="json")
@@ -713,6 +715,103 @@ class ControlSaldoEstrictoTests(FinanzasAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_gasto_con_liberacion_interactiva_de_meta(self):
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+
+        # Ingreso de 1000
+        self.client.post(
+            "/api/transacciones/",
+            {"categoria": self.cat_ingreso.id, "tipo": Transaction.Tipo.INGRESO, "monto": "1000.00", "fecha": str(date.today())},
+            format="json",
+        )
+        # Apartar 500 en ahorro
+        self.client.post(
+            "/api/ahorros/",
+            {"monto": "500.00", "fecha": str(date.today())},
+            format="json",
+        )
+        # Crear meta formal y asignar los 500
+        meta = self.client.post(
+            "/api/metas/",
+            {"nombre": "Laptop", "monto_objetivo": "1000.00", "es_asignacion_libre": False},
+            format="json",
+        )
+        meta_id = meta.data["id"]
+        self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "500.00"}, format="json")
+
+        # Balance líquido actual = 1000 - 500 = 500
+        # Intentar gastar 700 -> Faltan 200 -> Debe retornar error con codigo saldo_insuficiente_con_ahorros
+        res_fallo = self.client.post(
+            "/api/transacciones/",
+            {"categoria": self.cat_gasto.id, "tipo": Transaction.Tipo.GASTO, "monto": "700.00", "fecha": str(date.today())},
+            format="json",
+        )
+        self.assertEqual(res_fallo.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("saldo_insuficiente_con_ahorros", str(res_fallo.data.get("codigo", "")))
+
+        # Registrar el gasto de 700 liberando 200 de la meta Laptop
+        res_exito = self.client.post(
+            "/api/transacciones/",
+            {
+                "categoria": self.cat_gasto.id,
+                "tipo": Transaction.Tipo.GASTO,
+                "monto": "700.00",
+                "fecha": str(date.today()),
+                "meta_liberar_id": meta_id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_exito.status_code, status.HTTP_201_CREATED)
+
+        # Verificar que la meta ahora tiene 300 acumulados
+        meta_get = self.client.get(f"/api/metas/{meta_id}/")
+        self.assertEqual(Decimal(str(meta_get.data["acumulado"])), Decimal("300.00"))
+
+        # Verificar que el ahorro total se redujo a 300
+        resumen = self.client.get("/api/ahorros/resumen/")
+        self.assertEqual(Decimal(str(resumen.data["total"])), Decimal("300.00"))
+
+    def test_cambio_modo_libre_a_formal_valida_saldo_disponible(self):
+        # Crear meta libre y asignarle 300 directamente sin fondos en ahorros
+        meta = self.client.post(
+            "/api/metas/",
+            {"nombre": "Viaje Libre", "monto_objetivo": "500.00", "es_asignacion_libre": True},
+            format="json",
+        )
+        meta_id = meta.data["id"]
+        self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "300.00"}, format="json")
+
+        # Sin ingresos, intentar cambiar a formal -> debe fallar por saldo insuficiente
+        res_bloqueo = self.client.patch(
+            f"/api/metas/{meta_id}/",
+            {"es_asignacion_libre": False},
+            format="json",
+        )
+        self.assertEqual(res_bloqueo.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Registrar ingreso suficiente de 500
+        self.client.post(
+            "/api/transacciones/",
+            {"categoria": self.cat_ingreso.id, "tipo": Transaction.Tipo.INGRESO, "monto": "500.00", "fecha": str(date.today())},
+            format="json",
+        )
+
+        # Ahora el cambio a formal debe ser exitoso y auto-apartar los 300 en ahorros
+        res_ok = self.client.patch(
+            f"/api/metas/{meta_id}/",
+            {"es_asignacion_libre": False},
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.assertFalse(res_ok.data["es_asignacion_libre"])
+
+        # Verificar que en ahorros se formalizó el ahorro de 300
+        resumen = self.client.get("/api/ahorros/resumen/")
+        self.assertEqual(Decimal(str(resumen.data["total"])), Decimal("300.00"))
+        self.assertEqual(Decimal(str(resumen.data["asignado"])), Decimal("300.00"))
+
 
 
 

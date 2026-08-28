@@ -1,19 +1,17 @@
 import {
   Bell,
   Brain,
-  CheckCircle2,
   Coins,
   ExternalLink,
-  LayoutGrid,
   Loader2,
-  Save,
+  Palette,
   Shield,
   Sparkles,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { TemaPreferencia } from '../api/preferencias'
-import { ConfigRow, ConfigSegmented, ConfigSelect, ConfigToggle } from '../components/configuracion/ConfigControls'
+import { ConfigRow, ConfigSelect, ConfigToggle } from '../components/configuracion/ConfigControls'
 import { ConfigSection } from '../components/configuracion/ConfigSection'
 import { cuentaPath } from '../constants/routes'
 import { usePreferences } from '../context/PreferencesContext'
@@ -26,7 +24,6 @@ export function ConfiguracionPage() {
   const [moneda, setMoneda] = useState('PEN')
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
   const [limitarSaldoNegativo, setLimitarSaldoNegativo] = useState(false)
-  const [permitirAsignacionDirectaMetas, setPermitirAsignacionDirectaMetas] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
@@ -37,7 +34,6 @@ export function ConfiguracionPage() {
     setMoneda(preferences.moneda)
     setMostrarDecimales(preferences.mostrar_decimales)
     setLimitarSaldoNegativo(preferences.limitar_saldo_negativo ?? false)
-    setPermitirAsignacionDirectaMetas(preferences.permitir_asignacion_directa_metas ?? false)
   }, [preferences])
 
   async function handleSave() {
@@ -50,7 +46,6 @@ export function ConfiguracionPage() {
         moneda,
         mostrar_decimales: mostrarDecimales,
         limitar_saldo_negativo: limitarSaldoNegativo,
-        permitir_asignacion_directa_metas: permitirAsignacionDirectaMetas,
       })
       setSaveMessage('Preferencias guardadas correctamente.')
     } catch (err) {
@@ -72,8 +67,7 @@ export function ConfiguracionPage() {
       vistaCompacta !== preferences?.vista_compacta ||
       moneda !== preferences?.moneda ||
       mostrarDecimales !== preferences?.mostrar_decimales ||
-      limitarSaldoNegativo !== (preferences?.limitar_saldo_negativo ?? false) ||
-      permitirAsignacionDirectaMetas !== (preferences?.permitir_asignacion_directa_metas ?? false))
+      limitarSaldoNegativo !== (preferences?.limitar_saldo_negativo ?? false))
 
   return (
     <section className="space-y-6">
@@ -83,73 +77,72 @@ export function ConfiguracionPage() {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
             <Sparkles className="h-5 w-5" aria-hidden />
           </div>
-          <div className="min-w-0 space-y-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                Ajustes & Preferencias
-              </h3>
-              {hasUnsavedChanges && (
-                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-500/30 animate-pulse">
-                  Cambios sin guardar
-                </span>
-              )}
-            </div>
-            {saveMessage && (
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span>{saveMessage}</span>
-              </p>
-            )}
-            {saveError && (
-              <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{saveError}</p>
-            )}
-            {!saveMessage && !saveError && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Los cambios se sincronizan en tu cuenta y se aplican en toda la app.
-              </p>
-            )}
+          <div>
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
+              Preferencias del sistema
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Personaliza el tema, vista y reglas de saldo en tu cuenta.
+            </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void handleSave()}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition-all duration-200 hover:from-indigo-500 hover:to-indigo-600 hover:shadow-lg hover:shadow-indigo-500/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <Save className="h-4 w-4" aria-hidden />
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          {saveMessage && (
+            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 animate-fade-in">
+              {saveMessage}
+            </p>
           )}
-          <span>{saving ? 'Guardando…' : 'Guardar preferencias'}</span>
-        </button>
+          {saveError && (
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 animate-fade-in">
+              {saveError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !hasUnsavedChanges}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:shadow-indigo-950/40"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Guardando…
+              </>
+            ) : (
+              'Guardar cambios'
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6">
         <ConfigSection
-          icon={LayoutGrid}
-          iconClass="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-          title="Apariencia"
-          subtitle="Cómo se ve la aplicación en tu dispositivo."
+          icon={Palette}
+          iconClass="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400"
+          title="Aspecto"
+          subtitle="Tema visual y densidad de la interfaz."
         >
-          <ConfigRow label="Tema" hint="Claro, oscuro o según el sistema operativo.">
-            <ConfigSegmented
+          <ConfigRow
+            label="Tema de la aplicación"
+            hint="Elige si prefieres el tema claro, oscuro o sincronizado con tu sistema operativo."
+          >
+            <ConfigSelect
               value={tema}
               onChange={(v) => {
-                setTema(v as TemaPreferencia)
+                setTema(v as 'claro' | 'oscuro' | 'sistema')
                 setSaveMessage('')
               }}
               options={[
                 { value: 'claro', label: 'Claro' },
                 { value: 'oscuro', label: 'Oscuro' },
-                { value: 'sistema', label: 'Sistema' },
+                { value: 'sistema', label: 'Sincronizar con el sistema' },
               ]}
             />
           </ConfigRow>
           <ConfigRow
-            label="Listas compactas"
-            hint="Menos espacio entre filas en ingresos, gastos y dashboard."
+            label="Vista compacta"
+            hint="Reduce el espaciado en tablas y listas para ver más elementos a la vez."
           >
             <ConfigToggle
               checked={vistaCompacta}
@@ -157,7 +150,7 @@ export function ConfiguracionPage() {
                 setVistaCompacta(v)
                 setSaveMessage('')
               }}
-              label="Listas compactas"
+              label="Vista compacta"
             />
           </ConfigRow>
         </ConfigSection>
@@ -165,18 +158,34 @@ export function ConfiguracionPage() {
         <ConfigSection
           icon={Coins}
           iconClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
-          title="Finanzas"
-          subtitle="Moneda usada para mostrar tus montos."
+          title="Finanzas y moneda"
+          subtitle="Formato de importes y reglas de saldo."
         >
-          <ConfigRow label="Moneda principal" hint="Todos los montos se muestran en esta moneda.">
+          <ConfigRow
+            label="Mostrar decimales"
+            hint="Muestra los céntimos en todos los montos de la aplicación (ej. S/ 1,250.00)."
+          >
+            <ConfigToggle
+              checked={mostrarDecimales}
+              onChange={(v) => {
+                setMostrarDecimales(v)
+                setSaveMessage('')
+              }}
+              label="Mostrar decimales"
+            />
+          </ConfigRow>
+          <ConfigRow
+            label="Moneda principal"
+            hint="Moneda en la que se calculan y muestran todos tus registros."
+          >
             <ConfigSelect
               value={moneda}
               onChange={(v) => {
-                setMoneda(v)
+                setMoneda(v as 'PEN' | 'USD')
                 setSaveMessage('')
               }}
               options={[
-                { value: 'PEN', label: 'Soles peruanos (S/)' },
+                { value: 'PEN', label: 'Soles (S/)' },
                 { value: 'USD', label: 'Dólares (US$) — próximamente' },
               ]}
               disabled
@@ -193,19 +202,6 @@ export function ConfiguracionPage() {
                 setSaveMessage('')
               }}
               label="Evitar saldo negativo"
-            />
-          </ConfigRow>
-          <ConfigRow
-            label="Asignación libre a metas"
-            hint="Permite acumular o asignar fondos a tus metas directamente sin requerir saldo en Ahorros."
-          >
-            <ConfigToggle
-              checked={permitirAsignacionDirectaMetas}
-              onChange={(v) => {
-                setPermitirAsignacionDirectaMetas(v)
-                setSaveMessage('')
-              }}
-              label="Asignación libre a metas"
             />
           </ConfigRow>
         </ConfigSection>
