@@ -63,6 +63,21 @@ def transacciones_mes_actual(recurrente, reference: date | None = None):
     )
 
 
+def obtener_monto_mes(recurrente, reference: date) -> Decimal:
+    """Retorna el monto aplicable para el mes consultado (ajuste puntual si existe o monto base)."""
+    from decimal import Decimal
+    primer_dia_mes = reference.replace(day=1)
+    if hasattr(recurrente, "_ajustes_mes_dict"):
+        ajuste = recurrente._ajustes_mes_dict.get(primer_dia_mes)
+        if ajuste is not None:
+            return Decimal(str(ajuste))
+
+    ajuste_obj = recurrente.ajustes_mes.filter(mes=primer_dia_mes).first()
+    if ajuste_obj:
+        return Decimal(str(ajuste_obj.monto))
+    return Decimal(str(recurrente.monto))
+
+
 def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dict:
     today = reference or date.today()
     inicio, fin = _bounds_mes(today)
@@ -101,7 +116,8 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         
     monto_pagado = Decimal(str(monto_pagado or 0))
 
-    registrado_mes = monto_pagado >= recurrente.monto
+    monto_mes_efectivo = obtener_monto_mes(recurrente, today)
+    registrado_mes = monto_pagado >= monto_mes_efectivo
 
     vencido = False
     mes_anterior_sin_registrar = None
@@ -141,6 +157,7 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         "activo_en_mes": activo_en_mes,
         "estado_periodo": estado_periodo,
         "monto_pagado": float(monto_pagado),
+        "monto_mes": float(monto_mes_efectivo),
     }
 
 
@@ -153,7 +170,7 @@ def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
     deudas = []
     cobros = []
 
-    recurrentes = Recurrente.objects.filter(usuario=usuario, activo=True).select_related("categoria")
+    recurrentes = Recurrente.objects.filter(usuario=usuario, activo=True).select_related("categoria").prefetch_related("ajustes_mes")
 
     for r in recurrentes:
         creado = r.creado_en.date() if hasattr(r.creado_en, "date") else r.creado_en
@@ -180,6 +197,7 @@ def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
                 mes_nombre = MESES_ES[iter_date.month - 1].capitalize()
                 dia_vencimiento = dia_efectivo(r.dia_pago, iter_date)
                 fecha_venc = iter_date.replace(day=dia_vencimiento)
+                monto_mes_atraso = obtener_monto_mes(r, iter_date)
 
                 atraso_item = {
                     "id": f"{r.id}-{iter_date.strftime('%Y-%m')}",
@@ -188,7 +206,7 @@ def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
                     "categoria": r.categoria.nombre,
                     "mes_atraso": f"{mes_nombre} {iter_date.year}",
                     "fecha_pago": fecha_venc.strftime("%Y-%m-%d"),
-                    "acumulado": float(r.monto),
+                    "acumulado": float(monto_mes_atraso),
                 }
 
                 if r.tipo == Transaction.Tipo.INGRESO:

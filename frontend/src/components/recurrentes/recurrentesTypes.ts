@@ -2,6 +2,8 @@ export type RecurrenteCardView = {
   id: number
   nombre: string
   monto: number
+  montoBase: number
+  tieneAjusteMes: boolean
   tipo: 'income' | 'expense'
   diaPago: number
   categoriaId: number

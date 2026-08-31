@@ -285,8 +285,9 @@ class RecurrenteTests(FinanzasAPITestCase):
         self.assertEqual(crear_invalido.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cuentas_atrasadas_y_pago_mes_especifico(self):
-        # Recurrente creado el mes pasado (ej: hace 30 días)
-        fecha_hace_un_mes = date.today() - timedelta(days=30)
+        # Recurrente con fecha_inicio en el mes pasado
+        primer_dia_este_mes = date.today().replace(day=1)
+        fecha_hace_un_mes = (primer_dia_este_mes - timedelta(days=1)).replace(day=1)
         crear = self.client.post(
             "/api/recurrentes/",
             {
@@ -715,6 +716,63 @@ class ControlSaldoEstrictoTests(FinanzasAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_pago_recurrente_con_liberacion_de_meta(self):
+        self.prefs.limitar_saldo_negativo = True
+        self.prefs.save()
+
+        # Ingreso de 1000 y ahorro de 800 asignado a una meta
+        self.client.post(
+            "/api/transacciones/",
+            {"categoria": self.cat_ingreso.id, "tipo": Transaction.Tipo.INGRESO, "monto": "1000.00", "fecha": str(date.today())},
+            format="json",
+        )
+        self.client.post(
+            "/api/ahorros/",
+            {"monto": "800.00", "fecha": str(date.today())},
+            format="json",
+        )
+        meta = self.client.post(
+            "/api/metas/",
+            {"nombre": "Ahorro Fondo", "monto_objetivo": "1000.00", "es_asignacion_libre": False},
+            format="json",
+        )
+        meta_id = meta.data["id"]
+        self.client.post(f"/api/metas/{meta_id}/asignar/", {"monto": "800.00"}, format="json")
+
+        # Saldo líquido actual: 1000 - 800 = 200
+        # Recurrente de 300 con abonos parciales
+        recurrente = Recurrente.objects.create(
+            usuario=self.user,
+            nombre="Servicio Alquiler",
+            monto=Decimal("300.00"),
+            tipo=Category.Tipo.GASTO,
+            dia_pago=5,
+            categoria=self.cat_gasto,
+            permite_parciales=True,
+        )
+
+        # Intentar pagar 300 sin liberar fondos -> Bloqueado con saldo_insuficiente_con_ahorros
+        res_bloqueo = self.client.post(
+            f"/api/recurrentes/{recurrente.id}/registrar-pago/",
+            {"monto": "300.00"},
+            format="json",
+        )
+        self.assertEqual(res_bloqueo.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("saldo_insuficiente_con_ahorros", str(res_bloqueo.data.get("codigo", "")))
+
+        # Pagar 300 liberando los 100 faltantes de la meta
+        res_ok = self.client.post(
+            f"/api/recurrentes/{recurrente.id}/registrar-pago/",
+            {"monto": "300.00", "meta_liberar_id": meta_id},
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_ok.data["registrado_mes"])
+
+        # Verificar que la meta ahora tiene 700 acumulados
+        meta_get = self.client.get(f"/api/metas/{meta_id}/")
+        self.assertEqual(Decimal(str(meta_get.data["acumulado"])), Decimal("700.00"))
 
     def test_gasto_con_liberacion_interactiva_de_meta(self):
         self.prefs.limitar_saldo_negativo = True

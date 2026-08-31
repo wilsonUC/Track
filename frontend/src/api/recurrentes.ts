@@ -1,9 +1,16 @@
 import { authFetch } from './auth'
+import {
+  formatApiError,
+  parseSaldoInsuficienteError,
+  type SaldoInsuficienteAhorrosError,
+} from './finanzas'
 
 export type ApiRecurrente = {
   id: number
   nombre: string
   monto: string
+  monto_base?: string
+  tiene_ajuste_mes?: boolean
   tipo: 'income' | 'expense'
   dia_pago: number
   categoria: number
@@ -71,6 +78,7 @@ export async function updateRecurrente(
     fecha_fin?: string | null
     activo?: boolean
     permite_parciales?: boolean
+    solo_este_mes?: boolean
   },
   mes?: string,
 ): Promise<ApiRecurrente> {
@@ -86,22 +94,52 @@ export async function updateRecurrente(
   return res.json()
 }
 
+export type RegistrarPagoOptions = {
+  monto?: string
+  fecha?: string
+  meta_liberar_id?: number | null
+  liberar_de_ahorro_libre?: boolean
+}
+
 export async function registrarPagoRecurrente(
   id: number,
-  monto?: string,
+  montoOrOptions?: string | RegistrarPagoOptions,
   fecha?: string,
 ): Promise<ApiRecurrente> {
-  const url = fecha ? `/api/recurrentes/${id}/registrar-pago/?mes=${fecha}` : `/api/recurrentes/${id}/registrar-pago/`
+  const payload: Record<string, unknown> = {}
+  let mesQuery = fecha
+
+  if (typeof montoOrOptions === 'string') {
+    if (montoOrOptions) payload.monto = montoOrOptions
+    if (fecha) payload.fecha = fecha
+  } else if (montoOrOptions && typeof montoOrOptions === 'object') {
+    if (montoOrOptions.monto) payload.monto = montoOrOptions.monto
+    if (montoOrOptions.fecha) {
+      payload.fecha = montoOrOptions.fecha
+      mesQuery = montoOrOptions.fecha
+    }
+    if (montoOrOptions.meta_liberar_id !== undefined && montoOrOptions.meta_liberar_id !== null) {
+      payload.meta_liberar_id = montoOrOptions.meta_liberar_id
+    }
+    if (montoOrOptions.liberar_de_ahorro_libre) {
+      payload.liberar_de_ahorro_libre = true
+    }
+  }
+
+  const url = mesQuery ? `/api/recurrentes/${id}/registrar-pago/?mes=${mesQuery}` : `/api/recurrentes/${id}/registrar-pago/`
   const res = await authFetch(url, {
     method: 'POST',
-    body: JSON.stringify({
-      ...(monto ? { monto } : {}),
-      ...(fecha ? { fecha } : {}),
-    }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(JSON.stringify(err))
+    const errorObj = new Error(formatApiError(err, 'No se pudo registrar el pago.')) as Error & {
+      data?: unknown
+      insuficienteData?: SaldoInsuficienteAhorrosError | null
+    }
+    errorObj.data = err
+    errorObj.insuficienteData = parseSaldoInsuficienteError(err)
+    throw errorObj
   }
   return res.json()
 }

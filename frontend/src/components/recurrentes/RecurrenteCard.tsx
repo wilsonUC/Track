@@ -131,18 +131,28 @@ export function RecurrenteCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-y border-slate-50 py-3">
+      <div className="flex items-center justify-between border-y border-slate-50 py-3 dark:border-slate-800">
         <div className="space-y-0.5">
-          <span className="block text-[11px] font-medium text-slate-400">Monto mensual</span>
+          <div className="flex items-center gap-1.5">
+            <span className="block text-[11px] font-medium text-slate-400">Monto mensual</span>
+            {recurrente.tieneAjusteMes && (
+              <span
+                className="rounded-md border border-amber-200/60 bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300"
+                title={`Ajuste puntual para este mes. Monto base: S/ ${recurrente.montoBase.toFixed(2)}`}
+              >
+                Ajuste mes
+              </span>
+            )}
+          </div>
           <span
-            className={`text-xl font-black ${esIngreso ? 'text-emerald-600' : 'text-slate-900'}`}
+            className={`text-xl font-black ${esIngreso ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}
           >
             S/ {monto.toFixed(2)}
           </span>
         </div>
         <div className="max-w-[55%] space-y-0.5 text-right">
           <span className="block text-[11px] font-medium text-slate-400">{etiquetaFecha}</span>
-          <span className="flex items-center justify-end gap-1 text-sm font-bold text-slate-700">
+          <span className="flex items-center justify-end gap-1 text-sm font-bold text-slate-700 dark:text-slate-300">
             <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden />
             <span className="text-right leading-tight">{textoDiaPago(diaPago)}</span>
           </span>

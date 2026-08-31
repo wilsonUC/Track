@@ -255,6 +255,17 @@ class RecurrenteSerializer(serializers.ModelSerializer):
     def get_monto_pagado(self, obj):
         return self._estado(obj)["monto_pagado"]
 
+    def to_representation(self, instance: Recurrente):
+        ret = super().to_representation(instance)
+        from datetime import date
+        from .recurrentes_service import obtener_monto_mes
+        reference_date = self.context.get("reference_date") or date.today()
+        monto_mes = obtener_monto_mes(instance, reference_date)
+        ret["monto_base"] = str(instance.monto)
+        ret["monto"] = str(monto_mes)
+        ret["tiene_ajuste_mes"] = monto_mes != instance.monto
+        return ret
+
     def get_abonos(self, obj):
         from .recurrentes_service import _bounds_mes
         from .models import Transaction
@@ -328,6 +339,8 @@ class RecurrenteSerializer(serializers.ModelSerializer):
 class RecurrenteRegistrarPagoSerializer(serializers.Serializer):
     monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     fecha = serializers.DateField(required=False)
+    meta_liberar_id = serializers.IntegerField(required=False, allow_null=True)
+    liberar_de_ahorro_libre = serializers.BooleanField(required=False, default=False)
 
 
 class MetaSerializer(serializers.ModelSerializer):

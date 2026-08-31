@@ -83,7 +83,7 @@ export type TransactionWritePayload = {
   liberar_de_ahorro_libre?: boolean
 }
 
-function formatApiError(body: unknown, fallback: string): string {
+export function formatApiError(body: unknown, fallback: string): string {
   if (!body || typeof body !== 'object') return fallback
   const record = body as Record<string, unknown>
   if (typeof record.detail === 'string') return record.detail

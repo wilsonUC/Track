@@ -106,6 +106,38 @@ class Recurrente(models.Model):
         return f"{self.nombre} (S/ {self.monto})"
 
 
+class RecurrenteAjusteMes(models.Model):
+    """Monto personalizado para un recurrente en un mes específico (ej. 2026-07-01)."""
+
+    recurrente = models.ForeignKey(
+        Recurrente,
+        on_delete=models.CASCADE,
+        related_name="ajustes_mes",
+    )
+    mes = models.DateField(help_text="Primer día del mes del ajuste (YYYY-MM-01)")
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-mes"]
+        verbose_name = "Ajuste mensual de recurrente"
+        verbose_name_plural = "Ajustes mensuales de recurrentes"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recurrente", "mes"],
+                name="uniq_recurrente_ajuste_mes",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(monto__gt=0),
+                name="chk_recurrente_ajuste_mes_monto_gt_zero",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.recurrente.nombre} ({self.mes:%Y-%m}): S/ {self.monto}"
+
+
 class MetaAhorro(models.Model):
     """Objetivo de ahorro del usuario (ej. fondo de emergencia)."""
 

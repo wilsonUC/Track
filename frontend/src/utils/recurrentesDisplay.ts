@@ -6,6 +6,8 @@ export function mapRecurrenteToCard(r: ApiRecurrente): RecurrenteCardView {
     id: r.id,
     nombre: r.nombre,
     monto: Number(r.monto),
+    montoBase: r.monto_base ? Number(r.monto_base) : Number(r.monto),
+    tieneAjusteMes: Boolean(r.tiene_ajuste_mes),
     tipo: r.tipo,
     diaPago: r.dia_pago,
     categoriaId: r.categoria,

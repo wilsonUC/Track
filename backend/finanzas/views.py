@@ -20,6 +20,7 @@ from .models import (
     Presupuesto,
     PreferenciasUsuario,
     Recurrente,
+    RecurrenteAjusteMes,
     Transaction,
 )
 from .ia_service import chat_with_groq
@@ -35,6 +36,7 @@ from .recurrentes_service import (
     _bounds_mes,
     _bounds_mes_anterior,
     obtener_cuentas_atrasadas,
+    obtener_monto_mes,
 )
 from .serializers import (
     AhorroSerializer,
@@ -252,6 +254,7 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
 
         return (
             base_qs.select_related("categoria")
+            .prefetch_related("ajustes_mes")
             .annotate(
                 registrado_este_mes=Exists(txs_este_mes),
                 registrado_mes_anterior=Exists(txs_mes_anterior),
@@ -261,11 +264,11 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        mes_param = self.request.query_params.get("mes")
+        mes_param = self.request.query_params.get("mes") or self.request.data.get("mes")
         reference_date = date.today()
         if mes_param:
             try:
-                reference_date = date.fromisoformat(mes_param)
+                reference_date = date.fromisoformat(str(mes_param)[:10])
             except ValueError:
                 pass
         context["reference_date"] = reference_date
@@ -273,6 +276,69 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        solo_este_mes = self.request.data.get("solo_este_mes", False)
+        if isinstance(solo_este_mes, str):
+            solo_este_mes = solo_este_mes.lower() in ("true", "1")
+
+        mes_param = self.request.data.get("mes") or self.request.query_params.get("mes")
+        reference_date = date.today()
+        if mes_param:
+            try:
+                reference_date = date.fromisoformat(str(mes_param)[:10])
+            except ValueError:
+                pass
+
+        primer_dia_mes = reference_date.replace(day=1)
+        nuevo_monto = serializer.validated_data.get("monto")
+
+        if solo_este_mes and nuevo_monto is not None:
+            # Guardamos otros campos en instance si cambiaron, pero sin cambiar instance.monto base
+            validated_data_sin_monto = dict(serializer.validated_data)
+            validated_data_sin_monto.pop("monto", None)
+            if validated_data_sin_monto:
+                for attr, val in validated_data_sin_monto.items():
+                    setattr(instance, attr, val)
+                instance.save()
+
+            # Guardamos/actualizamos el ajuste puntual para este mes
+            RecurrenteAjusteMes.objects.update_or_create(
+                recurrente=instance,
+                mes=primer_dia_mes,
+                defaults={"monto": nuevo_monto},
+            )
+        else:
+            # Modo "A partir de este mes en adelante":
+            # 1. Congelar los meses pasados con el monto histórico anterior
+            monto_anterior = instance.monto
+            if nuevo_monto is not None and nuevo_monto != monto_anterior:
+                fecha_creacion = instance.creado_en.date() if hasattr(instance.creado_en, "date") else instance.creado_en
+                fecha_start = instance.fecha_inicio if instance.fecha_inicio else fecha_creacion
+                iter_date = fecha_start.replace(day=1)
+
+                while iter_date < primer_dia_mes:
+                    # Si no tiene un ajuste explícito en ese mes pasado, le fijamos el monto histórico
+                    RecurrenteAjusteMes.objects.get_or_create(
+                        recurrente=instance,
+                        mes=iter_date,
+                        defaults={"monto": monto_anterior},
+                    )
+                    # Siguiente mes
+                    if iter_date.month == 12:
+                        iter_date = iter_date.replace(year=iter_date.year + 1, month=1)
+                    else:
+                        iter_date = iter_date.replace(month=iter_date.month + 1)
+
+                # Limpiamos cualquier ajuste previo del mes actual o meses futuros para que rija el nuevo monto base
+                RecurrenteAjusteMes.objects.filter(
+                    recurrente=instance,
+                    mes__gte=primer_dia_mes,
+                ).delete()
+
+            # 2. Guardamos el nuevo monto base en instance
+            serializer.save()
 
     def perform_destroy(self, instance):
         instance.activo = False
@@ -295,7 +361,8 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             fecha__lte=fin_mes,
         ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
         
-        monto_restante = recurrente.monto - Decimal(str(monto_pagado))
+        monto_mes_esperado = obtener_monto_mes(recurrente, fecha_pago)
+        monto_restante = monto_mes_esperado - Decimal(str(monto_pagado))
 
         # Si permite abonos parciales
         if recurrente.permite_parciales:
@@ -335,8 +402,17 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        meta_liberar_id = body.validated_data.get("meta_liberar_id")
+        liberar_de_ahorro_libre = body.validated_data.get("liberar_de_ahorro_libre", False)
+
         from .ahorros_service import validar_limite_saldo
-        validar_limite_saldo(request.user, recurrente.tipo, monto)
+        validar_limite_saldo(
+            request.user,
+            recurrente.tipo,
+            monto,
+            meta_liberar_id=meta_liberar_id,
+            liberar_de_ahorro_libre=liberar_de_ahorro_libre,
+        )
 
         etiqueta = "cobro" if recurrente.tipo == Transaction.Tipo.INGRESO else "pago"
         Transaction.objects.create(

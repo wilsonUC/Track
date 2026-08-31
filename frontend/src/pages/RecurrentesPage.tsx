@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Power, PowerOff } from 'lucide-react'
-import { fetchCategories, deleteTransaction } from '../api/finanzas'
+import { fetchCategories, deleteTransaction, type SaldoInsuficienteAhorrosError } from '../api/finanzas'
 import {
   createRecurrente,
   desmarcarPagoRecurrente,
@@ -40,6 +40,9 @@ export function RecurrentesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<ModalMode>('create')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [soloEsteMes, setSoloEsteMes] = useState(true)
+  const [editingMontoBase, setEditingMontoBase] = useState('')
+  const [editingMontoPagado, setEditingMontoPagado] = useState(0)
   const [tipo, setTipo] = useState<'income' | 'expense'>('expense')
   const [nombre, setNombre] = useState('')
   const [monto, setMonto] = useState('')
@@ -56,6 +59,8 @@ export function RecurrentesPage() {
   const [abonoRecurrente, setAbonoRecurrente] = useState<RecurrenteCardView | null>(null)
   const [abonoSaving, setAbonoSaving] = useState(false)
   const [abonoError, setAbonoError] = useState('')
+  const [abonoInsuficienteData, setAbonoInsuficienteData] =
+    useState<SaldoInsuficienteAhorrosError | null>(null)
 
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
@@ -72,6 +77,17 @@ export function RecurrentesPage() {
     const d = String(date.getDate()).padStart(2, '0')
     return `${y}-${m}-${d}`
   }
+
+  const mesLabel = useMemo(() => {
+    return fechaRef.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+  }, [fechaRef])
+
+  const esMesPasado = useMemo(() => {
+    const hoy = new Date()
+    const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+    const inicioRef = new Date(fechaRef.getFullYear(), fechaRef.getMonth(), 1)
+    return inicioRef < inicioHoy
+  }, [fechaRef])
 
   useEffect(() => {
     let cancelled = false
@@ -125,6 +141,14 @@ export function RecurrentesPage() {
     [gastos],
   )
 
+  const totalPagadoGastos = useMemo(
+    () =>
+      gastos
+        .filter((r) => r.activoEnMes)
+        .reduce((acc, r) => acc + (r.registradoMes ? r.monto : r.montoPagado), 0),
+    [gastos],
+  )
+
   const totalPendienteIngresos = useMemo(
     () =>
       ingresos
@@ -138,9 +162,20 @@ export function RecurrentesPage() {
     [ingresos],
   )
 
+  const totalCobradoIngresos = useMemo(
+    () =>
+      ingresos
+        .filter((r) => r.activoEnMes)
+        .reduce((acc, r) => acc + (r.registradoMes ? r.monto : r.montoPagado), 0),
+    [ingresos],
+  )
+
   const resetForm = () => {
     setNombre('')
     setMonto('')
+    setEditingMontoBase('')
+    setEditingMontoPagado(0)
+    setSoloEsteMes(true)
     setDiaPago('5')
     setCategoriaId('')
     setFechaInicio('')
@@ -160,6 +195,9 @@ export function RecurrentesPage() {
   const abrirModalEditar = (recurrente: RecurrenteCardView) => {
     setModalMode('edit')
     setEditingId(recurrente.id)
+    setSoloEsteMes(true)
+    setEditingMontoBase(String(recurrente.montoBase))
+    setEditingMontoPagado(recurrente.montoPagado)
     setTipo(recurrente.tipo)
     setNombre(recurrente.nombre)
     setMonto(String(recurrente.monto))
@@ -192,6 +230,7 @@ export function RecurrentesPage() {
     if (recurrente.permiteParciales && !recurrente.registradoMes) {
       setAbonoRecurrente(recurrente)
       setAbonoError('')
+      setAbonoInsuficienteData(null)
       setIsAbonoModalOpen(true)
       return
     }
@@ -208,8 +247,19 @@ export function RecurrentesPage() {
       setCuentasAtrasadas(atrasadasData)
       
       bumpTransactions()
-    } catch {
-      setError('No se pudo actualizar el estado del recurrente.')
+    } catch (err: unknown) {
+      const errorWithData = err as {
+        message?: string
+        insuficienteData?: SaldoInsuficienteAhorrosError | null
+      }
+      if (errorWithData?.insuficienteData) {
+        setAbonoRecurrente(recurrente)
+        setAbonoError('')
+        setAbonoInsuficienteData(errorWithData.insuficienteData)
+        setIsAbonoModalOpen(true)
+      } else {
+        setError(errorWithData?.message || 'No se pudo actualizar el estado del recurrente.')
+      }
     } finally {
       setProcesandoId(null)
     }
@@ -255,23 +305,42 @@ export function RecurrentesPage() {
     }
   }
 
-  const manejarGuardarAbono = async (montoAbono: string) => {
+  const manejarGuardarAbono = async (
+    montoAbono: string,
+    metaLiberarId?: number | null,
+    liberarDeAhorroLibre?: boolean,
+  ) => {
     if (!abonoRecurrente) return
     const id = abonoRecurrente.id
     const mesIso = formatIsoDate(fechaRef)
 
     setAbonoSaving(true)
     setAbonoError('')
+    setAbonoInsuficienteData(null)
     try {
-      const actualizado = await registrarPagoRecurrente(id, montoAbono, mesIso)
+      const actualizado = await registrarPagoRecurrente(id, {
+        monto: montoAbono,
+        fecha: mesIso,
+        meta_liberar_id: metaLiberarId,
+        liberar_de_ahorro_libre: liberarDeAhorroLibre,
+      })
       setRecurrentes((prev) => prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)))
       const atrasadasData = await fetchCuentasAtrasadas()
       setCuentasAtrasadas(atrasadasData)
       bumpTransactions()
       setIsAbonoModalOpen(false)
       setAbonoRecurrente(null)
-    } catch (err) {
-      setAbonoError('No se pudo registrar el abono.')
+      setAbonoInsuficienteData(null)
+    } catch (err: unknown) {
+      const errorWithData = err as {
+        message?: string
+        insuficienteData?: SaldoInsuficienteAhorrosError | null
+      }
+      if (errorWithData?.insuficienteData) {
+        setAbonoInsuficienteData(errorWithData.insuficienteData)
+      } else {
+        setAbonoError(errorWithData?.message || 'No se pudo registrar el abono.')
+      }
     } finally {
       setAbonoSaving(false)
     }
@@ -324,8 +393,24 @@ export function RecurrentesPage() {
       const atrasadasData = await fetchCuentasAtrasadas()
       setCuentasAtrasadas(atrasadasData)
       bumpTransactions()
-    } catch {
-      setError('No se pudo registrar el pago atrasado.')
+    } catch (err: unknown) {
+      const errorWithData = err as {
+        message?: string
+        insuficienteData?: SaldoInsuficienteAhorrosError | null
+      }
+      if (errorWithData?.insuficienteData) {
+        const rec = recurrentes.find((r) => r.id === item.id_recurrente)
+        if (rec) {
+          setAbonoRecurrente(rec)
+          setAbonoError('')
+          setAbonoInsuficienteData(errorWithData.insuficienteData)
+          setIsAbonoModalOpen(true)
+        } else {
+          setError(errorWithData?.message || 'Saldo insuficiente para pagar esta cuenta.')
+        }
+      } else {
+        setError(errorWithData?.message || 'No se pudo registrar el pago atrasado.')
+      }
     } finally {
       setProcesandoAtrasadaId(null)
     }
@@ -351,10 +436,17 @@ export function RecurrentesPage() {
 
       const mesIso = formatIsoDate(fechaRef)
       if (modalMode === 'edit' && editingId !== null) {
-        const actualizado = await updateRecurrente(editingId, payload, mesIso)
+        const payloadConAlcance = {
+          ...payload,
+          solo_este_mes: soloEsteMes,
+        }
+        const actualizado = await updateRecurrente(editingId, payloadConAlcance, mesIso)
         setRecurrentes((prev) =>
           prev.map((r) => (r.id === editingId ? mapRecurrenteToCard(actualizado) : r)),
         )
+        const atrasadasData = await fetchCuentasAtrasadas()
+        setCuentasAtrasadas(atrasadasData)
+        bumpTransactions()
       } else {
         const creado = await createRecurrente(payload, mesIso)
         setRecurrentes((prev) => [...prev, mapRecurrenteToCard(creado)])
@@ -387,6 +479,52 @@ export function RecurrentesPage() {
     }
   }
 
+  const manejarEliminarTransaccionesYGuardar = async () => {
+    if (editingId === null) return
+    const recurrente = recurrentes.find((r) => r.id === editingId)
+    if (!recurrente) return
+
+    setSaving(true)
+    setModalError('')
+    try {
+      const mesIso = formatIsoDate(fechaRef)
+      // 1. Eliminar transacciones/abonos de este mes
+      await desmarcarPagoRecurrente(editingId, mesIso)
+
+      // 2. Guardar recurrente con el nuevo monto
+      const payload = {
+        nombre: nombre.trim(),
+        monto,
+        tipo,
+        dia_pago: parseInt(diaPago, 10),
+        categoria: categoriaId as number,
+        fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
+        fecha_fin: fechaFin ? `${fechaFin}-01` : null,
+        permite_parciales: permiteParciales,
+        solo_este_mes: soloEsteMes || esMesPasado,
+      }
+
+      const actualizado = await updateRecurrente(editingId, payload, mesIso)
+      setRecurrentes((prev) =>
+        prev.map((r) => (r.id === editingId ? mapRecurrenteToCard(actualizado) : r)),
+      )
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
+      cerrarModal()
+    } catch (err) {
+      setModalError(
+        err instanceof Error ? err.message : 'No se pudieron eliminar los pagos y actualizar el recurrente.'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const manejarHacerManual = () => {
+    cerrarModal()
+  }
+
   useEffect(() => {
     setSecondaryHeaderAction({
       label: 'Nuevo recurrente',
@@ -412,8 +550,10 @@ export function RecurrentesPage() {
         <div className={`space-y-6 transition-opacity duration-200 ${loading ? 'opacity-60 pointer-events-none' : ''}`}>
           <RecurrentesSummaryCard
             totalPendienteGastos={totalPendienteGastos}
+            totalPagadoGastos={totalPagadoGastos}
             totalGastosMes={totalGastosMes}
             totalPendienteIngresos={totalPendienteIngresos}
+            totalCobradoIngresos={totalCobradoIngresos}
             totalIngresosMes={totalIngresosMes}
           />
 
@@ -457,13 +597,13 @@ export function RecurrentesPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
                 Gastos fijos
               </h2>
               <span className="text-xs text-slate-400">{gastos.length} registrados</span>
             </div>
             {gastos.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
                 No tienes gastos recurrentes. Ej: Netflix, luz, cuota de préstamo.
               </p>
             ) : (
@@ -481,13 +621,13 @@ export function RecurrentesPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-emerald-700">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                 Ingresos fijos
               </h2>
               <span className="text-xs text-slate-400">{ingresos.length} registrados</span>
             </div>
             {ingresos.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-emerald-100 bg-white p-6 text-center text-sm text-slate-500">
+              <p className="rounded-2xl border border-dashed border-emerald-100 bg-white p-6 text-center text-sm text-slate-500 dark:border-emerald-950/40 dark:bg-slate-900">
                 No tienes ingresos recurrentes. Ej: sueldo, pensión, alquiler que cobras.
               </p>
             ) : (
@@ -511,12 +651,17 @@ export function RecurrentesPage() {
         tipo={tipo}
         nombre={nombre}
         monto={monto}
+        montoBase={editingMontoBase}
+        montoPagadoMes={editingMontoPagado}
         diaPago={diaPago}
         categoriaId={categoriaId}
         fechaInicio={fechaInicio}
         fechaFin={fechaFin}
         categorias={categorias}
         permiteParciales={permiteParciales}
+        soloEsteMes={soloEsteMes}
+        esMesPasado={esMesPasado}
+        mesLabel={mesLabel}
         saving={saving}
         error={modalError}
         onTipoChange={manejarCambioTipo}
@@ -527,6 +672,9 @@ export function RecurrentesPage() {
         onFechaInicioChange={setFechaInicio}
         onFechaFinChange={setFechaFin}
         onPermiteParcialesChange={setPermiteParciales}
+        onSoloEsteMesChange={setSoloEsteMes}
+        onEliminarTransaccionesYGuardar={manejarEliminarTransaccionesYGuardar}
+        onHacerManual={manejarHacerManual}
         onClose={cerrarModal}
         onSubmit={manejarGuardar}
       />
@@ -536,10 +684,13 @@ export function RecurrentesPage() {
         recurrente={abonoRecurrente}
         saving={abonoSaving}
         error={abonoError}
+        insuficienteData={abonoInsuficienteData}
         onClose={() => {
           setIsAbonoModalOpen(false)
           setAbonoRecurrente(null)
+          setAbonoInsuficienteData(null)
         }}
+        onClearInsuficiente={() => setAbonoInsuficienteData(null)}
         onSubmit={manejarGuardarAbono}
       />
     </section>
