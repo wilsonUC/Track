@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { ApiCategory } from '../../api/finanzas'
+import { CustomSelect } from '../ui/CustomSelect'
 
 type PresupuestoModalProps = {
   open: boolean
@@ -105,23 +106,18 @@ export function PresupuestoModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase text-slate-500">
+            <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
               Categoría de referencia (opcional)
             </label>
-            <select
+            <CustomSelect
               value={categoriaReferenciaId}
-              onChange={(e) =>
-                onCategoriaReferenciaChange(e.target.value ? Number(e.target.value) : '')
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="">Sin categoría (icono genérico)</option>
-              {categoriasGasto.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onCategoriaReferenciaChange(val ? Number(val) : '')}
+              options={[
+                { value: '' as number | '', label: 'Sin categoría (icono genérico)' },
+                ...categoriasGasto.map((c) => ({ value: c.id as number | '', label: c.nombre })),
+              ]}
+              placeholder="Sin categoría (icono genérico)"
+            />
           </div>
 
           {error && <p className="text-sm text-rose-600">{error}</p>}

@@ -1,6 +1,7 @@
-import type { FormEvent } from 'react'
+import { useMemo, type FormEvent } from 'react'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
 import type { ApiCategory } from '../../api/finanzas'
+import { CustomSelect } from '../ui/CustomSelect'
 
 type RecurrenteModalProps = {
   open: boolean
@@ -74,6 +75,20 @@ export function RecurrenteModal({
   const esIngreso = tipo === 'income'
   const categoriasFiltradas = categorias.filter((c) => c.tipo === tipo)
 
+  const tipoOptions = [
+    { value: 'expense', label: 'Gasto fijo (pago)' },
+    { value: 'income', label: 'Ingreso fijo (cobro)' },
+  ]
+
+  const categoriaOptions = useMemo(
+    () =>
+      categoriasFiltradas.map((c) => ({
+        value: c.id,
+        label: c.nombre,
+      })),
+    [categoriasFiltradas],
+  )
+
   const numMonto = parseFloat(monto)
   const montoMenorQuePagado =
     mode === 'edit' &&
@@ -107,14 +122,11 @@ export function RecurrenteModal({
           {mode === 'create' && (
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">Tipo</label>
-              <select
+              <CustomSelect
                 value={tipo}
-                onChange={(e) => onTipoChange(e.target.value as 'income' | 'expense')}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="expense">Gasto fijo (pago)</option>
-                <option value="income">Ingreso fijo (cobro)</option>
-              </select>
+                onChange={(val) => onTipoChange(val as 'income' | 'expense')}
+                options={tipoOptions}
+              />
             </div>
           )}
 
@@ -276,19 +288,12 @@ export function RecurrenteModal({
             <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
               Categoría
             </label>
-            <select
+            <CustomSelect
               value={categoriaId}
-              onChange={(e) => onCategoriaIdChange(e.target.value ? Number(e.target.value) : '')}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              required
-            >
-              <option value="">Selecciona una categoría</option>
-              {categoriasFiltradas.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => onCategoriaIdChange(val ? Number(val) : '')}
+              options={categoriaOptions}
+              placeholder="Selecciona una categoría"
+            />
           </div>
 
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 dark:border-slate-800 dark:bg-slate-800/40">

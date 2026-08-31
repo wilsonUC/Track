@@ -11,6 +11,7 @@ import {
   type TransactionFormValues,
 } from '../../utils/transactionPayload'
 import type { EnrichedTransaction } from '../../utils/dashboardMetrics'
+import { CustomSelect } from '../ui/CustomSelect'
 
 type TransactionEditModalProps = {
   open: boolean
@@ -152,22 +153,18 @@ export function TransactionEditModal({
             )}
 
             {isManual && (
-              <label className="block text-sm">
-                <span className="mb-1 block text-slate-600">Categoría</span>
-                <select
-                  value={form.categoryId === '' ? '' : String(form.categoryId)}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, categoryId: Number(e.target.value) }))
-                  }
-                  className={inputClass}
-                >
-                  {filteredCategories.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div>
+                <span className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300">Categoría</span>
+                <CustomSelect
+                  value={form.categoryId}
+                  onChange={(val) => setForm((prev) => ({ ...prev, categoryId: Number(val) }))}
+                  options={filteredCategories.map((item) => ({
+                    value: item.id,
+                    label: item.nombre,
+                  }))}
+                  placeholder="Selecciona una categoría"
+                />
+              </div>
             )}
 
             {!isManual && transaction.categoriaNombre && (

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { CustomSelect, type CustomSelectOption } from '../ui/CustomSelect'
 
 type ConfigRowProps = {
   label: string
@@ -17,7 +18,7 @@ export function ConfigRow({ label, hint, children, disabled = false }: ConfigRow
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</p>
         {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
       </div>
-      <div className="shrink-0 sm:min-w-[200px]">{children}</div>
+      <div className="shrink-0 sm:min-w-[210px]">{children}</div>
     </div>
   )
 }
@@ -50,29 +51,23 @@ export function ConfigToggle({ checked, onChange, disabled = false, label }: Con
 }
 
 const selectClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 dark:border-slate-600 dark:bg-slate-900/50 dark:text-slate-100 dark:shadow-none dark:disabled:bg-slate-800/50'
+  'w-full appearance-none rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm font-medium text-slate-800 shadow-xs transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:shadow-none dark:disabled:bg-slate-800/40 dark:disabled:text-slate-500 cursor-pointer'
 
 type ConfigSelectProps = {
   value: string
   onChange: (value: string) => void
-  options: { value: string; label: string }[]
+  options: CustomSelectOption<string>[]
   disabled?: boolean
 }
 
 export function ConfigSelect({ value, onChange, options, disabled = false }: ConfigSelectProps) {
   return (
-    <select
+    <CustomSelect
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
+      options={options}
       disabled={disabled}
-      className={selectClass}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    />
   )
 }
 

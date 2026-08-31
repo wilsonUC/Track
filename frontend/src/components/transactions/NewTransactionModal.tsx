@@ -9,6 +9,7 @@ import {
 } from '../../api/finanzas'
 import type { MovementType } from '../../types/finance'
 import { formatSoles } from '../../utils/financeFormat'
+import { CustomSelect } from '../ui/CustomSelect'
 
 type NewTransactionModalProps = {
   open: boolean
@@ -239,19 +240,16 @@ export function NewTransactionModal({
               {loadingCategories ? (
                 <div className="text-xs text-slate-400">Cargando categorías…</div>
               ) : (
-                <select
+                <CustomSelect
                   id="tx-category"
                   value={categoryId}
-                  onChange={(e) => onCategoryIdChange(Number(e.target.value))}
-                  className={inputClass}
-                  required
-                >
-                  {filteredCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => onCategoryIdChange(Number(val))}
+                  options={filteredCategories.map((c) => ({
+                    value: c.id,
+                    label: c.nombre,
+                  }))}
+                  placeholder="Selecciona una categoría"
+                />
               )}
             </div>
 

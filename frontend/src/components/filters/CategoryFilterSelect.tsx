@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import type { ApiCategory } from '../../api/finanzas'
+import { CustomSelect } from '../ui/CustomSelect'
 
 type CategoryFilterSelectProps = {
   categories: ApiCategory[]
@@ -8,26 +10,28 @@ type CategoryFilterSelectProps = {
 }
 
 export function CategoryFilterSelect({ categories, value, onChange, variant }: CategoryFilterSelectProps) {
-  const options = categories.filter((c) => c.tipo === variant)
+  const options = useMemo(() => {
+    const list = categories.filter((c) => c.tipo === variant)
+    return [
+      { value: '' as number | '', label: 'Todas las categorías' },
+      ...list.map((c) => ({ value: c.id as number | '', label: c.nombre })),
+    ]
+  }, [categories, variant])
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <label htmlFor="category-filter" className="text-sm font-medium text-slate-600">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <label htmlFor="category-filter" className="text-sm font-semibold text-slate-600 dark:text-slate-300">
         Categoría
       </label>
-      <select
-        id="category-filter"
-        value={value === '' ? '' : String(value)}
-        onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
-        className="min-w-[180px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:flex-none"
-      >
-        <option value="">Todas las categorías</option>
-        {options.map((cat) => (
-          <option key={cat.id} value={cat.id}>
-            {cat.nombre}
-          </option>
-        ))}
-      </select>
+      <div className="min-w-[200px] flex-1 sm:flex-none">
+        <CustomSelect
+          id="category-filter"
+          value={value}
+          onChange={(val) => onChange(val)}
+          options={options}
+          placeholder="Todas las categorías"
+        />
+      </div>
     </div>
   )
 }
