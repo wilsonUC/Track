@@ -10,7 +10,7 @@ export function IaChatToolbar({ onClear, disabled }: IaChatToolbarProps) {
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-100">
         <Sparkles className="h-4 w-4" aria-hidden />
-        <span>Powered by Groq</span>
+        <span>Powered by Track</span>
       </div>
 
       <button
