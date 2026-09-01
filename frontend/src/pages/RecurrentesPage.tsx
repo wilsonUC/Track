@@ -4,6 +4,7 @@ import { Power, PowerOff } from 'lucide-react'
 import { fetchCategories, deleteTransaction, type SaldoInsuficienteAhorrosError } from '../api/finanzas'
 import {
   createRecurrente,
+  deleteRecurrentePermanente,
   desmarcarPagoRecurrente,
   fetchRecurrentes,
   registrarPagoRecurrente,
@@ -14,6 +15,7 @@ import {
 } from '../api/recurrentes'
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
 import { AbonoRecurrenteModal } from '../components/recurrentes/AbonoRecurrenteModal'
+import { EliminarRecurrenteModal } from '../components/recurrentes/EliminarRecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
 import { ResumenCuentasAtrasadas } from '../components/recurrentes/ResumenCuentasAtrasadas'
@@ -61,6 +63,9 @@ export function RecurrentesPage() {
   const [abonoError, setAbonoError] = useState('')
   const [abonoInsuficienteData, setAbonoInsuficienteData] =
     useState<SaldoInsuficienteAhorrosError | null>(null)
+
+  const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false)
+  const [recurrenteAEliminar, setRecurrenteAEliminar] = useState<RecurrenteCardView | null>(null)
 
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
@@ -118,6 +123,22 @@ export function RecurrentesPage() {
       cancelled = true
     }
   }, [transactionsVersion, fechaRef, mostrarInactivos])
+
+  const abrirModalEliminar = (recurrente: RecurrenteCardView) => {
+    setRecurrenteAEliminar(recurrente)
+    setIsEliminarModalOpen(true)
+  }
+
+  const manejarConfirmarEliminar = async (
+    id: number,
+    modo?: 'eliminar_todo' | 'conservar_transacciones',
+  ) => {
+    await deleteRecurrentePermanente(id, modo)
+    setRecurrentes((prev) => prev.filter((r) => r.id !== id))
+    const atrasadasData = await fetchCuentasAtrasadas()
+    setCuentasAtrasadas(atrasadasData)
+    bumpTransactions()
+  }
 
   const visibleRecurrentes = useMemo(() => {
     return recurrentes.filter(
@@ -614,6 +635,7 @@ export function RecurrentesPage() {
                 onAlternarActivo={manejarAlternarActivo}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
+                onEliminar={abrirModalEliminar}
                 procesandoId={procesandoId}
               />
             )}
@@ -638,6 +660,7 @@ export function RecurrentesPage() {
                 onAlternarActivo={manejarAlternarActivo}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
+                onEliminar={abrirModalEliminar}
                 procesandoId={procesandoId}
               />
             )}
@@ -692,6 +715,16 @@ export function RecurrentesPage() {
         }}
         onClearInsuficiente={() => setAbonoInsuficienteData(null)}
         onSubmit={manejarGuardarAbono}
+      />
+
+      <EliminarRecurrenteModal
+        open={isEliminarModalOpen}
+        recurrente={recurrenteAEliminar}
+        onClose={() => {
+          setIsEliminarModalOpen(false)
+          setRecurrenteAEliminar(null)
+        }}
+        onConfirm={manejarConfirmarEliminar}
       />
     </section>
   )

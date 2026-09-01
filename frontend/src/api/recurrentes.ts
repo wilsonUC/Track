@@ -94,6 +94,33 @@ export async function updateRecurrente(
   return res.json()
 }
 
+export type InfoEliminacionRecurrente = {
+  id: number
+  nombre: string
+  num_transacciones: number
+  total_monto: number
+}
+
+export async function fetchInfoEliminacionRecurrente(id: number): Promise<InfoEliminacionRecurrente> {
+  const res = await authFetch(`/api/recurrentes/${id}/info-eliminacion/`)
+  if (!res.ok) throw new Error('No se pudo obtener la información de eliminación')
+  return res.json()
+}
+
+export async function deleteRecurrentePermanente(
+  id: number,
+  modo?: 'eliminar_todo' | 'conservar_transacciones',
+): Promise<void> {
+  const url = modo ? `/api/recurrentes/${id}/?modo=${modo}` : `/api/recurrentes/${id}/`
+  const res = await authFetch(url, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(JSON.stringify(err))
+  }
+}
+
 export type RegistrarPagoOptions = {
   monto?: string
   fecha?: string

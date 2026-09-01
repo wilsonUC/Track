@@ -361,9 +361,51 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             # 2. Guardamos la nueva configuración base en instance
             serializer.save()
 
-    def perform_destroy(self, instance):
-        instance.activo = False
-        instance.save(update_fields=["activo", "actualizado_en"])
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        modo = request.query_params.get("modo") or request.data.get("modo")
+        txs = Transaction.objects.filter(recurrente=instance)
+        tiene_txs = txs.exists()
+
+        if tiene_txs:
+            if modo == "eliminar_todo":
+                txs.delete()
+                instance.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            elif modo == "conservar_transacciones":
+                txs.update(recurrente=None)
+                instance.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                from django.db.models import Sum
+                total_monto = txs.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+                return Response(
+                    {
+                        "detalle": "El recurrente tiene transacciones asociadas.",
+                        "codigo": "requiere_decision_transacciones",
+                        "num_transacciones": txs.count(),
+                        "total_monto": float(total_monto),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"], url_path="info-eliminacion")
+    def info_eliminacion(self, request, pk=None):
+        instance = self.get_object()
+        txs = Transaction.objects.filter(recurrente=instance)
+        from django.db.models import Sum
+        total_monto = txs.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        return Response(
+            {
+                "id": instance.id,
+                "nombre": instance.nombre,
+                "num_transacciones": txs.count(),
+                "total_monto": float(total_monto),
+            }
+        )
 
     @action(detail=True, methods=["post"], url_path="registrar-pago")
     def registrar_pago(self, request, pk=None):

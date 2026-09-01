@@ -1007,6 +1007,84 @@ class RecurrentesValidacionFechasTests(FinanzasAPITestCase):
         self.assertEqual(res_abono.data["monto_pagado"], 200.0)
         self.assertFalse(res_abono.data["registrado_mes"])
 
+    def test_eliminar_recurrente_sin_transacciones(self):
+        res = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Temporal",
+                "monto": "50.00",
+                "tipo": "expense",
+                "dia_pago": 1,
+                "categoria": self.cat_gasto.id,
+            },
+            format="json",
+        )
+        rec_id = res.data["id"]
+        res_del = self.client.delete(f"/api/recurrentes/{rec_id}/")
+        self.assertEqual(res_del.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recurrente.objects.filter(id=rec_id).exists())
+
+    def test_eliminar_recurrente_con_transacciones_opciones(self):
+        # 1. Crear recurrente y registrar 2 pagos
+        res = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Gimnasio",
+                "monto": "100.00",
+                "tipo": "expense",
+                "dia_pago": 10,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": "2026-07-01",
+            },
+            format="json",
+        )
+        rec_id = res.data["id"]
+
+        self.client.post(f"/api/recurrentes/{rec_id}/registrar-pago/?mes=2026-07-01", {"fecha": "2026-07-10"}, format="json")
+        self.client.post(f"/api/recurrentes/{rec_id}/registrar-pago/?mes=2026-08-01", {"fecha": "2026-08-10"}, format="json")
+
+        # 2. info-eliminacion debe devolver 2 transacciones y 200 de total
+        res_info = self.client.get(f"/api/recurrentes/{rec_id}/info-eliminacion/")
+        self.assertEqual(res_info.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_info.data["num_transacciones"], 2)
+        self.assertEqual(Decimal(str(res_info.data["total_monto"])), Decimal("200.00"))
+
+        # 3. Intentar delete sin modo -> debe requerir decisión
+        res_del_fail = self.client.delete(f"/api/recurrentes/{rec_id}/")
+        self.assertEqual(res_del_fail.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_del_fail.data["codigo"], "requiere_decision_transacciones")
+
+        # 4. Probar eliminar con modo 'conservar_transacciones'
+        res_del_conservar = self.client.delete(f"/api/recurrentes/{rec_id}/?modo=conservar_transacciones")
+        self.assertEqual(res_del_conservar.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recurrente.objects.filter(id=rec_id).exists())
+        # Las 2 transacciones siguen existiendo como gastos con recurrente=None
+        txs = Transaction.objects.filter(categoria=self.cat_gasto, monto=Decimal("100.00"))
+        self.assertEqual(txs.count(), 2)
+        for t in txs:
+            self.assertIsNone(t.recurrente)
+
+        # 5. Probar modo 'eliminar_todo' en otro recurrente
+        res2 = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Spotify",
+                "monto": "20.00",
+                "tipo": "expense",
+                "dia_pago": 15,
+                "categoria": self.cat_gasto.id,
+            },
+            format="json",
+        )
+        rec_id2 = res2.data["id"]
+        self.client.post(f"/api/recurrentes/{rec_id2}/registrar-pago/?mes=2026-08-01", {"fecha": "2026-08-15"}, format="json")
+
+        res_del_todo = self.client.delete(f"/api/recurrentes/{rec_id2}/?modo=eliminar_todo")
+        self.assertEqual(res_del_todo.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recurrente.objects.filter(id=rec_id2).exists())
+        self.assertFalse(Transaction.objects.filter(monto=Decimal("20.00"), descripcion__icontains="Spotify").exists())
+
+
 
 
 
