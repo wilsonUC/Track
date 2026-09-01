@@ -116,6 +116,7 @@ class RecurrenteAjusteMes(models.Model):
     )
     mes = models.DateField(help_text="Primer día del mes del ajuste (YYYY-MM-01)")
     monto = models.DecimalField(max_digits=12, decimal_places=2)
+    permite_parciales = models.BooleanField(null=True, blank=True, default=None)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

@@ -102,9 +102,11 @@ export function RecurrenteCard({
             <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">
               {estadoPeriodo === 'no_iniciado'
                 ? 'NO INICIADO'
-                : estadoPeriodo === 'futuro'
-                  ? 'PRÓXIMAMENTE'
-                  : 'FINALIZADO'}
+                : 'FINALIZADO'}
+            </span>
+          ) : estadoPeriodo === 'futuro' ? (
+            <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-black text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
+              PRÓXIMAMENTE
             </span>
           ) : (
             <span
@@ -252,10 +254,10 @@ export function RecurrenteCard({
           <>
             <button
               type="button"
-              disabled={procesando || !activoEnMes}
+              disabled={procesando || !activoEnMes || estadoPeriodo === 'futuro'}
               onClick={() => onAlternarPago(id)}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition-all active:scale-95 disabled:opacity-60 ${
-                !activoEnMes
+                !activoEnMes || estadoPeriodo === 'futuro'
                   ? 'border-slate-100 bg-slate-100 text-slate-400 cursor-not-allowed'
                   : registradoMes
                     ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -266,7 +268,7 @@ export function RecurrenteCard({
             >
               {procesando ? (
                 <span>Procesando…</span>
-              ) : !activoEnMes ? (
+              ) : !activoEnMes || estadoPeriodo === 'futuro' ? (
                 <span>{estadoPeriodo === 'futuro' ? 'Aún no disponible' : 'Fuera de período'}</span>
               ) : registradoMes ? (
                 <>

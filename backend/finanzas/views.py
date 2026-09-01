@@ -293,37 +293,58 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
 
         primer_dia_mes = reference_date.replace(day=1)
         nuevo_monto = serializer.validated_data.get("monto")
+        nuevo_permite_parciales = serializer.validated_data.get("permite_parciales")
 
-        if solo_este_mes and nuevo_monto is not None:
-            # Guardamos otros campos en instance si cambiaron, pero sin cambiar instance.monto base
-            validated_data_sin_monto = dict(serializer.validated_data)
-            validated_data_sin_monto.pop("monto", None)
-            if validated_data_sin_monto:
-                for attr, val in validated_data_sin_monto.items():
+        if solo_este_mes:
+            # Guardamos otros campos en instance si cambiaron, pero sin cambiar instance.monto base ni permite_parciales base
+            validated_data_sin_ajustes = dict(serializer.validated_data)
+            validated_data_sin_ajustes.pop("monto", None)
+            validated_data_sin_ajustes.pop("permite_parciales", None)
+            if validated_data_sin_ajustes:
+                for attr, val in validated_data_sin_ajustes.items():
                     setattr(instance, attr, val)
                 instance.save()
 
             # Guardamos/actualizamos el ajuste puntual para este mes
+            ajuste_defaults = {}
+            if nuevo_monto is not None:
+                ajuste_defaults["monto"] = nuevo_monto
+            else:
+                ajuste_defaults["monto"] = instance.monto
+            if nuevo_permite_parciales is not None:
+                ajuste_defaults["permite_parciales"] = nuevo_permite_parciales
+
             RecurrenteAjusteMes.objects.update_or_create(
                 recurrente=instance,
                 mes=primer_dia_mes,
-                defaults={"monto": nuevo_monto},
+                defaults=ajuste_defaults,
             )
         else:
             # Modo "A partir de este mes en adelante":
-            # 1. Congelar los meses pasados con el monto histórico anterior
             monto_anterior = instance.monto
-            if nuevo_monto is not None and nuevo_monto != monto_anterior:
-                fecha_creacion = instance.creado_en.date() if hasattr(instance.creado_en, "date") else instance.creado_en
+            permite_parciales_anterior = instance.permite_parciales
+
+            ha_cambiado_monto = nuevo_monto is not None and nuevo_monto != monto_anterior
+            ha_cambiado_parciales = (
+                nuevo_permite_parciales is not None and nuevo_permite_parciales != permite_parciales_anterior
+            )
+
+            if ha_cambiado_monto or ha_cambiado_parciales:
+                fecha_creacion = (
+                    instance.creado_en.date() if hasattr(instance.creado_en, "date") else instance.creado_en
+                )
                 fecha_start = instance.fecha_inicio if instance.fecha_inicio else fecha_creacion
                 iter_date = fecha_start.replace(day=1)
 
                 while iter_date < primer_dia_mes:
-                    # Si no tiene un ajuste explícito en ese mes pasado, le fijamos el monto histórico
+                    # Si no tiene un ajuste explícito en ese mes pasado, le fijamos los valores históricos
                     RecurrenteAjusteMes.objects.get_or_create(
                         recurrente=instance,
                         mes=iter_date,
-                        defaults={"monto": monto_anterior},
+                        defaults={
+                            "monto": monto_anterior,
+                            "permite_parciales": permite_parciales_anterior,
+                        },
                     )
                     # Siguiente mes
                     if iter_date.month == 12:
@@ -331,13 +352,13 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
                     else:
                         iter_date = iter_date.replace(month=iter_date.month + 1)
 
-                # Limpiamos cualquier ajuste previo del mes actual o meses futuros para que rija el nuevo monto base
+                # Limpiamos cualquier ajuste previo del mes actual o meses futuros para que rija la nueva configuración base
                 RecurrenteAjusteMes.objects.filter(
                     recurrente=instance,
                     mes__gte=primer_dia_mes,
                 ).delete()
 
-            # 2. Guardamos el nuevo monto base en instance
+            # 2. Guardamos la nueva configuración base en instance
             serializer.save()
 
     def perform_destroy(self, instance):
@@ -350,7 +371,16 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         body = RecurrenteRegistrarPagoSerializer(data=request.data)
         body.is_valid(raise_exception=True)
 
-        fecha_pago = body.validated_data.get("fecha") or date.today()
+        fecha_pago = body.validated_data.get("fecha")
+        if not fecha_pago:
+            mes_param = request.query_params.get("mes")
+            if mes_param:
+                try:
+                    fecha_pago = date.fromisoformat(str(mes_param)[:10])
+                except ValueError:
+                    fecha_pago = date.today()
+            else:
+                fecha_pago = date.today()
 
         # Calcular el monto ya pagado este mes
         inicio_mes, fin_mes = _bounds_mes(fecha_pago)
@@ -364,8 +394,10 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         monto_mes_esperado = obtener_monto_mes(recurrente, fecha_pago)
         monto_restante = monto_mes_esperado - Decimal(str(monto_pagado))
 
-        # Si permite abonos parciales
-        if recurrente.permite_parciales:
+        # Si permite abonos parciales en este mes
+        from .recurrentes_service import obtener_permite_parciales_mes
+        permite_parciales_mes = obtener_permite_parciales_mes(recurrente, fecha_pago)
+        if permite_parciales_mes:
             monto = body.validated_data.get("monto")
             if monto is None:
                 monto = monto_restante
@@ -435,11 +467,11 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="desmarcar-pago")
     def desmarcar_pago(self, request, pk=None):
         recurrente = self.get_object()
-        fecha_pago_str = request.data.get("fecha")
+        fecha_pago_str = request.data.get("fecha") or request.query_params.get("mes")
         fecha_pago = date.today()
         if fecha_pago_str:
             try:
-                fecha_pago = date.fromisoformat(fecha_pago_str)
+                fecha_pago = date.fromisoformat(str(fecha_pago_str)[:10])
             except ValueError:
                 pass
 

@@ -871,5 +871,145 @@ class ControlSaldoEstrictoTests(FinanzasAPITestCase):
         self.assertEqual(Decimal(str(resumen.data["asignado"])), Decimal("300.00"))
 
 
+class RecurrentesValidacionFechasTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.user = self.crear_usuario(username="rec_user")
+        self.autenticar(self.user)
+        self.crear_categorias()
+
+    def test_bloquea_mover_fecha_inicio_si_hay_pagos_anteriores(self):
+        # 1. Crear recurrente de Agosto 2026 a Diciembre 2026
+        res = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Servicio Internet",
+                "monto": "100.00",
+                "tipo": "expense",
+                "dia_pago": 5,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": "2026-08-01",
+                "fecha_fin": "2026-12-31",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        rec_id = res.data["id"]
+
+        # 2. Registrar un pago en Agosto (2026-08-05)
+        res_pago = self.client.post(
+            f"/api/recurrentes/{rec_id}/registrar-pago/",
+            {"fecha": "2026-08-05"},
+            format="json",
+        )
+        self.assertEqual(res_pago.status_code, status.HTTP_200_OK)
+
+        # 3. Intentar mover la fecha de inicio a Septiembre 2026 -> Debe fallar con 400 y mensaje explicativo
+        res_edit = self.client.patch(
+            f"/api/recurrentes/{rec_id}/",
+            {"fecha_inicio": "2026-09-01"},
+            format="json",
+        )
+        self.assertEqual(res_edit.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("fecha_inicio", res_edit.data)
+        self.assertIn("existen pagos/abonos registrados", str(res_edit.data["fecha_inicio"]))
+
+        # 4. Desmarcar/eliminar el pago de Agosto
+        res_desmarcar = self.client.post(
+            f"/api/recurrentes/{rec_id}/desmarcar-pago/",
+            {"fecha": "2026-08-05"},
+            format="json",
+        )
+        self.assertEqual(res_desmarcar.status_code, status.HTTP_200_OK)
+
+        # 5. Ahora sí debe permitir mover la fecha de inicio a Septiembre 2026
+        res_edit_ok = self.client.patch(
+            f"/api/recurrentes/{rec_id}/",
+            {"fecha_inicio": "2026-09-01"},
+            format="json",
+        )
+        self.assertEqual(res_edit_ok.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_edit_ok.data["fecha_inicio"], "2026-09-01")
+
+    def test_meses_futuros_reflejan_monto_y_activo_en_mes(self):
+        # Crear recurrente válido de Agosto a Diciembre
+        res = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Plan Celular",
+                "monto": "60.00",
+                "tipo": "expense",
+                "dia_pago": 15,
+                "categoria": self.cat_gasto.id,
+                "fecha_inicio": "2026-08-01",
+                "fecha_fin": "2026-12-31",
+            },
+            format="json",
+        )
+        rec_id = res.data["id"]
+
+        # Consultar un mes del futuro relativo a hoy (ej. Noviembre 2026)
+        mes_futuro = (date.today().replace(day=28) + timedelta(days=60)).replace(day=1)
+        res_futuro = self.client.get(f"/api/recurrentes/?mes={mes_futuro.strftime('%Y-%m-%d')}")
+        self.assertEqual(res_futuro.status_code, status.HTTP_200_OK)
+
+        rec_futuro = next(r for r in res_futuro.data if r["id"] == rec_id)
+        self.assertTrue(rec_futuro["activo_en_mes"])
+        self.assertEqual(rec_futuro["estado_periodo"], "futuro")
+        self.assertEqual(Decimal(str(rec_futuro["monto"])), Decimal("60.00"))
+        self.assertFalse(rec_futuro["vencido"])
+
+    def test_permite_parciales_independiente_por_mes(self):
+        # 1. Crear recurrente con permite_parciales = False por defecto
+        res = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Alquiler",
+                "monto": "500.00",
+                "tipo": "expense",
+                "dia_pago": 5,
+                "categoria": self.cat_gasto.id,
+                "permite_parciales": False,
+                "fecha_inicio": "2026-08-01",
+                "fecha_fin": "2026-12-31",
+            },
+            format="json",
+        )
+        rec_id = res.data["id"]
+
+        # 2. Ajustar Agosto solo para este mes con permite_parciales = True
+        res_edit = self.client.patch(
+            f"/api/recurrentes/{rec_id}/?mes=2026-08-01",
+            {
+                "permite_parciales": True,
+                "solo_este_mes": True,
+            },
+            format="json",
+        )
+        self.assertEqual(res_edit.status_code, status.HTTP_200_OK)
+
+        # 3. En Agosto permite_parciales debe ser True
+        res_agosto = self.client.get(f"/api/recurrentes/?mes=2026-08-01")
+        rec_agosto = next(r for r in res_agosto.data if r["id"] == rec_id)
+        self.assertTrue(rec_agosto["permite_parciales"])
+
+        # 4. En Septiembre permite_parciales debe seguir siendo False
+        res_sept = self.client.get(f"/api/recurrentes/?mes=2026-09-01")
+        rec_sept = next(r for r in res_sept.data if r["id"] == rec_id)
+        self.assertFalse(rec_sept["permite_parciales"])
+
+        # 5. En Agosto registrar un abono parcial de 200 debe funcionar
+        res_abono = self.client.post(
+            f"/api/recurrentes/{rec_id}/registrar-pago/?mes=2026-08-01",
+            {"monto": "200.00", "fecha": "2026-08-05"},
+            format="json",
+        )
+        self.assertEqual(res_abono.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_abono.data["monto_pagado"], 200.0)
+        self.assertFalse(res_abono.data["registrado_mes"])
+
+
+
+
+
 
 

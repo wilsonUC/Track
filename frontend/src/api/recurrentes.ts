@@ -124,6 +124,8 @@ export async function registrarPagoRecurrente(
     if (montoOrOptions.liberar_de_ahorro_libre) {
       payload.liberar_de_ahorro_libre = true
     }
+  } else if (fecha) {
+    payload.fecha = fecha
   }
 
   const url = mesQuery ? `/api/recurrentes/${id}/registrar-pago/?mes=${mesQuery}` : `/api/recurrentes/${id}/registrar-pago/`

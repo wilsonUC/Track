@@ -22,7 +22,7 @@ from .metas_service import (
     calcular_ahorro_sugerido,
 )
 from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
-from .recurrentes_service import calcular_estado_recurrente
+from .recurrentes_service import MESES_ES, calcular_estado_recurrente
 
 
 def perfil_desde_usuario(user):
@@ -258,12 +258,14 @@ class RecurrenteSerializer(serializers.ModelSerializer):
     def to_representation(self, instance: Recurrente):
         ret = super().to_representation(instance)
         from datetime import date
-        from .recurrentes_service import obtener_monto_mes
+        from .recurrentes_service import obtener_monto_mes, obtener_permite_parciales_mes
         reference_date = self.context.get("reference_date") or date.today()
         monto_mes = obtener_monto_mes(instance, reference_date)
+        permite_parciales_mes = obtener_permite_parciales_mes(instance, reference_date)
         ret["monto_base"] = str(instance.monto)
         ret["monto"] = str(monto_mes)
         ret["tiene_ajuste_mes"] = monto_mes != instance.monto
+        ret["permite_parciales"] = permite_parciales_mes
         return ret
 
     def get_abonos(self, obj):
@@ -322,6 +324,45 @@ class RecurrenteSerializer(serializers.ModelSerializer):
                 fecha_inicio = self.instance.fecha_inicio
             if fecha_fin is None and "fecha_fin" not in attrs:
                 fecha_fin = self.instance.fecha_fin
+
+            # Validar que no existan transacciones fuera del nuevo rango de fechas
+            if fecha_inicio is not None:
+                txs_antes = Transaction.objects.filter(
+                    recurrente=self.instance,
+                    fecha__lt=fecha_inicio,
+                )
+                if txs_antes.exists():
+                    fechas_afectadas = txs_antes.values_list("fecha", flat=True).distinct()
+                    meses_set = {f"{MESES_ES[f.month - 1].capitalize()} {f.year}" for f in fechas_afectadas}
+                    meses_str = ", ".join(sorted(meses_set))
+                    mes_inicio_str = f"{MESES_ES[fecha_inicio.month - 1].capitalize()} {fecha_inicio.year}"
+                    raise serializers.ValidationError(
+                        {
+                            "fecha_inicio": (
+                                f"No se puede cambiar la fecha de inicio a {mes_inicio_str} porque existen pagos/abonos registrados "
+                                f"en fechas o meses anteriores ({meses_str}). Primero debes eliminar esas transacciones para poder mover el período."
+                            )
+                        }
+                    )
+
+            if fecha_fin is not None:
+                txs_despues = Transaction.objects.filter(
+                    recurrente=self.instance,
+                    fecha__gt=fecha_fin,
+                )
+                if txs_despues.exists():
+                    fechas_afectadas = txs_despues.values_list("fecha", flat=True).distinct()
+                    meses_set = {f"{MESES_ES[f.month - 1].capitalize()} {f.year}" for f in fechas_afectadas}
+                    meses_str = ", ".join(sorted(meses_set))
+                    mes_fin_str = f"{MESES_ES[fecha_fin.month - 1].capitalize()} {fecha_fin.year}"
+                    raise serializers.ValidationError(
+                        {
+                            "fecha_fin": (
+                                f"No se puede cambiar la fecha de fin a {mes_fin_str} porque existen pagos/abonos registrados "
+                                f"en fechas o meses posteriores ({meses_str}). Primero debes eliminar esas transacciones para poder mover el período."
+                            )
+                        }
+                    )
 
         if categoria and tipo and categoria.tipo != tipo:
             raise serializers.ValidationError(

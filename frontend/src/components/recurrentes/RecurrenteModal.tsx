@@ -1,5 +1,5 @@
 import { useMemo, type FormEvent } from 'react'
-import { AlertTriangle, Trash2, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Trash2, X } from 'lucide-react'
 import type { ApiCategory } from '../../api/finanzas'
 import { CustomSelect } from '../ui/CustomSelect'
 
@@ -218,7 +218,7 @@ export function RecurrenteModal({
           {mode === 'edit' && !esMesPasado && (
             <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-xs dark:border-indigo-900/40 dark:bg-indigo-950/30">
               <span className="block font-bold text-slate-700 dark:text-slate-200 mb-2">
-                ¿A qué meses aplica este monto?
+                ¿A qué meses aplican estos cambios?
               </span>
               <div className="space-y-2.5">
                 <label className="flex items-start gap-2.5 cursor-pointer text-slate-700 dark:text-slate-300">
@@ -234,7 +234,9 @@ export function RecurrenteModal({
                       Solo para este mes ({mesLabel || 'este mes'})
                     </span>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {montoBase ? `Los demás meses continuarán con su cuota de S/ ${montoBase}.` : 'No alterará los meses pasados ni futuros.'}
+                      {montoBase
+                        ? `Aplica el monto y la opción de abonos parciales solo a este mes. Los demás meses continuarán con su cuota de S/ ${montoBase}.`
+                        : 'No alterará los meses pasados ni futuros.'}
                     </p>
                   </div>
                 </label>
@@ -251,7 +253,7 @@ export function RecurrenteModal({
                       A partir de este mes en adelante ({mesLabel || 'este mes'} hacia el futuro)
                     </span>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Aplica a este mes y todos los meses siguientes. Los meses pasados conservarán su monto histórico intacto.
+                      Aplica el monto y la opción de abonos parciales a este mes y todos los meses siguientes.
                     </p>
                   </div>
                 </label>
@@ -323,7 +325,15 @@ export function RecurrenteModal({
             </button>
           </div>
 
-          {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/95 p-3 text-xs font-medium text-rose-800 shadow-xs dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden />
+              <div className="space-y-1">
+                <span className="block font-bold">Atención</span>
+                <p className="leading-relaxed">{error}</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3 dark:border-slate-800">
             <button

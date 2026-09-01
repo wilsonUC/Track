@@ -73,9 +73,22 @@ def obtener_monto_mes(recurrente, reference: date) -> Decimal:
             return Decimal(str(ajuste))
 
     ajuste_obj = recurrente.ajustes_mes.filter(mes=primer_dia_mes).first()
-    if ajuste_obj:
+    if ajuste_obj and ajuste_obj.monto is not None:
         return Decimal(str(ajuste_obj.monto))
     return Decimal(str(recurrente.monto))
+
+
+def obtener_permite_parciales_mes(recurrente, reference: date) -> bool:
+    """Retorna si el recurrente permite abonos parciales en el mes consultado (ajuste puntual o valor base)."""
+    primer_dia_mes = reference.replace(day=1)
+    if hasattr(recurrente, "_ajustes_mes_dict_obj"):
+        ajuste_obj = recurrente._ajustes_mes_dict_obj.get(primer_dia_mes)
+    else:
+        ajuste_obj = recurrente.ajustes_mes.filter(mes=primer_dia_mes).first()
+
+    if ajuste_obj and ajuste_obj.permite_parciales is not None:
+        return bool(ajuste_obj.permite_parciales)
+    return bool(recurrente.permite_parciales)
 
 
 def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dict:
@@ -95,10 +108,9 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         activo_en_mes = False
         estado_periodo = "finalizado"
 
-    # Si es un mes del futuro relativo al mes real actual, se bloquea el pago/cobro
+    # Si es un mes del futuro relativo al mes real actual, se marca como futuro
     real_today = date.today()
     if activo_en_mes and ref_inicio_mes > real_today.replace(day=1):
-        activo_en_mes = False
         estado_periodo = "futuro"
 
     # Calcular abonos de este mes
@@ -122,7 +134,7 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
     vencido = False
     mes_anterior_sin_registrar = None
 
-    if activo_en_mes and not registrado_mes:
+    if activo_en_mes and estado_periodo != "futuro" and not registrado_mes:
         creado = (
             recurrente.creado_en.date()
             if hasattr(recurrente.creado_en, "date")
