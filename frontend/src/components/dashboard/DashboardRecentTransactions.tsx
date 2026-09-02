@@ -8,6 +8,7 @@ type DashboardRecentTransactionsProps = {
   loading?: boolean
   totalPendienteGastos: number
   totalPendienteIngresos: number
+  isAvanzado?: boolean
 }
 
 export function DashboardRecentTransactions({
@@ -15,6 +16,7 @@ export function DashboardRecentTransactions({
   loading,
   totalPendienteGastos,
   totalPendienteIngresos,
+  isAvanzado,
 }: DashboardRecentTransactionsProps) {
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -25,35 +27,41 @@ export function DashboardRecentTransactions({
         <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">Todas las transacciones recientes</h3>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 dark:border-slate-800">
-        {/* Card 1: Gastos Fijos Por Pagar */}
-        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-          <div className="absolute top-3 right-3 rounded-lg bg-rose-50 p-1.5 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-            <TrendingDown className="h-4 w-4" aria-hidden />
+      {isAvanzado && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 dark:border-slate-800">
+          {/* Card 1: Gastos Fijos Por Pagar */}
+          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+            <div className="absolute top-3 right-3 rounded-lg bg-rose-50 p-1.5 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+              <TrendingDown className="h-4 w-4" aria-hidden />
+            </div>
+            <div className="pr-8">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Gastos fijos por pagar</p>
+              <p className="mt-1 text-sm font-bold text-rose-600 dark:text-rose-400">
+                {totalPendienteGastos > 0 ? `-S/ ${totalPendienteGastos.toFixed(2)}` : 'S/ 0.00'}
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate" title="Obligaciones de gasto de este mes">
+                Obligaciones de gasto
+              </p>
+            </div>
           </div>
-          <div className="pr-8">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Gastos fijos por pagar</p>
-            <p className="mt-1 text-sm font-bold text-rose-600 dark:text-rose-400">
-              {totalPendienteGastos > 0 ? `-S/ ${totalPendienteGastos.toFixed(2)}` : 'S/ 0.00'}
-            </p>
-            <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate" title="Obligaciones de gasto de este mes">Obligaciones de gasto</p>
-          </div>
-        </div>
 
-        {/* Card 2: Ingresos Fijos Por Cobrar */}
-        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-          <div className="absolute top-3 right-3 rounded-lg bg-emerald-50 p-1.5 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-            <TrendingUp className="h-4 w-4" aria-hidden />
-          </div>
-          <div className="pr-8">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ingresos fijos por cobrar</p>
-            <p className="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
-              S/ {totalPendienteIngresos.toFixed(2)}
-            </p>
-            <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate" title="Ingresos recurrentes de este mes">Ingresos recurrentes</p>
+          {/* Card 2: Ingresos Fijos Por Cobrar */}
+          <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-50/40 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+            <div className="absolute top-3 right-3 rounded-lg bg-emerald-50 p-1.5 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+              <TrendingUp className="h-4 w-4" aria-hidden />
+            </div>
+            <div className="pr-8">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ingresos fijos por cobrar</p>
+              <p className="mt-1 text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                S/ {totalPendienteIngresos.toFixed(2)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 truncate" title="Ingresos recurrentes de este mes">
+                Ingresos recurrentes
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="p-4 sm:p-5">
         {loading && <p className="py-8 text-center text-sm text-slate-500">Cargando…</p>}

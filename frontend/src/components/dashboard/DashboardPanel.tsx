@@ -25,14 +25,18 @@ import { DashboardSummaryCard } from './DashboardSummaryCard'
 import { fetchRecurrentes } from '../../api/recurrentes'
 import { mapRecurrenteToCard } from '../../utils/recurrentesDisplay'
 import type { RecurrenteCardView } from '../recurrentes/recurrentesTypes'
+import { usePreferences } from '../../context/PreferencesContext'
 
 type OutletContext = {
   transactionsVersion: number
   setHeaderExtra?: (extra: React.ReactNode | null) => void
+  isAvanzado?: boolean
 }
 
 export function DashboardPanel() {
-  const { transactionsVersion, setHeaderExtra } = useOutletContext<OutletContext>()
+  const { preferences } = usePreferences()
+  const descontarAhorros = preferences?.descontar_ahorros_balance ?? false
+  const { transactionsVersion, setHeaderExtra, isAvanzado } = useOutletContext<OutletContext>()
   const [activeCard, setActiveCard] = useState<'balance' | 'income' | 'expense' | 'savings'>('balance')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -51,12 +55,17 @@ export function DashboardPanel() {
     const mes = String(refDate.getMonth() + 1).padStart(2, '0')
     const mesParam = dateFilter.preset === 'total' ? undefined : `${anio}-${mes}-01`
 
-    Promise.all([fetchTransactions(), fetchCategories(), fetchRecurrentes(mesParam)])
+    // Solo los usuarios avanzados o admins consultan recurrentes
+    const recsPromise = isAvanzado
+      ? fetchRecurrentes(mesParam).catch(() => [])
+      : Promise.resolve([])
+
+    Promise.all([fetchTransactions(), fetchCategories(), recsPromise])
       .then(([transactions, categories, recs]) => {
         if (cancelled) return
         const categoryMap = buildCategoryMap(categories)
         setAllTransactions(enrichTransactions(transactions, categoryMap))
-        setRecurrentes(recs.map(mapRecurrenteToCard))
+        setRecurrentes(recs ? recs.map(mapRecurrenteToCard) : [])
       })
       .catch(() => {
         if (!cancelled) setError('No se pudieron cargar los datos del dashboard.')
@@ -68,7 +77,7 @@ export function DashboardPanel() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion, dateFilter.refDate, dateFilter.preset])
+  }, [transactionsVersion, dateFilter.refDate, dateFilter.preset, isAvanzado])
 
   const filtered = useMemo(
     () => filterByDateRange(allTransactions, dateFilter.range),
@@ -76,11 +85,15 @@ export function DashboardPanel() {
   )
 
   const periodTotals = useMemo(() => sumByType(filtered), [filtered])
-  const balance = periodTotals.income - periodTotals.expense
+  const balance = descontarAhorros
+    ? periodTotals.income - periodTotals.expense - periodTotals.saving
+    : periodTotals.income - periodTotals.expense
   const saldoDisponible = balance
 
   const allTimeTotals = useMemo(() => sumByType(allTransactions), [allTransactions])
-  const totalBalance = allTimeTotals.income - allTimeTotals.expense
+  const totalBalance = descontarAhorros
+    ? allTimeTotals.income - allTimeTotals.expense - allTimeTotals.saving
+    : allTimeTotals.income - allTimeTotals.expense
 
   const periodIncome = useMemo(
     () => sortByDateDesc(filtered.filter((t) => t.tipo === 'income')),
@@ -161,17 +174,25 @@ export function DashboardPanel() {
     <section className="space-y-6">
       <div className="grid w-full min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardSummaryCard
-          title="Balance"
+          title={descontarAhorros ? 'Balance disponible' : 'Balance'}
           amount={formatSoles(balance)}
-          subtitle={getBalanceSubtitle(balance)}
+          subtitle={
+            descontarAhorros && periodTotals.saving > 0
+              ? `Ahorro descontado: -${formatSoles(periodTotals.saving)}`
+              : getBalanceSubtitle(balance)
+          }
           variant="balance"
           isActive={activeCard === 'balance'}
           onClick={() => setActiveCard('balance')}
         />
         <DashboardSummaryCard
-          title="Balance total"
+          title={descontarAhorros ? 'Balance total disp.' : 'Balance total'}
           amount={formatSoles(totalBalance)}
-          subtitle={getTotalBalanceSubtitle(totalBalance)}
+          subtitle={
+            descontarAhorros && allTimeTotals.saving > 0
+              ? `Ahorro descontado: -${formatSoles(allTimeTotals.saving)}`
+              : getTotalBalanceSubtitle(totalBalance)
+          }
           variant="totalBalance"
         />
         <DashboardSummaryCard
@@ -228,6 +249,7 @@ export function DashboardPanel() {
             loading={loading}
             totalPendienteGastos={totalPendienteGastos}
             totalPendienteIngresos={totalPendienteIngresos}
+            isAvanzado={isAvanzado}
           />
           <DashboardMonthlyChart
             data={monthlyChart}

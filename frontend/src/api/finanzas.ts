@@ -81,6 +81,7 @@ export type TransactionWritePayload = {
   descripcion: string
   meta_liberar_id?: number | null
   liberar_de_ahorro_libre?: boolean
+  liberar_todo?: boolean
 }
 
 export function formatApiError(body: unknown, fallback: string): string {

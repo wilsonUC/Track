@@ -8,6 +8,7 @@ import { NavIcon } from './navIcons'
 
 type MobileNavProps = {
   isStaff: boolean
+  isAvanzado?: boolean
 }
 
 const planItems = [
@@ -16,7 +17,7 @@ const planItems = [
   { id: 'metas' as Section, label: 'Metas', icon: Target, desc: 'Objetivos de ahorro a plazo' },
 ]
 
-export function MobileNav({ isStaff }: MobileNavProps) {
+export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
   const { pathname } = useLocation()
   const [isPlanesOpen, setIsPlanesOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -56,7 +57,8 @@ export function MobileNav({ isStaff }: MobileNavProps) {
     (item) =>
       item.id !== 'configuracion' &&
       item.id !== 'admin' &&
-      (!item.adminOnly || isStaff),
+      (!item.adminOnly || isStaff) &&
+      (!item.advancedOnly || isAvanzado || isStaff),
   )
 
   for (const item of availableItems) {

@@ -10,6 +10,7 @@ export type PreferenciasUsuario = {
   mostrar_decimales: boolean
   limitar_saldo_negativo: boolean
   permitir_asignacion_directa_metas: boolean
+  descontar_ahorros_balance: boolean
   actualizado_en: string
 }
 
@@ -23,6 +24,7 @@ export type PreferenciasUpdate = Partial<
     | 'mostrar_decimales'
     | 'limitar_saldo_negativo'
     | 'permitir_asignacion_directa_metas'
+    | 'descontar_ahorros_balance'
   >
 >
 

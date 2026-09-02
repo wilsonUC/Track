@@ -88,6 +88,18 @@ def resumen_ahorros(user) -> dict:
     libre = total - asignado
     if libre < 0:
         libre = Decimal("0")
+
+    metas_asignadas = []
+    if asignado > Decimal("0"):
+        for asig in AsignacionMeta.objects.filter(
+            usuario=user, monto__gt=0, meta__es_asignacion_libre=False
+        ).select_related("meta"):
+            metas_asignadas.append({
+                "id": asig.meta.id,
+                "nombre": asig.meta.nombre,
+                "monto": str(asig.monto),
+            })
+
     return {
         "total": total,
         "asignado": asignado,
@@ -95,6 +107,7 @@ def resumen_ahorros(user) -> dict:
         "disponible": disponible,
         # Compatibilidad con clientes que aún lean disponible_mes
         "disponible_mes": disponible,
+        "metas_asignadas": metas_asignadas,
     }
 
 
@@ -105,11 +118,12 @@ def validar_limite_saldo(
     transaccion_id=None,
     meta_liberar_id=None,
     liberar_de_ahorro_libre=False,
+    liberar_todo=False,
 ):
     """
     Si el usuario tiene activado 'limitar_saldo_negativo', valida que la transacción
     no deje el saldo neto en negativo ni lo empeore si ya era negativo.
-    Permite liberar fondos de una meta o del ahorro libre si se especifica.
+    Permite liberar fondos de una meta, del ahorro libre o retirar todo el ahorro si se especifica.
     """
     from .models import PreferenciasUsuario, Transaction, AsignacionMeta, MetaAhorro
     from django.db.models import Sum
@@ -150,6 +164,20 @@ def validar_limite_saldo(
         faltante = _dec(monto) - max(Decimal("0"), net_balance_without_original)
         if faltante <= Decimal("0"):
             faltante = _dec(monto)
+
+        # Caso 0: Usuario solicitó retirar/liberar TODO el fondo de ahorros
+        if liberar_todo:
+            total_ahorro_val = total_ahorrado(user)
+            total_disponible = max(Decimal("0"), net_balance_without_original) + total_ahorro_val
+            if total_disponible < _dec(monto):
+                raise ValidationError({
+                    "detalle": f"Aún retirando todos tus ahorros (S/ {total_ahorro_val:.2f}), tu saldo total disponible sería de S/ {total_disponible:.2f}, insuficiente para cubrir este gasto de S/ {_dec(monto):.2f}."
+                })
+            # Desasignar de todas las metas
+            AsignacionMeta.objects.filter(usuario=user).update(monto=Decimal("0"))
+            # Eliminar todos los registros de ahorro
+            Transaction.objects.filter(usuario=user, tipo=Transaction.Tipo.AHORRO).delete()
+            return
 
         # Caso 1: Usuario solicitó liberar de una meta específica
         if meta_liberar_id:

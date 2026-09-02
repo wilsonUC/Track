@@ -24,6 +24,7 @@ export function ConfiguracionPage() {
   const [moneda, setMoneda] = useState('PEN')
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
   const [limitarSaldoNegativo, setLimitarSaldoNegativo] = useState(false)
+  const [descontarAhorrosBalance, setDescontarAhorrosBalance] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
@@ -34,6 +35,7 @@ export function ConfiguracionPage() {
     setMoneda(preferences.moneda)
     setMostrarDecimales(preferences.mostrar_decimales)
     setLimitarSaldoNegativo(preferences.limitar_saldo_negativo ?? false)
+    setDescontarAhorrosBalance(preferences.descontar_ahorros_balance ?? false)
   }, [preferences])
 
   async function handleSave() {
@@ -46,6 +48,7 @@ export function ConfiguracionPage() {
         moneda,
         mostrar_decimales: mostrarDecimales,
         limitar_saldo_negativo: limitarSaldoNegativo,
+        descontar_ahorros_balance: descontarAhorrosBalance,
       })
       setSaveMessage('Preferencias guardadas correctamente.')
     } catch (err) {
@@ -67,7 +70,8 @@ export function ConfiguracionPage() {
       vistaCompacta !== preferences?.vista_compacta ||
       moneda !== preferences?.moneda ||
       mostrarDecimales !== preferences?.mostrar_decimales ||
-      limitarSaldoNegativo !== (preferences?.limitar_saldo_negativo ?? false))
+      limitarSaldoNegativo !== (preferences?.limitar_saldo_negativo ?? false) ||
+      descontarAhorrosBalance !== (preferences?.descontar_ahorros_balance ?? false))
 
   return (
     <section className="space-y-6">
@@ -202,6 +206,19 @@ export function ConfiguracionPage() {
                 setSaveMessage('')
               }}
               label="Evitar saldo negativo"
+            />
+          </ConfigRow>
+          <ConfigRow
+            label="Restar ahorros de mi balance"
+            hint="Descuenta los ahorros apartados para ver en el Dashboard tu saldo líquido real disponible para gastar."
+          >
+            <ConfigToggle
+              checked={descontarAhorrosBalance}
+              onChange={(v) => {
+                setDescontarAhorrosBalance(v)
+                setSaveMessage('')
+              }}
+              label="Restar ahorros de mi balance"
             />
           </ConfigRow>
         </ConfigSection>

@@ -74,9 +74,14 @@ export function AppLayout() {
   const userInitial = profile ? profileInitial(profile) : '…'
   const userEmail = profile?.email ?? ''
   const isStaff = profile?.is_staff ?? false
+  const isAvanzado = isStaff || profile?.tipo_cuenta === 'avanzado'
   const isAdminPath = pathname.startsWith('/admin')
+  const isAdvancedPath =
+    pathname.startsWith('/metas') ||
+    pathname.startsWith('/recurrentes') ||
+    pathname.startsWith('/consejos')
 
-  if (isAdminPath && !profileLoaded) {
+  if ((isAdminPath || isAdvancedPath) && !profileLoaded) {
     return (
       <div className="flex h-dvh items-center justify-center bg-slate-100 text-sm text-slate-500">
         Verificando permisos…
@@ -85,6 +90,10 @@ export function AppLayout() {
   }
 
   if (isAdminPath && !isStaff) {
+    return <Navigate to="/" replace />
+  }
+
+  if (isAdvancedPath && !isAvanzado) {
     return <Navigate to="/" replace />
   }
 
@@ -97,6 +106,7 @@ export function AppLayout() {
         email={userEmail}
         initial={userInitial}
         isStaff={isStaff}
+        isAvanzado={isAvanzado}
       />
 
       <div className="flex h-full min-h-0 flex-col md:pl-64">
@@ -129,11 +139,12 @@ export function AppLayout() {
                 setSecondaryHeaderAction,
                 setHeaderExtra,
                 onLogout: handleLogout,
+                isAvanzado,
               }}
             />
           </div>
         </main>
-        <MobileNav isStaff={isStaff} />
+        <MobileNav isStaff={isStaff} isAvanzado={isAvanzado} />
       </div>
 
       <NewTransactionModal

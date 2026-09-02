@@ -31,9 +31,13 @@ def perfil_desde_usuario(user):
         perfil = user.perfil
         telefono = perfil.telefono
         estado_cuenta = perfil.estado_cuenta
+        tipo_cuenta = perfil.tipo_cuenta
+        tipo_cuenta_label = perfil.get_tipo_cuenta_display()
     except PerfilUsuario.DoesNotExist:
         telefono = ""
         estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA if user.is_staff else PerfilUsuario.EstadoCuenta.PENDIENTE
+        tipo_cuenta = PerfilUsuario.TipoCuenta.AVANZADO if user.is_staff else PerfilUsuario.TipoCuenta.BASICO
+        tipo_cuenta_label = "Avanzado" if user.is_staff else "Básico"
     return {
         "username": user.username,
         "first_name": user.first_name or "",
@@ -41,6 +45,8 @@ def perfil_desde_usuario(user):
         "email": user.email,
         "telefono": telefono,
         "estado_cuenta": estado_cuenta,
+        "tipo_cuenta": tipo_cuenta,
+        "tipo_cuenta_label": tipo_cuenta_label,
         "is_staff": user.is_staff,
     }
 
@@ -543,6 +549,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     recurrente_nombre = serializers.CharField(source="recurrente.nombre", read_only=True, default=None)
     meta_liberar_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     liberar_de_ahorro_libre = serializers.BooleanField(write_only=True, required=False, default=False)
+    liberar_todo = serializers.BooleanField(write_only=True, required=False, default=False)
 
     class Meta:
         model = Transaction
@@ -559,6 +566,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             "descripcion",
             "meta_liberar_id",
             "liberar_de_ahorro_libre",
+            "liberar_todo",
             "creado_en",
             "actualizado_en",
         ]
@@ -640,6 +648,7 @@ class TransactionSerializer(serializers.ModelSerializer):
                 from .ahorros_service import validar_limite_saldo
                 meta_liberar_id = attrs.pop("meta_liberar_id", None)
                 liberar_de_ahorro_libre = attrs.pop("liberar_de_ahorro_libre", False)
+                liberar_todo = attrs.pop("liberar_todo", False)
                 validar_limite_saldo(
                     user=user,
                     tipo=tipo,
@@ -647,6 +656,7 @@ class TransactionSerializer(serializers.ModelSerializer):
                     transaccion_id=self.instance.id if self.instance else None,
                     meta_liberar_id=meta_liberar_id,
                     liberar_de_ahorro_libre=liberar_de_ahorro_libre,
+                    liberar_todo=liberar_todo,
                 )
 
         return attrs
@@ -663,6 +673,7 @@ class PreferenciasSerializer(serializers.ModelSerializer):
             "mostrar_decimales",
             "limitar_saldo_negativo",
             "permitir_asignacion_directa_metas",
+            "descontar_ahorros_balance",
             "actualizado_en",
         ]
         read_only_fields = ["actualizado_en"]
@@ -714,6 +725,7 @@ class RegistroSerializer(serializers.Serializer):
             usuario=user,
             telefono=telefono,
             estado_cuenta=PerfilUsuario.EstadoCuenta.PENDIENTE,
+            tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
         )
         return user
 
@@ -722,6 +734,8 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(source="perfil.telefono", default="")
     estado_cuenta = serializers.CharField(source="perfil.estado_cuenta", default=PerfilUsuario.EstadoCuenta.PENDIENTE)
     estado_cuenta_label = serializers.SerializerMethodField()
+    tipo_cuenta = serializers.CharField(source="perfil.tipo_cuenta", default=PerfilUsuario.TipoCuenta.BASICO)
+    tipo_cuenta_label = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -734,6 +748,8 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
             "telefono",
             "estado_cuenta",
             "estado_cuenta_label",
+            "tipo_cuenta",
+            "tipo_cuenta_label",
             "is_staff",
             "date_joined",
             "last_login",
@@ -746,6 +762,12 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
         except PerfilUsuario.DoesNotExist:
             return "Pendiente"
 
+    def get_tipo_cuenta_label(self, obj):
+        try:
+            return obj.perfil.get_tipo_cuenta_display()
+        except PerfilUsuario.DoesNotExist:
+            return "Básico"
+
 
 class AdminUsuarioUpdateSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
@@ -754,6 +776,10 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
     telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
     estado_cuenta = serializers.ChoiceField(
         choices=PerfilUsuario.EstadoCuenta.choices,
+        required=False,
+    )
+    tipo_cuenta = serializers.ChoiceField(
+        choices=PerfilUsuario.TipoCuenta.choices,
         required=False,
     )
 
@@ -776,24 +802,28 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
         data = self.validated_data
         telefono = data.pop("telefono", None)
         estado_cuenta = data.pop("estado_cuenta", None)
+        tipo_cuenta = data.pop("tipo_cuenta", None)
 
         for field in ("first_name", "last_name", "email"):
             if field in data:
                 setattr(user, field, data[field])
         user.save()
 
-        if telefono is not None or estado_cuenta is not None:
+        if telefono is not None or estado_cuenta is not None or tipo_cuenta is not None:
             perfil, _ = PerfilUsuario.objects.get_or_create(
                 usuario=user,
                 defaults={
                     "telefono": telefono or "",
                     "estado_cuenta": estado_cuenta or PerfilUsuario.EstadoCuenta.PENDIENTE,
+                    "tipo_cuenta": tipo_cuenta or PerfilUsuario.TipoCuenta.BASICO,
                 },
             )
             if telefono is not None:
                 perfil.telefono = telefono
             if estado_cuenta is not None:
                 perfil.estado_cuenta = estado_cuenta
+            if tipo_cuenta is not None:
+                perfil.tipo_cuenta = tipo_cuenta
             perfil.save()
 
         return user

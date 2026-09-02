@@ -280,6 +280,10 @@ class PerfilUsuario(models.Model):
         ACTIVA = "active", "Activa"
         BLOQUEADA = "blocked", "Bloqueada"
 
+    class TipoCuenta(models.TextChoices):
+        BASICO = "basico", "Básico"
+        AVANZADO = "avanzado", "Avanzado"
+
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete = models.CASCADE,
@@ -290,6 +294,11 @@ class PerfilUsuario(models.Model):
         max_length=10,
         choices=EstadoCuenta.choices,
         default=EstadoCuenta.ACTIVA,
+    )
+    tipo_cuenta = models.CharField(
+        max_length=15,
+        choices=TipoCuenta.choices,
+        default=TipoCuenta.BASICO,
     )
 
     class Meta: 
@@ -324,6 +333,7 @@ class PreferenciasUsuario(models.Model):
     mostrar_decimales = models.BooleanField(default=True)
     limitar_saldo_negativo = models.BooleanField(default=False)
     permitir_asignacion_directa_metas = models.BooleanField(default=False)
+    descontar_ahorros_balance = models.BooleanField(default=False)
     actualizado_en = models.DateTimeField(auto_now=True)
 
 

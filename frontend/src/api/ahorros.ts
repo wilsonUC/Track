@@ -8,6 +8,12 @@ export type ApiAhorro = {
   creado_en: string
 }
 
+export type MetaAsignada = {
+  id: number
+  nombre: string
+  monto: string
+}
+
 export type ResumenAhorros = {
   total: string
   asignado: string
@@ -16,6 +22,7 @@ export type ResumenAhorros = {
   disponible: string
   /** @deprecated Usar `disponible`. Se mantiene por compatibilidad. */
   disponible_mes?: string
+  metas_asignadas?: MetaAsignada[]
 }
 
 function formatError(body: unknown, fallback: string): string {
@@ -64,4 +71,27 @@ export async function eliminarAhorro(id: number): Promise<void> {
     const err = await res.json().catch(() => ({}))
     throw new Error(formatError(err, 'No se pudo eliminar el ahorro.'))
   }
+}
+
+export async function liberarMetaAhorro(metaId: number): Promise<{ ok: boolean; monto_liberado: number; resumen: ResumenAhorros }> {
+  const res = await authFetch('/api/ahorros/liberar-meta/', {
+    method: 'POST',
+    body: JSON.stringify({ meta_id: metaId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatError(err, 'No se pudo liberar la meta.'))
+  }
+  return res.json()
+}
+
+export async function liberarTodasMetasAhorro(): Promise<{ ok: boolean; total_liberado: number; resumen: ResumenAhorros }> {
+  const res = await authFetch('/api/ahorros/liberar-todas-metas/', {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatError(err, 'No se pudieron liberar las metas.'))
+  }
+  return res.json()
 }

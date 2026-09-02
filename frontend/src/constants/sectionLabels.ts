@@ -19,7 +19,7 @@ export const sectionSubtitle: Record<Section, string> = {
   dashboard: 'Vista general de tu mes',
   ingresos: 'Entradas de dinero del periodo',
   gastos: 'Salidas y categorías del periodo',
-  ahorros: 'Aparta dinero disponible y asígnalo a tus metas.',
+  ahorros: 'Aparta dinero disponible para tu fondo de ahorros.',
   presupuestos: 'Planifica límites por categoría y sigue el avance.',
   metas: 'Define objetivos de ahorro o deuda y monitorea el progreso.',
   recurrentes: 'Suscripciones, alquiler y otros cargos que se repiten.',

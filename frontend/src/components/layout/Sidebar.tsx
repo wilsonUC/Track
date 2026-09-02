@@ -12,6 +12,7 @@ type SidebarProps = {
   email: string
   initial: string
   isStaff: boolean
+  isAvanzado?: boolean
 }
 
 function navClassName(isActive: boolean) {
@@ -26,8 +27,12 @@ function disabledNavClassName() {
   return 'flex w-full min-w-0 cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm text-indigo-300/50 opacity-70 dark:text-slate-600'
 }
 
-export function Sidebar({ onLogout, displayName, email, initial, isStaff }: SidebarProps) {
-  const visibleMenuItems = menuItems.filter((item) => !item.adminOnly || isStaff)
+export function Sidebar({ onLogout, displayName, email, initial, isStaff, isAvanzado = false }: SidebarProps) {
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.adminOnly && !isStaff) return false
+    if (item.advancedOnly && !isAvanzado && !isStaff) return false
+    return true
+  })
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden h-dvh w-64 flex-col border-r border-transparent bg-indigo-700 p-4 text-indigo-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 md:flex">

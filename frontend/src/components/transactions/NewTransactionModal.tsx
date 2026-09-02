@@ -88,7 +88,11 @@ export function NewTransactionModal({
     }
   }, [open, filteredCategories, categoryId, onCategoryIdChange])
 
-  async function ejecutarGuardado(metaLiberarId?: number | null, liberarDeAhorroLibre?: boolean) {
+  async function ejecutarGuardado(
+    metaLiberarId?: number | null,
+    liberarDeAhorroLibre?: boolean,
+    liberarTodo?: boolean,
+  ) {
     setError('')
 
     if (!categoryId) {
@@ -114,6 +118,7 @@ export function NewTransactionModal({
         descripcion: description,
         meta_liberar_id: metaLiberarId ?? null,
         liberar_de_ahorro_libre: liberarDeAhorroLibre ?? false,
+        liberar_todo: liberarTodo ?? false,
       })
       setInsuficienteData(null)
       onSaved()
@@ -348,13 +353,13 @@ export function NewTransactionModal({
               </p>
               {(insuficienteData.metas.length > 0 || insuficienteData.libre_ahorros > 0) && (
                 <p className="mt-2 text-[11px] font-medium text-amber-800 dark:text-amber-300">
-                  Puedes cubrir los <strong>{formatSoles(insuficienteData.faltante)}</strong> liberando fondos de tus ahorros o seleccionando una meta:
+                  Puedes cubrir los <strong>{formatSoles(insuficienteData.faltante)}</strong> liberando fondos de tus ahorros{insuficienteData.metas.length > 0 ? ' o seleccionando una meta' : ''}:
                 </p>
               )}
             </div>
 
             {/* Opciones de selección de meta o ahorro libre */}
-            {(insuficienteData.metas.length > 0 || insuficienteData.libre_ahorros > 0) ? (
+            {insuficienteData.metas.length > 0 || insuficienteData.libre_ahorros > 0 ? (
               <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                 {insuficienteData.libre_ahorros >= insuficienteData.faltante && (
                   <label
@@ -411,7 +416,7 @@ export function NewTransactionModal({
               </div>
             ) : (
               <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                No dispones de fondos en Ahorros ni en Metas para cubrir este gasto.
+                No dispones de fondos en Ahorros para cubrir este gasto.
               </p>
             )}
 

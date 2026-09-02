@@ -126,7 +126,29 @@ def build_financial_context(user) -> str:
         .order_by("-total")
     )
 
-    # --- 6. Pool de Ahorros ---
+    is_avanzado = bool(
+        user.is_staff
+        or user.is_superuser
+        or (hasattr(user, "perfil") and user.perfil.tipo_cuenta == "avanzado")
+    )
+
+    total_ahorro = Decimal("0")
+    asignado = Decimal("0")
+    libre = Decimal("0")
+    disponible_para_apartar = Decimal("0")
+    savings_qs = []
+    gastos_fijos_pendientes = Decimal("0")
+    gastos_fijos_pagados = Decimal("0")
+    gastos_fijos_total = Decimal("0")
+    ingresos_fijos_pendientes = Decimal("0")
+    ingresos_fijos_cobrados = Decimal("0")
+    ingresos_fijos_total = Decimal("0")
+    recurrentes_info = []
+    cuentas_atrasadas_data = {}
+    presupuestos = []
+    metas = []
+
+    # --- 6. Pool de Ahorros (Disponible para todos los usuarios) ---
     from .ahorros_service import ahorro_libre, saldo_disponible_total, total_ahorrado, total_asignado
 
     total_ahorro = total_ahorrado(user)
@@ -141,69 +163,7 @@ def build_financial_context(user) -> str:
         .order_by("-fecha", "-creado_en")[:25]
     )
 
-    # --- 7. Recurrentes y Compromisos del Mes ---
-    recurrentes = Recurrente.objects.filter(usuario=user, activo=True).select_related("categoria")
-    from .recurrentes_service import calcular_estado_recurrente, obtener_cuentas_atrasadas
-
-    gastos_fijos_pendientes = Decimal("0")
-    gastos_fijos_pagados = Decimal("0")
-    gastos_fijos_total = Decimal("0")
-
-    ingresos_fijos_pendientes = Decimal("0")
-    ingresos_fijos_cobrados = Decimal("0")
-    ingresos_fijos_total = Decimal("0")
-
-    recurrentes_info = []
-
-    for r in recurrentes:
-        estado = calcular_estado_recurrente(r, today)
-        tipo = "Ingreso" if r.tipo == Transaction.Tipo.INGRESO else "Gasto"
-        cat_nombre = r.categoria.nombre if r.categoria else "Sin categoría"
-        monto_pagado_dec = Decimal(str(estado.get("monto_pagado", 0)))
-
-        if estado["activo_en_mes"]:
-            if r.tipo == Transaction.Tipo.GASTO:
-                gastos_fijos_total += r.monto
-                gastos_fijos_pagados += min(r.monto, monto_pagado_dec)
-                if not estado["registrado_mes"]:
-                    gastos_fijos_pendientes += max(Decimal("0"), r.monto - monto_pagado_dec)
-            else:
-                ingresos_fijos_total += r.monto
-                ingresos_fijos_cobrados += min(r.monto, monto_pagado_dec)
-                if not estado["registrado_mes"]:
-                    ingresos_fijos_pendientes += max(Decimal("0"), r.monto - monto_pagado_dec)
-
-        if estado["registrado_mes"]:
-            situacion = "REGISTRADO/PAGADO"
-        elif estado["vencido"]:
-            situacion = "VENCIDO (PAGO PENDIENTE)"
-        elif estado["activo_en_mes"]:
-            situacion = "PENDIENTE"
-        else:
-            situacion = f"FUERA DE MES ({estado.get('estado_periodo', 'inactivo')})"
-
-        # Rango de vigencia
-        if r.fecha_inicio and r.fecha_fin:
-            rango_str = f"del {r.fecha_inicio.strftime('%Y-%m-%d')} al {r.fecha_fin.strftime('%Y-%m-%d')}"
-        elif r.fecha_inicio:
-            rango_str = f"desde {r.fecha_inicio.strftime('%Y-%m-%d')} (permanente/sin fecha fin)"
-        elif r.fecha_fin:
-            rango_str = f"hasta {r.fecha_fin.strftime('%Y-%m-%d')}"
-        else:
-            rango_str = "período indefinido (todos los meses)"
-
-        abono_info = f" (Abonado: S/ {monto_pagado_dec:.2f} de S/ {r.monto:.2f})" if (r.permite_parciales and monto_pagado_dec > 0 and not estado["registrado_mes"]) else ""
-
-        recurrentes_info.append(
-            f"- [{tipo} Fijo] '{r.nombre}' | Categoría: {cat_nombre} | Monto: S/ {r.monto:.2f}/mes | "
-            f"Día de pago/cobro: {r.dia_pago} de cada mes | Período de vigencia: {rango_str} | "
-            f"Estado en el mes actual ({today.strftime('%B %Y')}): {situacion}{abono_info}"
-        )
-
-    # Cuentas atrasadas de meses previos
-    cuentas_atrasadas_data = obtener_cuentas_atrasadas(user, today)
-
-    # --- 8. Presupuestos Activos ---
+    # --- 7. Presupuestos Activos (Disponible para todos los usuarios) ---
     import calendar
     if today.month == 1:
         prev_month_start = today.replace(year=today.year - 1, month=12, day=1)
@@ -246,12 +206,65 @@ def build_financial_context(user) -> str:
         .order_by("nombre")
     )
 
-    # --- 9. Metas de Ahorro Activas ---
-    metas = (
-        MetaAhorro.objects.filter(usuario=user, activo=True)
-        .select_related("asignacion", "categoria_referencia")
-        .order_by("nombre")
-    )
+    # --- 8. Recurrentes y Metas (Exclusivo Plan Avanzado) ---
+    if is_avanzado:
+        recurrentes = Recurrente.objects.filter(usuario=user, activo=True).select_related("categoria")
+        from .recurrentes_service import calcular_estado_recurrente, obtener_cuentas_atrasadas
+
+        for r in recurrentes:
+            estado = calcular_estado_recurrente(r, today)
+            tipo = "Ingreso" if r.tipo == Transaction.Tipo.INGRESO else "Gasto"
+            cat_nombre = r.categoria.nombre if r.categoria else "Sin categoría"
+            monto_pagado_dec = Decimal(str(estado.get("monto_pagado", 0)))
+
+            if estado["activo_en_mes"]:
+                if r.tipo == Transaction.Tipo.GASTO:
+                    gastos_fijos_total += r.monto
+                    gastos_fijos_pagados += min(r.monto, monto_pagado_dec)
+                    if not estado["registrado_mes"]:
+                        gastos_fijos_pendientes += max(Decimal("0"), r.monto - monto_pagado_dec)
+                else:
+                    ingresos_fijos_total += r.monto
+                    ingresos_fijos_cobrados += min(r.monto, monto_pagado_dec)
+                    if not estado["registrado_mes"]:
+                        ingresos_fijos_pendientes += max(Decimal("0"), r.monto - monto_pagado_dec)
+
+            if estado["registrado_mes"]:
+                situacion = "REGISTRADO/PAGADO"
+            elif estado["vencido"]:
+                situacion = "VENCIDO (PAGO PENDIENTE)"
+            elif estado["activo_en_mes"]:
+                situacion = "PENDIENTE"
+            else:
+                situacion = f"FUERA DE MES ({estado.get('estado_periodo', 'inactivo')})"
+
+            # Rango de vigencia
+            if r.fecha_inicio and r.fecha_fin:
+                rango_str = f"del {r.fecha_inicio.strftime('%Y-%m-%d')} al {r.fecha_fin.strftime('%Y-%m-%d')}"
+            elif r.fecha_inicio:
+                rango_str = f"desde {r.fecha_inicio.strftime('%Y-%m-%d')} (permanente/sin fecha fin)"
+            elif r.fecha_fin:
+                rango_str = f"hasta {r.fecha_fin.strftime('%Y-%m-%d')}"
+            else:
+                rango_str = "período indefinido (todos los meses)"
+
+            abono_info = f" (Abonado: S/ {monto_pagado_dec:.2f} de S/ {r.monto:.2f})" if (r.permite_parciales and monto_pagado_dec > 0 and not estado["registrado_mes"]) else ""
+
+            recurrentes_info.append(
+                f"- [{tipo} Fijo] '{r.nombre}' | Categoría: {cat_nombre} | Monto: S/ {r.monto:.2f}/mes | "
+                f"Día de pago/cobro: {r.dia_pago} de cada mes | Período de vigencia: {rango_str} | "
+                f"Estado en el mes actual ({today.strftime('%B %Y')}): {situacion}{abono_info}"
+            )
+
+        # Cuentas atrasadas de meses previos
+        cuentas_atrasadas_data = obtener_cuentas_atrasadas(user, today)
+
+        # Metas de Ahorro Activas
+        metas = (
+            MetaAhorro.objects.filter(usuario=user, activo=True)
+            .select_related("asignacion", "categoria_referencia")
+            .order_by("nombre")
+        )
 
     # --- 10. Historial de Transacciones Separado por Tipo ---
     incomes_qs = (
@@ -325,11 +338,18 @@ def build_financial_context(user) -> str:
         f"- Ingresos del mes: S/ {month_income:.2f}",
         f"- Gastos del mes: S/ {month_expense:.2f}",
         f"- Balance neto del mes: S/ {month_balance:.2f}",
-        f"- Ahorros apartados este mes: S/ {saving_mes:.2f}",
-        "",
-        "Compromisos Fijos del Mes (Dashboard):",
-        f"- Gastos fijos pendientes por pagar: -S/ {gastos_fijos_pendientes:.2f}",
-        f"- Ingresos fijos pendientes por cobrar: +S/ {ingresos_fijos_pendientes:.2f}",
+    ])
+
+    if is_avanzado:
+        lines.append(f"- Ahorros apartados este mes: S/ {saving_mes:.2f}")
+        lines.extend([
+            "",
+            "Compromisos Fijos del Mes (Dashboard):",
+            f"- Gastos fijos pendientes por pagar: -S/ {gastos_fijos_pendientes:.2f}",
+            f"- Ingresos fijos pendientes por cobrar: +S/ {ingresos_fijos_pendientes:.2f}",
+        ])
+
+    lines.extend([
         "",
         "Distribución de Gastos por Categoría en el Mes Actual:",
     ])
@@ -357,16 +377,23 @@ def build_financial_context(user) -> str:
             pct_cat = round(float(monto_cat / month_income * 100)) if month_income > 0 else 0
             lines.append(f"- {cat}: S/ {monto_cat:.2f} ({pct_cat}%)")
 
-    lines.extend([
+    # === 2. FONDO Y POOL DE AHORROS (Disponible para Básico y Avanzado) ===
+    ahorros_header = [
         "",
         "=== 2. FONDO Y POOL DE AHORROS ===",
         f"- Total Ahorrado acumulado en el fondo: S/ {total_ahorro:.2f}",
-        f"- Ahorro Libre (disponible en el pozo sin asignar a metas): S/ {libre:.2f}",
-        f"- Asignado a metas de ahorro vinculadas: S/ {asignado:.2f}",
+    ]
+    if is_avanzado:
+        ahorros_header.extend([
+            f"- Ahorro Libre (disponible en el pozo sin asignar a metas): S/ {libre:.2f}",
+            f"- Asignado a metas de ahorro vinculadas: S/ {asignado:.2f}",
+        ])
+    ahorros_header.extend([
         f"- Saldo disponible en cuenta para apartar NUEVO ahorro: S/ {disponible_para_apartar:.2f} (tope de liquidez aún no guardada)",
         "",
         "Historial de Ahorros Registrados:",
     ])
+    lines.extend(ahorros_header)
 
     if not savings_qs:
         lines.append("- Sin movimientos de ahorro apartados.")
@@ -375,35 +402,39 @@ def build_financial_context(user) -> str:
             desc = tx.descripcion.strip() or "Ahorro"
             lines.append(f"- Fecha: {tx.fecha} | Monto: S/ {tx.monto:.2f} | Descripción: {desc}")
 
-    lines.extend([
-        "",
-        "=== 3. RECURRENTES (INGRESOS Y GASTOS FIJOS) ===",
-        f"Compromisos Fijos del Mes Actual ({today.strftime('%B %Y')}):",
-        f"- Gastos fijos del mes: S/ {gastos_fijos_total:.2f} (Pagados: S/ {gastos_fijos_pagados:.2f} | Pendientes por pagar: S/ {gastos_fijos_pendientes:.2f})",
-        f"- Ingresos fijos del mes: S/ {ingresos_fijos_total:.2f} (Cobrados: S/ {ingresos_fijos_cobrados:.2f} | Pendientes por cobrar: S/ {ingresos_fijos_pendientes:.2f})",
-    ])
+    # === RECURRENTES (Solo Avanzado) ===
+    if is_avanzado:
+        lines.extend([
+            "",
+            "=== 3. RECURRENTES (INGRESOS Y GASTOS FIJOS) ===",
+            f"Compromisos Fijos del Mes Actual ({today.strftime('%B %Y')}):",
+            f"- Gastos fijos del mes: S/ {gastos_fijos_total:.2f} (Pagados: S/ {gastos_fijos_pagados:.2f} | Pendientes por pagar: S/ {gastos_fijos_pendientes:.2f})",
+            f"- Ingresos fijos del mes: S/ {ingresos_fijos_total:.2f} (Cobrados: S/ {ingresos_fijos_cobrados:.2f} | Pendientes por cobrar: S/ {ingresos_fijos_pendientes:.2f})",
+        ])
 
-    if cuentas_atrasadas_data.get("deudas") or cuentas_atrasadas_data.get("cobros"):
+        if cuentas_atrasadas_data.get("deudas") or cuentas_atrasadas_data.get("cobros"):
+            lines.append("")
+            lines.append(
+                f"Resumen de Cuentas Atrasadas de Meses Anteriores: Total Deudas vencidas por pagar: S/ {cuentas_atrasadas_data.get('total_pagar', 0):.2f} | "
+                f"Total Cobros vencidos por cobrar: S/ {cuentas_atrasadas_data.get('total_cobrar', 0):.2f}"
+            )
+            lines.append("Detalle de Cuentas Atrasadas:")
+            for d in cuentas_atrasadas_data.get("deudas", []):
+                lines.append(f"- Concepto: '{d['nombre']}' | Tipo: Deuda pendiente | Categoría: {d['categoria']} | Monto: S/ {d['acumulado']:.2f} | Mes adeudado: {d['mes_atraso']} | Venció el: {d['fecha_pago']}")
+            for c in cuentas_atrasadas_data.get("cobros", []):
+                lines.append(f"- Concepto: '{c['nombre']}' | Tipo: Cobro pendiente | Categoría: {c['categoria']} | Monto: S/ {c['acumulado']:.2f} | Mes adeudado: {c['mes_atraso']} | Venció el: {c['fecha_pago']}")
+
         lines.append("")
-        lines.append(
-            f"Resumen de Cuentas Atrasadas de Meses Anteriores: Total Deudas vencidas por pagar: S/ {cuentas_atrasadas_data.get('total_pagar', 0):.2f} | "
-            f"Total Cobros vencidos por cobrar: S/ {cuentas_atrasadas_data.get('total_cobrar', 0):.2f}"
-        )
-        lines.append("Detalle de Cuentas Atrasadas:")
-        for d in cuentas_atrasadas_data.get("deudas", []):
-            lines.append(f"- Concepto: '{d['nombre']}' | Tipo: Deuda pendiente | Categoría: {d['categoria']} | Monto: S/ {d['acumulado']:.2f} | Mes adeudado: {d['mes_atraso']} | Venció el: {d['fecha_pago']}")
-        for c in cuentas_atrasadas_data.get("cobros", []):
-            lines.append(f"- Concepto: '{c['nombre']}' | Tipo: Cobro pendiente | Categoría: {c['categoria']} | Monto: S/ {c['acumulado']:.2f} | Mes adeudado: {c['mes_atraso']} | Venció el: {c['fecha_pago']}")
+        lines.append("Detalle de Recurrentes Configurados (con períodos de vigencia para consultas por mes):")
 
-    lines.append("")
-    lines.append("Detalle de Recurrentes Configurados (con períodos de vigencia para consultas por mes):")
+        if not recurrentes_info:
+            lines.append("- Sin recurrentes configurados.")
+        else:
+            lines.extend(recurrentes_info)
 
-    if not recurrentes_info:
-        lines.append("- Sin recurrentes configurados.")
-    else:
-        lines.extend(recurrentes_info)
-
-    lines.extend(["", "=== 4. PRESUPUESTOS (CONTROL Y LÍMITES MENSUALES) ==="])
+    # === PRESUPUESTOS (Disponible para Básico y Avanzado) ===
+    sec_presupuestos = "4" if is_avanzado else "3"
+    lines.extend(["", f"=== {sec_presupuestos}. PRESUPUESTOS (CONTROL Y LÍMITES MENSUALES) ==="])
 
     if not presupuestos:
         lines.append("- Sin presupuestos configurados.")
@@ -440,7 +471,6 @@ def build_financial_context(user) -> str:
                 f"({pct}%, estado: {estado.upper()}, margen restante: S/ {restante:.2f}){prev_info}"
             )
 
-            # Historial de consumos vinculados a este presupuesto
             txs_p = (
                 Transaction.objects.filter(usuario=user, presupuesto=p, tipo=Transaction.Tipo.GASTO)
                 .order_by("-fecha", "-creado_en")[:8]
@@ -450,70 +480,72 @@ def build_financial_context(user) -> str:
                     desc_tx = tx.descripcion.strip() or "Consumo registrado"
                     lines.append(f"  * Consumo registrado: {tx.fecha} | S/ {tx.monto:.2f} | {desc_tx}")
 
-    lines.extend(["", "=== 5. METAS DE AHORRO (OBJETIVOS FINANCIEROS) ==="])
+    # === METAS DE AHORRO (Solo Avanzado) ===
+    if is_avanzado:
+        lines.extend(["", "=== 5. METAS DE AHORRO (OBJETIVOS FINANCIEROS) ==="])
 
-    if not metas:
-        lines.append("- Sin metas configuradas.")
-    else:
-        from .metas_service import (
-            calcular_acumulado,
-            calcular_ahorro_sugerido,
-            calcular_estado_meta,
-            calcular_porcentaje,
-        )
-
-        total_obj_metas = sum((m.monto_objetivo for m in metas), Decimal("0"))
-        total_ac_metas = sum((calcular_acumulado(m) for m in metas), Decimal("0"))
-        pct_global_metas = (
-            min(100, round(float(total_ac_metas / total_obj_metas * 100)))
-            if total_obj_metas > 0
-            else 0
-        )
-        faltante_global_metas = max(Decimal("0"), total_obj_metas - total_ac_metas)
-
-        lines.append(
-            f"Resumen Global de Metas: Acumulado S/ {total_ac_metas:.2f} de una meta global de S/ {total_obj_metas:.2f} "
-            f"({pct_global_metas}% de progreso general | Faltante total: S/ {faltante_global_metas:.2f})"
-        )
-        lines.append("")
-        lines.append("Detalle por Meta:")
-
-        for meta in metas:
-            acumulado = calcular_acumulado(meta)
-            pct = calcular_porcentaje(acumulado, meta.monto_objetivo)
-            estado = calcular_estado_meta(meta, today)
-            sugerido = calcular_ahorro_sugerido(meta, today)
-            sugerido_str = f" | Ahorro mensual sugerido: S/ {sugerido:.2f}/mes" if sugerido else ""
-            cat_ref = meta.categoria_referencia.nombre if meta.categoria_referencia else "General"
-            faltante = max(Decimal("0"), meta.monto_objetivo - acumulado)
-            modo_str = "⚡ Asignación Libre" if meta.es_asignacion_libre else "🐷 Vinculada a Fondo de Ahorros"
-
-            if meta.fecha_inicio and meta.fecha_limite:
-                fechas_str = f"del {meta.fecha_inicio.strftime('%Y-%m-%d')} al {meta.fecha_limite.strftime('%Y-%m-%d')}"
-            elif meta.fecha_limite:
-                fechas_str = f"límite {meta.fecha_limite.strftime('%Y-%m-%d')}"
-            elif meta.fecha_inicio:
-                fechas_str = f"inicio {meta.fecha_inicio.strftime('%Y-%m-%d')}"
-            else:
-                fechas_str = "sin fechas definidas"
-
-            lines.append(
-                f"- Meta: '{meta.nombre}' | Categoría: {cat_ref} | Modo: {modo_str} | "
-                f"Acumulado: S/ {acumulado:.2f} / Objetivo: S/ {meta.monto_objetivo:.2f} "
-                f"({pct}%, faltante: S/ {faltante:.2f}, estado: {estado.upper()} | Período: {fechas_str}{sugerido_str})"
+        if not metas:
+            lines.append("- Sin metas configuradas.")
+        else:
+            from .metas_service import (
+                calcular_acumulado,
+                calcular_ahorro_sugerido,
+                calcular_estado_meta,
+                calcular_porcentaje,
             )
 
-    lines.extend(["", f"=== 6. HISTORIAL DE INGRESOS REGISTRADOS (TOTAL: S/ {total_income_all:.2f} EN {total_income_count} MOVIMIENTOS) ==="])
+            total_obj_metas = sum((m.monto_objetivo for m in metas), Decimal("0"))
+            total_acum_metas = sum((m.acumulado for m in metas), Decimal("0"))
+            pct_global_metas = (
+                round(float(total_acum_metas / total_obj_metas * 100)) if total_obj_metas > 0 else 0
+            )
+            lines.append(
+                f"Resumen Global de Metas: Acumulado S/ {total_acum_metas:.2f} / Objetivo Total S/ {total_obj_metas:.2f} "
+                f"({pct_global_metas}% alcanzado global)"
+            )
+            lines.append("")
+            lines.append("Detalle por Meta:")
+
+            for meta in metas:
+                acumulado = meta.acumulado
+                pct = calcular_porcentaje(acumulado, meta.monto_objetivo)
+                estado = calcular_estado_meta(acumulado, meta.monto_objetivo)
+                faltante = max(Decimal("0"), meta.monto_objetivo - acumulado)
+                cat_ref = meta.categoria_referencia.nombre if meta.categoria_referencia else "General"
+                modo_str = "Libre" if meta.es_asignacion_libre else "Vinculada"
+
+                sugerido = calcular_ahorro_sugerido(meta)
+                sugerido_str = f" | Ahorro sugerido/mes: S/ {sugerido:.2f}" if sugerido is not None else ""
+
+                if meta.fecha_inicio and meta.fecha_limite:
+                    fechas_str = f"del {meta.fecha_inicio.strftime('%Y-%m-%d')} al {meta.fecha_limite.strftime('%Y-%m-%d')}"
+                elif meta.fecha_limite:
+                    fechas_str = f"límite {meta.fecha_limite.strftime('%Y-%m-%d')}"
+                elif meta.fecha_inicio:
+                    fechas_str = f"inicio {meta.fecha_inicio.strftime('%Y-%m-%d')}"
+                else:
+                    fechas_str = "sin fechas definidas"
+
+                lines.append(
+                    f"- Meta: '{meta.nombre}' | Categoría: {cat_ref} | Modo: {modo_str} | "
+                    f"Acumulado: S/ {acumulado:.2f} / Objetivo: S/ {meta.monto_objetivo:.2f} "
+                    f"({pct}%, faltante: S/ {faltante:.2f}, estado: {estado.upper()} | Período: {fechas_str}{sugerido_str})"
+                )
+
+    sec_ingresos = "6" if is_avanzado else "4"
+    sec_gastos = "7" if is_avanzado else "5"
+
+    lines.extend(["", f"=== {sec_ingresos}. HISTORIAL DE INGRESOS REGISTRADOS (TOTAL: S/ {total_income_all:.2f} EN {total_income_count} MOVIMIENTOS) ==="])
 
     if not incomes_qs:
         lines.append("- Sin ingresos registrados.")
     else:
         for tx in incomes_qs:
             desc = tx.descripcion.strip() or "Sin descripción"
-            origen = tx.categoria.nombre if tx.categoria_id else (tx.recurrente.nombre if tx.recurrente_id else "Ingreso general")
-            lines.append(f"- Fecha: {tx.fecha} | Categoría/Origen: {origen} | Monto: S/ {tx.monto:.2f} | Descripción: {desc}")
+            origen = tx.categoria.nombre if tx.categoria_id else "Sin categoría"
+            lines.append(f"- Fecha: {tx.fecha} | Categoría: {origen} | Monto: S/ {tx.monto:.2f} | Descripción: {desc}")
 
-    lines.extend(["", f"=== 7. HISTORIAL DE GASTOS REGISTRADOS (TOTAL: S/ {total_expense_all:.2f} EN {total_expense_count} MOVIMIENTOS) ==="])
+    lines.extend(["", f"=== {sec_gastos}. HISTORIAL DE GASTOS REGISTRADOS (TOTAL: S/ {total_expense_all:.2f} EN {total_expense_count} MOVIMIENTOS) ==="])
 
     if not expenses_qs:
         lines.append("- Sin gastos registrados.")
@@ -531,13 +563,26 @@ def build_financial_context(user) -> str:
     return "\n".join(lines)
 
 
-def _system_prompt(context: str) -> str:
+def _system_prompt(context: str, is_avanzado: bool = True) -> str:
+    tier_instructions = ""
+    if not is_avanzado:
+        tier_instructions = (
+            "NIVEL DE CUENTA DEL USUARIO: PLAN BÁSICO.\n"
+            "El usuario posee una cuenta Básica en FinanzasTrack. Su plan incluye: Dashboard, Ingresos, Gastos, Presupuestos, Ahorros y Reportes.\n"
+            "REGLAS CRÍTICAS PARA CUENTA BÁSICA:\n"
+            "1. NO TIENE ACCESO a las siguientes funciones avanzadas: Recurrentes (ingresos/gastos fijos) ni Metas de Ahorro.\n"
+            "2. NUNCA le sugieras acceder, crear o configurar elementos en las secciones de 'Recurrentes' ni 'Metas de Ahorro', ya que NO existen en su menú de navegación ni en su interfaz.\n"
+            "3. PROHIBIDO decir que puede cambiar o actualizar su plan desde la configuración de su cuenta (esa opción no existe) y PROHIBIDO sugerirle anotar en cuadernos o aplicaciones externas.\n"
+            "4. Si el usuario te pregunta sobre funciones avanzadas (Recurrentes o Metas de Ahorro) o cómo acceder a ellas, debes informarle con amabilidad que son herramientas exclusivas del Plan Avanzado de FinanzasTrack y que, si desea activar el Plan Avanzado, debe comunicarse directamente con el Administrador del sistema para que le habilite el acceso.\n\n"
+        )
+
     return (
         "Eres el asistente financiero oficial de FinanzasTrack. Respondes en español, de forma clara, "
         "práctica, educada y profesional.\n\n"
+        f"{tier_instructions}"
         "REGLAS OBLIGATORIAS DE PRECISIÓN:\n"
-        "1. INGRESOS vs GASTOS: Si el usuario te pide un listado o tabla de INGRESOS, usa EXCLUSIVAMENTE la sección '6. HISTORIAL DE INGRESOS REGISTRADOS'. NUNCA incluyas gastos (ej. comida, desayunos, servicios) como si fueran ingresos.\n"
-        "2. Si el usuario te pide GASTOS, usa EXCLUSIVAMENTE la sección '7. HISTORIAL DE GASTOS REGISTRADOS'.\n"
+        "1. INGRESOS vs GASTOS: Si el usuario te pide un listado o tabla de INGRESOS, usa EXCLUSIVAMENTE la sección de HISTORIAL DE INGRESOS REGISTRADOS. NUNCA incluyas gastos (ej. comida, desayunos, servicios) como si fueran ingresos.\n"
+        "2. Si el usuario te pide GASTOS, usa EXCLUSIVAMENTE la sección de HISTORIAL DE GASTOS REGISTRADOS.\n"
         "3. PROHIBIDO DUPLICAR O INVENTAR: NUNCA inventes fechas ni dupliques registros. Si una transacción ocurrió el 2026-08-26, solo existe en esa fecha. No agregues fechas ficticias como 2026-08-01 a menos que aparezcan textualmente en el historial.\n"
         "4. RECURRENTES Y FILTROS POR MES: Los recurrentes tienen un período de vigencia (fecha de inicio y fin) y día de cobro/pago mensual. Si el usuario te pregunta por un mes específico, filtra y reporta los que aplican a dicho mes. En las tablas de cuentas atrasadas, lista ÚNICAMENTE los conceptos individuales reales (ej. 'Amazon Prime'). NUNCA agregues los títulos o totales de cabecera ('Deudas vencidas por pagar') como si fueran filas o conceptos adeudados ni inventes categorías como 'Diversos'.\n"
         "5. EXACTITUD DE TOTALES: Si el usuario pregunta por el total de ingresos o gastos históricos, usa exactamente las cifras de los balances (ej. Total de ingresos históricos: S/ {total_income_all}).\n"
@@ -622,11 +667,16 @@ def request_groq_completion(
 
 
 def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -> str:
+    is_avanzado = bool(
+        user.is_staff
+        or user.is_superuser
+        or (hasattr(user, "perfil") and user.perfil.tipo_cuenta == "avanzado")
+    )
     try:
         context = build_financial_context(user)
         return request_groq_completion(
             messages=[
-                {"role": "system", "content": _system_prompt(context)},
+                {"role": "system", "content": _system_prompt(context, is_avanzado=is_avanzado)},
                 *_normalize_history(historial or []),
                 {"role": "user", "content": mensaje.strip()},
             ],

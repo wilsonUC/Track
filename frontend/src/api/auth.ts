@@ -7,6 +7,8 @@ export type LoginResponse = {
     refresh: string
 }
 
+export type AccountTier = 'basico' | 'avanzado'
+
 export type UserProfile = {
   username: string
   first_name: string
@@ -14,6 +16,8 @@ export type UserProfile = {
   email: string
   telefono: string
   estado_cuenta: 'pending' | 'active' | 'blocked'
+  tipo_cuenta?: AccountTier
+  tipo_cuenta_label?: string
   is_staff: boolean
 }
 
@@ -227,6 +231,8 @@ export type AdminUser = {
   telefono: string
   estado_cuenta: AdminAccountStatus
   estado_cuenta_label: string
+  tipo_cuenta: AccountTier
+  tipo_cuenta_label: string
   is_staff: boolean
   date_joined: string
   last_login: string | null
@@ -238,6 +244,7 @@ export type AdminUserUpdatePayload = {
   email?: string
   telefono?: string
   estado_cuenta?: AdminAccountStatus
+  tipo_cuenta?: AccountTier
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {

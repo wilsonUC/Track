@@ -7,7 +7,7 @@ from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -17,6 +17,7 @@ from .models import (
     Category,
     ConsejoCache,
     MetaAhorro,
+    PerfilUsuario,
     Presupuesto,
     PreferenciasUsuario,
     Recurrente,
@@ -30,6 +31,7 @@ from .ahorros_service import (
     resumen_ahorros,
     saldo_disponible_total,
     sincronizar_ahorros_metas,
+    total_asignado,
 )
 from .recurrentes_service import (
     transacciones_mes_actual,
@@ -95,6 +97,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
+
+
+class IsAvanzadoOrAdmin(BasePermission):
+    """Permite el acceso únicamente a usuarios con nivel Avanzado o Administradores."""
+    message = "Esta función solo está disponible para cuentas de nivel Avanzado."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        try:
+            return user.perfil.tipo_cuenta == PerfilUsuario.TipoCuenta.AVANZADO
+        except PerfilUsuario.DoesNotExist:
+            return False
 
 
 class PresupuestoViewSet(viewsets.ModelViewSet):
@@ -221,6 +239,7 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
     """Ingresos y gastos fijos mensuales del usuario."""
 
     serializer_class = RecurrenteSerializer
+    permission_classes = [IsAvanzadoOrAdmin]
 
     def get_queryset(self):
         mes_param = self.request.query_params.get("mes")
@@ -540,6 +559,7 @@ class MetaViewSet(viewsets.ModelViewSet):
     """Metas de ahorro del usuario."""
 
     serializer_class = MetaSerializer
+    permission_classes = [IsAvanzadoOrAdmin]
 
     def get_queryset(self):
         return (
@@ -722,8 +742,8 @@ class AhorroViewSet(viewsets.ModelViewSet):
             raise ValidationError(
                 {
                     "detalle": (
-                        "No puedes eliminar este ahorro: parte ya está asignado a metas. "
-                        "Desasigna primero."
+                        "No puedes eliminar este ahorro: parte de tus fondos están asignados a metas. "
+                        "Libera primero las metas asignadas."
                     )
                 }
             )
@@ -732,6 +752,33 @@ class AhorroViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="resumen")
     def resumen(self, request):
         return Response(resumen_ahorros(request.user))
+
+    @action(detail=False, methods=["post"], url_path="liberar-meta")
+    def liberar_meta(self, request):
+        meta_id = request.data.get("meta_id")
+        if not meta_id:
+            return Response({"detalle": "meta_id es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
+        asig = AsignacionMeta.objects.filter(usuario=request.user, meta_id=meta_id).first()
+        if not asig or asig.monto <= Decimal("0"):
+            return Response({"detalle": "La meta no tiene fondos asignados."}, status=status.HTTP_400_BAD_REQUEST)
+        monto_liberado = asig.monto
+        asig.monto = Decimal("0")
+        asig.save(update_fields=["monto", "actualizado_en"])
+        return Response({
+            "ok": True,
+            "monto_liberado": float(monto_liberado),
+            "resumen": resumen_ahorros(request.user),
+        })
+
+    @action(detail=False, methods=["post"], url_path="liberar-todas-metas")
+    def liberar_todas_metas(self, request):
+        total_asignado_val = total_asignado(request.user)
+        AsignacionMeta.objects.filter(usuario=request.user).update(monto=Decimal("0"))
+        return Response({
+            "ok": True,
+            "total_liberado": float(total_asignado_val),
+            "resumen": resumen_ahorros(request.user),
+        })
 
 
 class IaChatView(APIView):
@@ -755,6 +802,8 @@ class IaChatView(APIView):
 
 class ConsejosView(APIView):
     """GET /api/consejos/ — consejos IA con caché 24 h. ?regenerar=1 fuerza nueva generación."""
+
+    permission_classes = [IsAvanzadoOrAdmin]
 
     def get(self, request):
         force = request.query_params.get("regenerar") in ("1", "true", "yes")

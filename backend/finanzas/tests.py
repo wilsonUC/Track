@@ -23,6 +23,7 @@ class FinanzasAPITestCase(APITestCase):
         password="clavesegura1",
         telefono="999111000",
         estado=PerfilUsuario.EstadoCuenta.ACTIVA,
+        tipo_cuenta=PerfilUsuario.TipoCuenta.AVANZADO,
         is_staff=False,
     ):
         user = User.objects.create_user(
@@ -37,6 +38,7 @@ class FinanzasAPITestCase(APITestCase):
             usuario=user,
             telefono=telefono,
             estado_cuenta=estado,
+            tipo_cuenta=tipo_cuenta,
         )
         return user
 
@@ -1083,6 +1085,95 @@ class RecurrentesValidacionFechasTests(FinanzasAPITestCase):
         self.assertEqual(res_del_todo.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Recurrente.objects.filter(id=rec_id2).exists())
         self.assertFalse(Transaction.objects.filter(monto=Decimal("20.00"), descripcion__icontains="Spotify").exists())
+
+
+class TiposCuentaTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.crear_categorias()
+        self.user_basico = self.crear_usuario(
+            username="basico",
+            telefono="999111001",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+        )
+        self.user_avanzado = self.crear_usuario(
+            username="avanzado",
+            telefono="999111002",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.AVANZADO,
+        )
+        self.admin_user = self.crear_usuario(
+            username="adminuser",
+            telefono="999111003",
+            is_staff=True,
+        )
+
+    def test_usuario_basico_bloqueado_en_rutas_avanzadas(self):
+        self.autenticar(self.user_basico)
+
+        # Recurrentes
+        res = self.client.get("/api/recurrentes/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Metas
+        res = self.client.get("/api/metas/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Consejos
+        res = self.client.get("/api/consejos/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_usuario_basico_puede_acceder_a_modulos_basicos(self):
+        self.autenticar(self.user_basico)
+
+        # Transacciones (Ingresos / Gastos)
+        res = self.client.get("/api/transacciones/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Categorías
+        res = self.client.get("/api/categorias/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Presupuestos (ahora disponible en básico)
+        res = self.client.get("/api/presupuestos/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Ahorros (ahora disponible en básico)
+        res = self.client.get("/api/ahorros/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Perfil
+        res = self.client.get("/api/perfil/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "basico")
+
+    def test_usuario_avanzado_tiene_acceso_a_rutas_avanzadas(self):
+        self.autenticar(self.user_avanzado)
+
+        res = self.client.get("/api/presupuestos/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/recurrentes/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/metas/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/ahorros/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_admin_puede_cambiar_tipo_cuenta_de_usuario(self):
+        self.autenticar(self.admin_user)
+
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"tipo_cuenta": "avanzado"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "avanzado")
+
+        self.user_basico.perfil.refresh_from_db()
+        self.assertEqual(self.user_basico.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.AVANZADO)
+
 
 
 

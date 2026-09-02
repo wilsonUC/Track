@@ -1,4 +1,4 @@
-import { History, Loader2, PiggyBank, Trash2, Wallet } from 'lucide-react'
+import { History, Loader2, PiggyBank, Target, Trash2, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
@@ -10,16 +10,18 @@ import {
   type ResumenAhorros,
 } from '../api/ahorros'
 import { AhorroModal } from '../components/ahorros/AhorroModal'
+import { LiberarMetasModal } from '../components/ahorros/LiberarMetasModal'
 import { formatShortDate, formatSoles } from '../utils/financeFormat'
 
 type OutletContext = {
   transactionsVersion: number
   bumpTransactions: () => void
   setSecondaryHeaderAction: (action: { label: string; onClick: () => void } | null) => void
+  isAvanzado?: boolean
 }
 
 export function AhorrosPage() {
-  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
+  const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction, isAvanzado = false } =
     useOutletContext<OutletContext>()
   const [ahorros, setAhorros] = useState<ApiAhorro[]>([])
   const [resumen, setResumen] = useState<ResumenAhorros | null>(null)
@@ -27,6 +29,7 @@ export function AhorrosPage() {
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [liberarMetasOpen, setLiberarMetasOpen] = useState(false)
   const [eliminandoId, setEliminandoId] = useState<number | null>(null)
 
   const cargar = useCallback(async () => {
@@ -84,35 +87,62 @@ export function AhorrosPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <PiggyBank className="h-4 w-4 text-indigo-500" />
-                Total ahorrado
+          {(() => {
+            const asignadoNum = Number(resumen?.asignado ?? 0)
+            const metasAsignadas = resumen?.metas_asignadas ?? []
+            const mostrarCardMetas = isAvanzado || asignadoNum > 0
+
+            return (
+              <div className={`grid grid-cols-1 gap-4 ${mostrarCardMetas ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+                <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <PiggyBank className="h-4 w-4 text-indigo-500" />
+                    Total ahorrado
+                  </div>
+                  <p className="mt-2 text-3xl font-black text-indigo-600 dark:text-indigo-400">
+                    {formatSoles(Number(resumen?.total ?? 0))}
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <Wallet className="h-4 w-4 text-emerald-500" />
+                    {mostrarCardMetas ? 'Libre (sin asignar)' : 'Ahorro disponible'}
+                  </div>
+                  <p className="mt-2 text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                    {formatSoles(Number(resumen?.libre ?? 0))}
+                  </p>
+                </article>
+                {mostrarCardMetas && (
+                  <article className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <PiggyBank className="h-4 w-4 text-violet-500" />
+                        Asignado a metas
+                      </div>
+                      <p className="mt-2 text-3xl font-black text-violet-600 dark:text-violet-400">
+                        {formatSoles(asignadoNum)}
+                      </p>
+                    </div>
+                    {asignadoNum > 0 && (
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-800">
+                        <span className="text-[11px] font-medium text-slate-400">
+                          {metasAsignadas.length} meta{metasAsignadas.length === 1 ? '' : 's'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setLiberarMetasOpen(true)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50/80 px-2.5 py-1 text-xs font-bold text-violet-700 transition hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-900/60"
+                        >
+                          <Target className="h-3.5 w-3.5" />
+                          <span>Liberar fondos</span>
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                )}
               </div>
-              <p className="mt-2 text-3xl font-black text-indigo-600">
-                {formatSoles(Number(resumen?.total ?? 0))}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <Wallet className="h-4 w-4 text-emerald-500" />
-                Libre (sin asignar)
-              </div>
-              <p className="mt-2 text-3xl font-black text-emerald-600">
-                {formatSoles(Number(resumen?.libre ?? 0))}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <PiggyBank className="h-4 w-4 text-violet-500" />
-                Asignado a metas
-              </div>
-              <p className="mt-2 text-3xl font-black text-violet-600">
-                {formatSoles(Number(resumen?.asignado ?? 0))}
-              </p>
-            </article>
-          </div>
+            )
+          })()}
 
           <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-sm text-indigo-800">
             Disponible para apartar:{' '}
@@ -194,6 +224,18 @@ export function AhorrosPage() {
           setModalOpen(false)
         }}
         crearAhorro={crearAhorro}
+      />
+
+      <LiberarMetasModal
+        open={liberarMetasOpen}
+        onClose={() => setLiberarMetasOpen(false)}
+        onSuccess={() => {
+          void cargar()
+          bumpTransactions()
+        }}
+        metasAsignadas={resumen?.metas_asignadas ?? []}
+        totalAsignado={Number(resumen?.asignado ?? 0)}
+        isAvanzado={isAvanzado}
       />
     </section>
   )
