@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Check,
   CheckCircle2,
   Clock,
   Loader2,
@@ -430,33 +431,56 @@ export function AdminUsuariosPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
-                    <button
-                      type="button"
-                      disabled={isSaving || deletingId === user.id}
-                      onClick={() => saveUser(user, values)}
-                      className={`inline-flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-semibold text-white transition disabled:opacity-60 ${
-                        hasChanges
-                          ? 'bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-500/20'
-                          : 'bg-slate-700 hover:bg-slate-600'
-                      }`}
-                    >
-                      <Save className="h-3 w-3" />
-                      <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
-                    </button>
-
-                    {!isCurrentUser && (
+                    {isCurrentUser ? (
+                      <span className="text-[11px] text-slate-400 italic">Tu cuenta actual</span>
+                    ) : user.estado_cuenta === 'pending' ? (
                       <>
-                        {user.estado_cuenta === 'pending' && (
+                        <button
+                          type="button"
+                          disabled={isSaving || deletingId === user.id}
+                          onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
+                          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-500 disabled:opacity-60"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>{isSaving ? 'Aprobando…' : 'Aprobar cuenta'}</span>
+                        </button>
+                        {hasChanges && (
                           <button
                             type="button"
                             disabled={isSaving || deletingId === user.id}
-                            onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
-                            className="rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            onClick={() => saveUser(user, values)}
+                            className="rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
                           >
-                            Aprobar
+                            Guardar
                           </button>
                         )}
-                        {user.estado_cuenta !== 'blocked' ? (
+                        <button
+                          type="button"
+                          disabled={isSaving || deletingId !== null}
+                          onClick={() => handleDeleteUser(user)}
+                          className="rounded-lg border border-rose-200 bg-rose-50/60 p-1.5 text-rose-600 hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-400"
+                          title="Rechazar / Eliminar usuario"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isSaving || deletingId === user.id}
+                          onClick={() => saveUser(user, values)}
+                          className={`inline-flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-semibold text-white transition disabled:opacity-60 ${
+                            hasChanges
+                              ? 'bg-indigo-600 hover:bg-indigo-700 shadow-sm shadow-indigo-500/20'
+                              : 'bg-slate-700 hover:bg-slate-600'
+                          }`}
+                        >
+                          <Save className="h-3 w-3" />
+                          <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
+                        </button>
+
+                        {user.estado_cuenta === 'active' ? (
                           <button
                             type="button"
                             disabled={isSaving || deletingId === user.id}
@@ -494,7 +518,7 @@ export function AdminUsuariosPage() {
         </div>
 
         {/* Vista Escritorio: Tabla Sin Scroll Horizontal (100% Ajustada) */}
-        <div className="hidden md:block w-full overflow-hidden">
+        <div className="hidden md:block w-full overflow-visible">
           <table className="w-full table-fixed divide-y divide-slate-100 text-xs dark:divide-slate-800">
             <thead className="bg-slate-50/80 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:bg-slate-800/40 dark:text-slate-400">
               <tr>
@@ -531,7 +555,7 @@ export function AdminUsuariosPage() {
                   return (
                     <tr
                       key={user.id}
-                      className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                      className="relative focus-within:z-40 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
                     >
                       {/* Usuario */}
                       <td className="px-4 py-3.5 align-top">
@@ -587,7 +611,7 @@ export function AdminUsuariosPage() {
                       </td>
 
                       {/* Nivel / Plan */}
-                      <td className="px-3 py-3.5 align-top">
+                      <td className="px-3 py-3.5 align-top relative focus-within:z-50">
                         <div className="space-y-1">
                           <CustomSelect<AccountTier>
                             value={values.tipo_cuenta}
@@ -625,63 +649,95 @@ export function AdminUsuariosPage() {
 
                       {/* Acciones */}
                       <td className="px-4 py-3.5 text-right align-top">
-                        <div className="flex flex-col items-end gap-1.5">
-                          <button
-                            type="button"
-                            disabled={isSaving || deletingId === user.id}
-                            onClick={() => saveUser(user, values)}
-                            className={`w-full max-w-[110px] rounded-lg py-1.5 text-xs font-bold text-white transition shadow-xs ${
-                              hasChanges
-                                ? 'bg-indigo-600 hover:bg-indigo-500 ring-2 ring-indigo-500/20'
-                                : 'bg-slate-700 hover:bg-slate-600'
-                            } disabled:opacity-60`}
-                          >
-                            {isSaving ? 'Guardando…' : 'Guardar'}
-                          </button>
-
-                          {!isCurrentUser ? (
-                            <div className="flex w-full max-w-[110px] items-center gap-1">
-                              {user.estado_cuenta === 'pending' && (
-                                <button
-                                  type="button"
-                                  disabled={isSaving || deletingId === user.id}
-                                  onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
-                                  className="flex-1 rounded-md border border-emerald-300 bg-emerald-50 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                >
-                                  Aprobar
-                                </button>
-                              )}
-                              {user.estado_cuenta !== 'blocked' ? (
-                                <button
-                                  type="button"
-                                  disabled={isSaving || deletingId === user.id}
-                                  onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
-                                  className="flex-1 rounded-md border border-slate-200 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                                >
-                                  Bloquear
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={isSaving || deletingId === user.id}
-                                  onClick={() => saveUser(user, { estado_cuenta: 'active' })}
-                                  className="flex-1 rounded-md border border-emerald-300 bg-emerald-50 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                >
-                                  Activar
-                                </button>
-                              )}
+                        <div className="flex flex-col items-end gap-1.5 w-full max-w-[130px] ml-auto">
+                          {isCurrentUser ? (
+                            <span className="text-[11px] text-slate-400 italic px-1 pt-1">Tu cuenta</span>
+                          ) : user.estado_cuenta === 'pending' ? (
+                            <>
+                              {/* Acción Principal para Pendientes: APROBAR */}
                               <button
                                 type="button"
-                                disabled={isSaving || deletingId !== null}
-                                onClick={() => handleDeleteUser(user)}
-                                className="rounded-md border border-rose-200 p-1 text-rose-500 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
-                                title="Eliminar"
+                                disabled={isSaving || deletingId === user.id}
+                                onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
+                                className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/25 transition hover:bg-emerald-500 disabled:opacity-60"
+                                title="Aprobar acceso a este usuario"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Check className="h-3.5 w-3.5" />
+                                <span>{isSaving ? 'Aprobando…' : 'Aprobar'}</span>
                               </button>
-                            </div>
+
+                              <div className="flex w-full items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={isSaving || deletingId === user.id}
+                                  onClick={() => saveUser(user, values)}
+                                  className={`flex-1 rounded-md py-1 text-[11px] font-semibold transition ${
+                                    hasChanges
+                                      ? 'bg-indigo-600 text-white hover:bg-indigo-500 ring-1 ring-indigo-500'
+                                      : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                                  }`}
+                                  title="Guardar cambios de datos o plan"
+                                >
+                                  {isSaving ? '…' : 'Guardar'}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isSaving || deletingId !== null}
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="rounded-md border border-rose-200 bg-white p-1 text-rose-500 transition hover:bg-rose-50 hover:text-rose-600 dark:border-rose-900/40 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                                  title="Rechazar y eliminar cuenta"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </>
                           ) : (
-                            <span className="text-[10px] text-slate-400 italic">Cuenta actual</span>
+                            <>
+                              {/* Usuario Activo o Bloqueado */}
+                              <button
+                                type="button"
+                                disabled={isSaving || deletingId === user.id}
+                                onClick={() => saveUser(user, values)}
+                                className={`w-full rounded-lg py-1.5 text-xs font-bold text-white transition shadow-xs ${
+                                  hasChanges
+                                    ? 'bg-indigo-600 hover:bg-indigo-500 ring-2 ring-indigo-500/20'
+                                    : 'bg-slate-700 hover:bg-slate-600'
+                                } disabled:opacity-60`}
+                              >
+                                {isSaving ? 'Guardando…' : 'Guardar'}
+                              </button>
+
+                              <div className="flex w-full items-center gap-1">
+                                {user.estado_cuenta === 'active' ? (
+                                  <button
+                                    type="button"
+                                    disabled={isSaving || deletingId === user.id}
+                                    onClick={() => saveUser(user, { estado_cuenta: 'blocked' })}
+                                    className="flex-1 rounded-md border border-slate-200 bg-white py-1 text-[11px] font-semibold text-slate-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-amber-800 dark:hover:bg-amber-950/40 dark:hover:text-amber-300"
+                                  >
+                                    Bloquear
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isSaving || deletingId === user.id}
+                                    onClick={() => saveUser(user, { estado_cuenta: 'active' })}
+                                    className="flex-1 rounded-md border border-emerald-300 bg-emerald-50 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                  >
+                                    Activar
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={isSaving || deletingId !== null}
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="rounded-md border border-rose-200 bg-white p-1 text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:border-rose-900/40 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                                  title="Eliminar usuario"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
                       </td>

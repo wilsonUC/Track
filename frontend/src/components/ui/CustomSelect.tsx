@@ -62,7 +62,7 @@ export function CustomSelect<T extends string | number = string | number>({
   }, [isOpen])
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${isOpen ? 'z-50' : ''} ${className}`}>
       <button
         id={id}
         type="button"
