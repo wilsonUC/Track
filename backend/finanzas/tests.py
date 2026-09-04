@@ -341,6 +341,41 @@ class RecurrenteTests(FinanzasAPITestCase):
         deudas_restantes = [d for d in res_nuevo.data["deudas"] if d["id_recurrente"] == recurrente_id]
         self.assertEqual(len(deudas_restantes), 0)
 
+    def test_cuentas_atrasadas_con_abonos_parciales(self):
+        # Recurrente que permite parciales iniciado el mes pasado
+        primer_dia_este_mes = date.today().replace(day=1)
+        fecha_hace_un_mes = (primer_dia_este_mes - timedelta(days=1)).replace(day=1)
+        crear = self.client.post(
+            "/api/recurrentes/",
+            {
+                "nombre": "Internet Parcial",
+                "monto": "100.00",
+                "tipo": "expense",
+                "dia_pago": 15,
+                "categoria": self.cat_gasto.id,
+                "permite_parciales": True,
+                "fecha_inicio": fecha_hace_un_mes.strftime("%Y-%m-%d"),
+            },
+            format="json",
+        )
+        self.assertEqual(crear.status_code, status.HTTP_201_CREATED)
+        recurrente_id = crear.data["id"]
+
+        # Abono parcial de 40.00 en el mes pasado
+        pago_parcial = self.client.post(
+            f"/api/recurrentes/{recurrente_id}/registrar-pago/",
+            {"monto": "40.00", "fecha": fecha_hace_un_mes.strftime("%Y-%m-%d")},
+            format="json",
+        )
+        self.assertEqual(pago_parcial.status_code, status.HTTP_200_OK)
+
+        # Deudas atrasadas debe mostrar el saldo restante de 60.00
+        res = self.client.get("/api/recurrentes/cuentas-atrasadas/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        deudas = [d for d in res.data["deudas"] if d["id_recurrente"] == recurrente_id]
+        self.assertEqual(len(deudas), 1)
+        self.assertEqual(deudas[0]["acumulado"], 60.00)
+
 
 class AhorrosYMetasTests(FinanzasAPITestCase):
     def setUp(self):

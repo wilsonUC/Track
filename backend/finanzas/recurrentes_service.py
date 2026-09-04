@@ -146,10 +146,13 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
             vencido = True
         prev_inicio, prev_fin = _bounds_mes_anterior(today)
         # Solo avisar si el recurrente ya existía el mes anterior (no recién creado)
-        if hasattr(recurrente, "registrado_mes_anterior"):
-            registrado_anterior = recurrente.registrado_mes_anterior
-        else:
-            registrado_anterior = tiene_registro_en_rango(recurrente, prev_inicio, prev_fin)
+        monto_prev = Transaction.objects.filter(
+            recurrente=recurrente,
+            fecha__gte=prev_inicio,
+            fecha__lte=prev_fin,
+        ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        monto_mes_anterior_esperado = obtener_monto_mes(recurrente, prev_inicio)
+        registrado_anterior = Decimal(str(monto_prev)) >= monto_mes_anterior_esperado
 
         if creado <= prev_fin and not registrado_anterior:
             # Solo alertar si el mes anterior estaba dentro del periodo de vigencia
@@ -174,7 +177,9 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
 
 
 def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
-    from .models import Recurrente
+    from django.db.models import Sum
+    from decimal import Decimal
+    from .models import Recurrente, Transaction
 
     reference = reference or date.today()
     primer_dia_actual = reference.replace(day=1)
@@ -199,17 +204,20 @@ def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
             inicio_mes = iter_date
             fin_mes = iter_date.replace(day=ultimo_dia)
 
-            registrado = Transaction.objects.filter(
+            monto_pagado = Transaction.objects.filter(
                 recurrente=r,
                 fecha__gte=inicio_mes,
                 fecha__lte=fin_mes,
-            ).exists()
+            ).aggregate(total=Sum("monto"))["total"] or Decimal("0")
 
-            if not registrado:
+            monto_pagado = Decimal(str(monto_pagado))
+            monto_mes_atraso = obtener_monto_mes(r, iter_date)
+            saldo_pendiente = monto_mes_atraso - monto_pagado
+
+            if saldo_pendiente > Decimal("0"):
                 mes_nombre = MESES_ES[iter_date.month - 1].capitalize()
                 dia_vencimiento = dia_efectivo(r.dia_pago, iter_date)
                 fecha_venc = iter_date.replace(day=dia_vencimiento)
-                monto_mes_atraso = obtener_monto_mes(r, iter_date)
 
                 atraso_item = {
                     "id": f"{r.id}-{iter_date.strftime('%Y-%m')}",
@@ -218,7 +226,7 @@ def obtener_cuentas_atrasadas(usuario, reference: date | None = None) -> dict:
                     "categoria": r.categoria.nombre,
                     "mes_atraso": f"{mes_nombre} {iter_date.year}",
                     "fecha_pago": fecha_venc.strftime("%Y-%m-%d"),
-                    "acumulado": float(monto_mes_atraso),
+                    "acumulado": float(saldo_pendiente),
                 }
 
                 if r.tipo == Transaction.Tipo.INGRESO:
