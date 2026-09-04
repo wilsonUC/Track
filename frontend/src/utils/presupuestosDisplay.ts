@@ -10,6 +10,7 @@ export type PresupuestoCardView = {
   estado: ApiPresupuesto['estado']
   iconCategory: string
   categoriaReferenciaId: number | null
+  activo: boolean
   consumos: ApiPresupuestoConsumo[]
 }
 
@@ -24,6 +25,7 @@ export function mapPresupuestoToCard(p: ApiPresupuesto): PresupuestoCardView {
     estado: p.estado,
     iconCategory: p.categoria_referencia_nombre ?? 'Otros',
     categoriaReferenciaId: p.categoria_referencia,
+    activo: p.activo,
     consumos: p.consumos ?? [],
   }
 }

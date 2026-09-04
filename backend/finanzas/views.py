@@ -134,8 +134,14 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
                     pass
 
         inicio_mes, fin_mes = _bounds_mes(reference_date)
+        incluir_inactivos = self.request.query_params.get("incluir_inactivos") in ("true", "1", "yes")
+        es_detalle = self.action in ("retrieve", "update", "partial_update", "destroy") or "pk" in self.kwargs
+        base_qs = Presupuesto.objects.filter(usuario=self.request.user)
+        if not incluir_inactivos and not es_detalle:
+            base_qs = base_qs.filter(activo=True)
+
         return (
-            Presupuesto.objects.filter(usuario=self.request.user, activo=True)
+            base_qs
             .select_related("categoria_referencia")
             .annotate(
                 gastado=Coalesce(
@@ -172,9 +178,51 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
 
-    def perform_destroy(self, instance):
-        instance.activo = False
-        instance.save(update_fields=["activo", "actualizado_en"])
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        modo = request.query_params.get("modo") or request.data.get("modo")
+        txs = Transaction.objects.filter(presupuesto=instance)
+        tiene_txs = txs.exists()
+
+        if tiene_txs:
+            if modo == "eliminar_todo":
+                txs.delete()
+                instance.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            elif modo == "conservar_transacciones":
+                txs.update(presupuesto=None)
+                instance.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                from django.db.models import Sum
+                total_monto = txs.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+                return Response(
+                    {
+                        "detalle": "El presupuesto tiene transacciones asociadas.",
+                        "codigo": "requiere_decision_transacciones",
+                        "num_transacciones": txs.count(),
+                        "total_monto": float(total_monto),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"], url_path="info-eliminacion")
+    def info_eliminacion(self, request, pk=None):
+        instance = self.get_object()
+        txs = Transaction.objects.filter(presupuesto=instance)
+        from django.db.models import Sum
+        total_monto = txs.aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        return Response(
+            {
+                "id": instance.id,
+                "nombre": instance.nombre,
+                "num_transacciones": txs.count(),
+                "total_monto": float(total_monto),
+            }
+        )
 
     @action(detail=True, methods=["post"], url_path="gasto-rapido")
     def gasto_rapido(self, request, pk=None):

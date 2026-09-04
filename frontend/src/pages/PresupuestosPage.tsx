@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { Power, PowerOff } from 'lucide-react'
 import { fetchCategories } from '../api/finanzas'
 import {
   createPresupuesto,
+  deletePresupuestoPermanente,
   fetchPresupuestos,
   registrarGastoRapido,
   updatePresupuesto,
 } from '../api/presupuestos'
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
+import { EliminarPresupuestoModal } from '../components/presupuestos/EliminarPresupuestoModal'
 import { PresupuestosGrid } from '../components/presupuestos/PresupuestosGrid'
 import { PresupuestosSummaryCard } from '../components/presupuestos/PresupuestosSummaryCard'
 import { FiltroMesPresupuestos } from '../components/presupuestos/FiltroMesPresupuestos'
@@ -40,6 +43,12 @@ export function PresupuestosPage() {
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
   const [registrandoId, setRegistrandoId] = useState<number | null>(null)
+  const [procesandoId, setProcesandoId] = useState<number | null>(null)
+  const [mostrarInactivos, setMostrarInactivos] = useState(false)
+
+  const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false)
+  const [presupuestoAEliminar, setPresupuestoAEliminar] = useState<PresupuestoCardView | null>(null)
+
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
     d.setDate(1)
@@ -95,7 +104,7 @@ export function PresupuestosPage() {
     const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
     const mesParam = `${anio}-${mes}-01`
 
-    Promise.all([fetchPresupuestos(mesParam), fetchCategories()])
+    Promise.all([fetchPresupuestos(mesParam, mostrarInactivos), fetchCategories()])
       .then(([data, categories]) => {
         if (cancelled) return
         setPresupuestos(data.map(mapPresupuestoToCard))
@@ -111,14 +120,14 @@ export function PresupuestosPage() {
     return () => {
       cancelled = true
     }
-  }, [transactionsVersion, fechaRef])
+  }, [transactionsVersion, fechaRef, mostrarInactivos])
 
   const totalLimite = useMemo(
-    () => presupuestos.reduce((acc, p) => acc + p.limite, 0),
+    () => presupuestos.filter((p) => p.activo).reduce((acc, p) => acc + p.limite, 0),
     [presupuestos],
   )
   const totalGastado = useMemo(
-    () => presupuestos.reduce((acc, p) => acc + p.gastado, 0),
+    () => presupuestos.filter((p) => p.activo).reduce((acc, p) => acc + p.gastado, 0),
     [presupuestos],
   )
   const porcentajeGlobal = totalLimite > 0 ? Math.round((totalGastado / totalLimite) * 100) : 0
@@ -168,6 +177,52 @@ export function PresupuestosPage() {
     } finally {
       setRegistrandoId(null)
     }
+  }
+
+  const manejarAlternarActivo = async (id: number, nuevoEstadoActivo: boolean) => {
+    if (!nuevoEstadoActivo) {
+      if (
+        !window.confirm(
+          '¿Estás seguro de que deseas desactivar este presupuesto? Dejará de figurar en el cálculo activo, pero tus gastos previos se conservarán.'
+        )
+      ) {
+        return
+      }
+    }
+    setProcesandoId(id)
+    setError('')
+    try {
+      const actualizado = await updatePresupuesto(id, { activo: nuevoEstadoActivo })
+      setPresupuestos((prev) =>
+        prev.map((p) => (p.id === id ? mapPresupuestoToCard(actualizado) : p))
+      )
+      if (!nuevoEstadoActivo && !mostrarInactivos) {
+        setPresupuestos((prev) => prev.filter((p) => p.id !== id))
+      }
+      bumpTransactions()
+    } catch {
+      setError(
+        nuevoEstadoActivo
+          ? 'No se pudo reactivar el presupuesto.'
+          : 'No se pudo desactivar el presupuesto.'
+      )
+    } finally {
+      setProcesandoId(null)
+    }
+  }
+
+  const abrirModalEliminar = (presupuesto: PresupuestoCardView) => {
+    setPresupuestoAEliminar(presupuesto)
+    setIsEliminarModalOpen(true)
+  }
+
+  const manejarConfirmarEliminar = async (
+    id: number,
+    modo?: 'eliminar_todo' | 'conservar_transacciones',
+  ) => {
+    await deletePresupuestoPermanente(id, modo)
+    setPresupuestos((prev) => prev.filter((p) => p.id !== id))
+    bumpTransactions()
   }
 
   const manejarGuardarPresupuesto = async (e: FormEvent) => {
@@ -228,6 +283,35 @@ export function PresupuestosPage() {
             mesLabel={mesTexto}
           />
 
+          <div className="flex items-center justify-end pr-1">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-500">
+                Mostrar presupuestos desactivados
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={mostrarInactivos}
+                onClick={() => setMostrarInactivos(!mostrarInactivos)}
+                className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer ${
+                  mostrarInactivos ? 'bg-indigo-600' : 'bg-slate-200'
+                }`}
+              >
+                <span className="absolute left-1.5 flex h-4 w-4 items-center justify-center text-slate-400">
+                  <PowerOff className="h-3.5 w-3.5" />
+                </span>
+                <span className="absolute right-1.5 flex h-4 w-4 items-center justify-center text-white/80">
+                  <Power className="h-3.5 w-3.5" />
+                </span>
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    mostrarInactivos ? 'translate-x-8' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {presupuestos.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
               Aún no tienes presupuestos. Crea uno para apartar dinero de un gasto concreto.
@@ -237,7 +321,10 @@ export function PresupuestosPage() {
               presupuestos={presupuestos}
               onRegistrarGasto={registrarGasto}
               onEditar={abrirModalEditar}
+              onAlternarActivo={manejarAlternarActivo}
+              onEliminar={abrirModalEliminar}
               registrandoId={registrandoId}
+              procesandoId={procesandoId}
               esMesActual={esMesActual}
               esMesPasado={esMesPasado}
               esMesFuturo={esMesFuturo}
@@ -262,6 +349,16 @@ export function PresupuestosPage() {
         onCategoriaReferenciaChange={setCategoriaReferenciaId}
         onClose={cerrarModal}
         onSubmit={manejarGuardarPresupuesto}
+      />
+
+      <EliminarPresupuestoModal
+        open={isEliminarModalOpen}
+        presupuesto={presupuestoAEliminar}
+        onClose={() => {
+          setIsEliminarModalOpen(false)
+          setPresupuestoAEliminar(null)
+        }}
+        onConfirm={manejarConfirmarEliminar}
       />
     </section>
   )

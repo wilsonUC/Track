@@ -177,21 +177,36 @@ class PresupuestoTests(FinanzasAPITestCase):
         self.assertEqual(txs.count(), 1)
         self.assertEqual(txs.first().presupuesto_id, presupuesto_id)
 
-    def test_eliminar_presupuesto_es_soft_delete(self):
+    def test_desactivar_reactivar_y_eliminar_presupuesto(self):
         presupuesto = Presupuesto.objects.create(
             usuario=self.user,
             nombre="Comida",
             limite=Decimal("300.00"),
             monto_rapido=Decimal("20.00"),
         )
-        response = self.client.delete(f"/api/presupuestos/{presupuesto.id}/")
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
+        # 1. Desactivar presupuesto via PATCH
+        resp_patch = self.client.patch(f"/api/presupuestos/{presupuesto.id}/", {"activo": False}, format="json")
+        self.assertEqual(resp_patch.status_code, status.HTTP_200_OK)
         presupuesto.refresh_from_db()
         self.assertFalse(presupuesto.activo)
 
+        # 2. No aparece en lista por defecto
         lista = self.client.get("/api/presupuestos/")
         self.assertEqual(len(lista.data), 0)
+
+        # 3. Aparece si se solicita incluir_inactivos
+        lista_inactivos = self.client.get("/api/presupuestos/?incluir_inactivos=true")
+        self.assertEqual(len(lista_inactivos.data), 1)
+
+        # 4. Info eliminacion
+        resp_info = self.client.get(f"/api/presupuestos/{presupuesto.id}/info-eliminacion/")
+        self.assertEqual(resp_info.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp_info.data["num_transacciones"], 0)
+
+        # 5. Eliminacion permanente
+        response = self.client.delete(f"/api/presupuestos/{presupuesto.id}/")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Presupuesto.objects.filter(id=presupuesto.id).exists())
 
 
 class RecurrenteTests(FinanzasAPITestCase):
