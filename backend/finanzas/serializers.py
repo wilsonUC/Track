@@ -3,7 +3,7 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
 from .models import (
     Category,
@@ -33,11 +33,17 @@ def perfil_desde_usuario(user):
         estado_cuenta = perfil.estado_cuenta
         tipo_cuenta = perfil.tipo_cuenta
         tipo_cuenta_label = perfil.get_tipo_cuenta_display()
+        fecha_expiracion = perfil.fecha_expiracion
+        is_expired = perfil.is_expired
+        dias_restantes = perfil.dias_restantes
     except PerfilUsuario.DoesNotExist:
         telefono = ""
         estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA if user.is_staff else PerfilUsuario.EstadoCuenta.PENDIENTE
         tipo_cuenta = PerfilUsuario.TipoCuenta.AVANZADO if user.is_staff else PerfilUsuario.TipoCuenta.BASICO
         tipo_cuenta_label = "Avanzado" if user.is_staff else "Básico"
+        fecha_expiracion = None
+        is_expired = False
+        dias_restantes = None
     return {
         "username": user.username,
         "first_name": user.first_name or "",
@@ -47,6 +53,9 @@ def perfil_desde_usuario(user):
         "estado_cuenta": estado_cuenta,
         "tipo_cuenta": tipo_cuenta,
         "tipo_cuenta_label": tipo_cuenta_label,
+        "fecha_expiracion": str(fecha_expiracion) if fecha_expiracion else None,
+        "is_expired": is_expired,
+        "dias_restantes": dias_restantes,
         "is_staff": user.is_staff,
     }
 
@@ -54,7 +63,7 @@ User = get_user_model()
 
 
 class FinanzasTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Login JWT con control de aprobación/bloqueo para usuarios normales."""
+    """Login JWT con control de aprobación/bloqueo y expiración para usuarios normales."""
 
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -64,15 +73,50 @@ class FinanzasTokenObtainPairSerializer(TokenObtainPairSerializer):
             return data
 
         try:
-            estado_cuenta = user.perfil.estado_cuenta
+            perfil = user.perfil
+            estado_cuenta = perfil.estado_cuenta
+            is_expired = perfil.is_expired
+            fecha_expiracion = perfil.fecha_expiracion
         except PerfilUsuario.DoesNotExist:
             estado_cuenta = PerfilUsuario.EstadoCuenta.PENDIENTE
+            is_expired = False
+            fecha_expiracion = None
 
         if estado_cuenta == PerfilUsuario.EstadoCuenta.PENDIENTE:
             raise AuthenticationFailed("Tu cuenta está pendiente de aprobación.")
         if estado_cuenta == PerfilUsuario.EstadoCuenta.BLOQUEADA:
             raise AuthenticationFailed("Tu cuenta está bloqueada. Contacta al administrador.")
+        if is_expired:
+            if fecha_expiracion:
+                from django.utils import timezone
+                local_exp = timezone.localtime(fecha_expiracion) if timezone.is_aware(fecha_expiracion) else fecha_expiracion
+                fecha_str = local_exp.strftime("%d/%m/%Y a las %H:%M")
+            else:
+                fecha_str = ""
+            raise AuthenticationFailed(f"Tu periodo de acceso expiró ({fecha_str}). Contacta al administrador para renovar tu suscripción.")
 
+        return data
+
+
+class FinanzasTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken(attrs["refresh"])
+        user_id = refresh.payload.get("user_id")
+        if user_id:
+            try:
+                user = User.objects.get(pk=user_id)
+                if not user.is_staff and not user.is_superuser:
+                    perfil = user.perfil
+                    if perfil.estado_cuenta == PerfilUsuario.EstadoCuenta.PENDIENTE:
+                        raise AuthenticationFailed("Tu cuenta está pendiente de aprobación.")
+                    if perfil.estado_cuenta == PerfilUsuario.EstadoCuenta.BLOQUEADA:
+                        raise AuthenticationFailed("Tu cuenta está bloqueada. Contacta al administrador.")
+                    if perfil.is_expired:
+                        raise AuthenticationFailed("Tu periodo de acceso ha expirado. Contacta al administrador para renovar tu suscripción.")
+            except (User.DoesNotExist, PerfilUsuario.DoesNotExist):
+                raise AuthenticationFailed("Usuario no válido.")
         return data
 
 
@@ -736,6 +780,9 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
     estado_cuenta_label = serializers.SerializerMethodField()
     tipo_cuenta = serializers.CharField(source="perfil.tipo_cuenta", default=PerfilUsuario.TipoCuenta.BASICO)
     tipo_cuenta_label = serializers.SerializerMethodField()
+    fecha_expiracion = serializers.DateTimeField(source="perfil.fecha_expiracion", default=None, allow_null=True)
+    is_expired = serializers.BooleanField(source="perfil.is_expired", default=False)
+    dias_restantes = serializers.IntegerField(source="perfil.dias_restantes", default=None, allow_null=True)
 
     class Meta:
         model = User
@@ -750,6 +797,9 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
             "estado_cuenta_label",
             "tipo_cuenta",
             "tipo_cuenta_label",
+            "fecha_expiracion",
+            "is_expired",
+            "dias_restantes",
             "is_staff",
             "date_joined",
             "last_login",
@@ -769,6 +819,40 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
             return "Básico"
 
 
+def calcular_expiracion(duracion: str, base_date=None):
+    from datetime import timedelta
+    from django.utils import timezone
+
+    if not duracion or str(duracion).lower() in ("permanente", "0", "none", ""):
+        return None
+    now = base_date or timezone.now()
+    d_str = str(duracion).strip().lower()
+
+    if d_str in ("1m", "1min", "1minuto", "1_min"):
+        return now + timedelta(minutes=1)
+    if d_str in ("5m", "5min"):
+        return now + timedelta(minutes=5)
+
+    try:
+        meses = int(d_str)
+    except (ValueError, TypeError):
+        return None
+
+    if meses == 1:
+        return now + timedelta(days=30)
+    elif meses == 2:
+        return now + timedelta(days=60)
+    elif meses == 6:
+        return now + timedelta(days=180)
+    elif meses == 12:
+        return now + timedelta(days=365)
+    else:
+        return now + timedelta(days=30 * meses)
+
+
+_MISSING = object()
+
+
 class AdminUsuarioUpdateSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
@@ -782,6 +866,8 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
         choices=PerfilUsuario.TipoCuenta.choices,
         required=False,
     )
+    fecha_expiracion = serializers.DateTimeField(required=False, allow_null=True)
+    duracion = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def validate_email(self, value):
         user = self.context["user"]
@@ -799,17 +885,30 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
 
     def save(self):
         user = self.context["user"]
-        data = self.validated_data
+        data = dict(self.validated_data)
         telefono = data.pop("telefono", None)
         estado_cuenta = data.pop("estado_cuenta", None)
         tipo_cuenta = data.pop("tipo_cuenta", None)
+
+        duracion = data.pop("duracion", None)
+        if duracion is not None:
+            fecha_expiracion = calcular_expiracion(duracion)
+        elif "fecha_expiracion" in data:
+            fecha_expiracion = data.pop("fecha_expiracion")
+        else:
+            fecha_expiracion = _MISSING
 
         for field in ("first_name", "last_name", "email"):
             if field in data:
                 setattr(user, field, data[field])
         user.save()
 
-        if telefono is not None or estado_cuenta is not None or tipo_cuenta is not None:
+        if (
+            telefono is not None
+            or estado_cuenta is not None
+            or tipo_cuenta is not None
+            or fecha_expiracion is not _MISSING
+        ):
             perfil, _ = PerfilUsuario.objects.get_or_create(
                 usuario=user,
                 defaults={
@@ -824,6 +923,8 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
                 perfil.estado_cuenta = estado_cuenta
             if tipo_cuenta is not None:
                 perfil.tipo_cuenta = tipo_cuenta
+            if fecha_expiracion is not _MISSING:
+                perfil.fecha_expiracion = fecha_expiracion
             perfil.save()
 
         return user

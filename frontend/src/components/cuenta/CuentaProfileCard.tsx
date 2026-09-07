@@ -38,10 +38,47 @@ export function CuentaProfileCard({ profile, onLogout }: CuentaProfileCardProps)
           <p className="mt-0.5 text-sm font-medium text-slate-400 dark:text-slate-400">
             @{profile.username}
           </p>
-          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#eff6ff] px-3.5 py-1.5 text-[11px] font-bold tracking-wide text-[#1d4ed8] dark:bg-slate-700 dark:text-slate-200">
-            <Shield className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            USUARIO
-          </span>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-wide ${
+              profile.tipo_cuenta === 'avanzado'
+                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
+                : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+            }`}>
+              <Shield className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {profile.tipo_cuenta_label || (profile.tipo_cuenta === 'avanzado' ? 'Plan Avanzado' : 'Plan Básico')}
+            </span>
+
+            {/* Badge de Vigencia */}
+            {profile.fecha_expiracion ? (() => {
+              const d = new Date(profile.fecha_expiracion)
+              const isValid = !isNaN(d.getTime())
+              const isTime = profile.fecha_expiracion.includes('T')
+              const formatted = isValid
+                ? (isTime
+                    ? `${d.toLocaleDateString('es-PE', { dateStyle: 'short' })} ${d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`
+                    : d.toLocaleDateString('es-PE', { dateStyle: 'medium' }))
+                : profile.fecha_expiracion
+              const isExpired = profile.is_expired || (isValid && d.getTime() <= Date.now())
+
+              return (
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-wide ${
+                  isExpired
+                    ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                    : (profile.dias_restantes ?? 99) <= 7
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}>
+                  {isExpired
+                    ? `Expiró (${formatted})`
+                    : `Vence: ${formatted}`}
+                </span>
+              )
+            })() : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold tracking-wide text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                Acceso Permanente ♾️
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="mx-1 mt-6 border-t border-slate-100 dark:border-slate-700" />

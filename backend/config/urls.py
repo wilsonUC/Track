@@ -16,14 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from finanzas.views import FinanzasTokenObtainPairView
-from rest_framework_simplejwt.views import TokenRefreshView
+from finanzas.views import FinanzasTokenObtainPairView, FinanzasTokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     # Login con JWT: usuario + contraseña → devuelve tokens (access y refresh)
     path("api/token/", FinanzasTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/token/refresh/", FinanzasTokenRefreshView.as_view(), name="token_refresh"),
     # API de categorías y transacciones: todo bajo /api/
     path("api/", include("finanzas.urls")),
 ]

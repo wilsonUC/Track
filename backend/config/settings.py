@@ -148,7 +148,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'finanzas.authentication.FinanzasJWTAuthentication',
     ),
     # Sin esto, DRF usa AllowAny por defecto: cualquiera podría llamar a tus vistas si no pones permiso en cada vista.
     'DEFAULT_PERMISSION_CLASSES': (

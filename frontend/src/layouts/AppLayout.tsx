@@ -47,7 +47,15 @@ export function AppLayout() {
     let cancelled = false
     fetchProfile()
       .then((data) => {
-        if (!cancelled) setProfile(data)
+        if (cancelled) return
+        // Si la cuenta expiró y no es admin, cerrar sesión automáticamente
+        const isExp = data.is_expired || (data.fecha_expiracion && new Date(data.fecha_expiracion).getTime() <= Date.now())
+        if (!data.is_staff && isExp) {
+          logout()
+          window.location.href = '/login?expired=1'
+          return
+        }
+        setProfile(data)
       })
       .catch(() => {
         if (!cancelled) setProfile(null)
@@ -59,6 +67,35 @@ export function AppLayout() {
       cancelled = true
     }
   }, [])
+
+  // Monitoreo en tiempo real de la vigencia mientras el usuario está en la app
+  useEffect(() => {
+    if (!profile || profile.is_staff || !profile.fecha_expiracion) return
+
+    const expTime = new Date(profile.fecha_expiracion).getTime()
+    if (isNaN(expTime)) return
+
+    const checkExpiration = () => {
+      if (Date.now() >= expTime) {
+        logout()
+        window.location.href = '/login?expired=1'
+      }
+    }
+
+    const msUntilExp = expTime - Date.now()
+    if (msUntilExp <= 0) {
+      checkExpiration()
+      return
+    }
+
+    const timer = setTimeout(checkExpiration, msUntilExp)
+    const interval = setInterval(checkExpiration, 2000)
+
+    return () => {
+      clearTimeout(timer)
+      clearInterval(interval)
+    }
+  }, [profile])
 
   function handleOpenNewTransaction() {
     setMovementType(defaultMovementType(pathname))

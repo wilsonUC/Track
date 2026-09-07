@@ -1,6 +1,6 @@
 import { Lock, Mail, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { login, saveTokens } from '../api/auth'
 import { AuthField } from '../components/auth/AuthField'
 import { AuthSplitCard } from '../components/auth/AuthLayout'
@@ -10,11 +10,17 @@ import brandLogo from '../assets/brand/v4.svg'
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const successMessage = (location.state as { message?: string } | null)?.message
+  const isExpiredRedirect = searchParams.get('expired') === '1'
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(
+    isExpiredRedirect
+      ? 'Tu periodo de acceso ha expirado. Tu sesión se ha cerrado automáticamente. Contacta al administrador para renovar tu suscripción.'
+      : ''
+  )
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {

@@ -18,6 +18,9 @@ export type UserProfile = {
   estado_cuenta: 'pending' | 'active' | 'blocked'
   tipo_cuenta?: AccountTier
   tipo_cuenta_label?: string
+  fecha_expiracion?: string | null
+  is_expired?: boolean
+  dias_restantes?: number | null
   is_staff: boolean
 }
 
@@ -83,15 +86,19 @@ async function requestNewAccessToken(): Promise<string> {
   return data.access
 }
 
-function redirectToLogin() {
+function redirectToLogin(reason?: string) {
   if (window.location.pathname !== '/login') {
-    window.location.href = '/login'
+    window.location.href = reason === 'expired' ? '/login?expired=1' : '/login'
   }
 }
 
 export async function authFetch(path: string, init: RequestInit = {}) {
   const token = getAccessToken()
-  if (!token) throw new Error('No hay sesión')
+  if (!token) {
+    logout()
+    redirectToLogin()
+    throw new Error('No hay sesión')
+  }
 
   const url = path.startsWith('http') ? path : `${API}${path}`
   const request = (accessToken: string) =>
@@ -100,17 +107,25 @@ export async function authFetch(path: string, init: RequestInit = {}) {
       headers: buildAuthHeaders(accessToken, init.headers, init.body),
     })
 
-  const res = await request(token)
-  if (res.status !== 401) return res
-
-  try {
-    const newAccess = await refreshAccessToken()
-    return request(newAccess)
-  } catch (error) {
-    logout()
-    redirectToLogin()
-    throw error
+  let res = await request(token)
+  if (res.status === 401) {
+    try {
+      const newAccess = await refreshAccessToken()
+      res = await request(newAccess)
+    } catch {
+      logout()
+      redirectToLogin('expired')
+      throw new Error('Sesión expirada')
+    }
   }
+
+  if (res.status === 401) {
+    logout()
+    redirectToLogin('expired')
+    throw new Error('Sesión expirada')
+  }
+
+  return res
 }
 
 export async function fetchProfile(): Promise<UserProfile> {
@@ -233,6 +248,9 @@ export type AdminUser = {
   estado_cuenta_label: string
   tipo_cuenta: AccountTier
   tipo_cuenta_label: string
+  fecha_expiracion: string | null
+  is_expired: boolean
+  dias_restantes: number | null
   is_staff: boolean
   date_joined: string
   last_login: string | null
@@ -245,6 +263,8 @@ export type AdminUserUpdatePayload = {
   telefono?: string
   estado_cuenta?: AdminAccountStatus
   tipo_cuenta?: AccountTier
+  fecha_expiracion?: string | null
+  duracion?: string | number | null
 }
 
 export async function fetchAdminUsers(): Promise<AdminUser[]> {

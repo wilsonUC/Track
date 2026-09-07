@@ -10,7 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import (
     AsignacionMeta,
@@ -44,6 +44,7 @@ from .serializers import (
     AhorroSerializer,
     CategorySerializer,
     FinanzasTokenObtainPairSerializer,
+    FinanzasTokenRefreshSerializer,
     IaChatSerializer,
     AdminUsuarioSerializer,
     AdminUsuarioUpdateSerializer,
@@ -65,6 +66,10 @@ User = get_user_model()
 
 class FinanzasTokenObtainPairView(TokenObtainPairView):
     serializer_class = FinanzasTokenObtainPairSerializer
+
+
+class FinanzasTokenRefreshView(TokenRefreshView):
+    serializer_class = FinanzasTokenRefreshSerializer
 
 
 class CategoryViewSet(viewsets.ModelViewSet):

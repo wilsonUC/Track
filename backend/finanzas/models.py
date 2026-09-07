@@ -300,6 +300,28 @@ class PerfilUsuario(models.Model):
         choices=TipoCuenta.choices,
         default=TipoCuenta.BASICO,
     )
+    fecha_expiracion = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha y hora límite de acceso. Null significa acceso permanente.",
+    )
+
+    @property
+    def is_expired(self) -> bool:
+        if not self.fecha_expiracion:
+            return False
+        from django.utils import timezone
+        return timezone.now() > self.fecha_expiracion
+
+    @property
+    def dias_restantes(self) -> int | None:
+        if not self.fecha_expiracion:
+            return None
+        from django.utils import timezone
+        diff = self.fecha_expiracion - timezone.now()
+        if diff.total_seconds() <= 0:
+            return 0
+        return diff.days
 
     class Meta: 
         verbose_name = "Perfil de Usuario"

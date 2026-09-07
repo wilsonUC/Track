@@ -1224,6 +1224,56 @@ class TiposCuentaTests(FinanzasAPITestCase):
         self.user_basico.perfil.refresh_from_db()
         self.assertEqual(self.user_basico.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.AVANZADO)
 
+    def test_admin_puede_asignar_vigencia_y_expiracion(self):
+        self.autenticar(self.admin_user)
+
+        # Asignar 1 mes
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+        self.assertGreaterEqual(res.data["dias_restantes"], 29)
+
+        # Asignar 1 minuto (prueba)
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "1m"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+
+        # Asignar permanente
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "permanente"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+        self.assertIsNone(res.data["dias_restantes"])
+
+    def test_usuario_expirado_no_puede_loguear(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.user_basico.perfil.fecha_expiracion = timezone.now() - timedelta(minutes=2)
+        self.user_basico.perfil.save()
+
+        res = self.client.post(
+            "/api/token/",
+            {"username": self.user_basico.username, "password": "clavesegura1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("expir", str(res.data))
+
+
 
 
 

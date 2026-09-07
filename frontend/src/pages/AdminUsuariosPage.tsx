@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Activity,
+  Calendar,
   Check,
   CheckCircle2,
   Clock,
+  Hourglass,
   Loader2,
+  Mail,
   RefreshCw,
   Save,
   Search,
   Shield,
   ShieldAlert,
+  Sparkles,
   Trash2,
+  User,
   UserCheck,
   Users,
   UserX,
@@ -33,12 +39,75 @@ const TIPO_CUENTA_OPTIONS: CustomSelectOption<AccountTier>[] = [
   { value: 'avanzado', label: 'Avanzado' },
 ]
 
-function formatDate(value: string | null) {
-  if (!value) return { date: 'Sin ingreso', time: '' }
-  const d = new Date(value)
+const DURACION_OPTIONS: CustomSelectOption<string>[] = [
+  { value: '1m', label: '⚡ 1 minuto (Prueba)' },
+  { value: '1', label: '1 mes (30 d)' },
+  { value: '6', label: '6 meses (180 d)' },
+  { value: '12', label: '12 meses (1 año)' },
+  { value: 'permanente', label: 'Permanente ♾️' },
+]
+
+function formatVigencia(fecha?: string | null, isExpired?: boolean, diasRestantes?: number | null) {
+  if (!fecha) {
+    return {
+      badgeText: 'Permanente ♾️',
+      subText: 'Sin límite',
+      color: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+    }
+  }
+
+  const d = new Date(fecha.includes('T') ? fecha : fecha + 'T00:00:00')
+  const isTimeSpecific = fecha.includes('T')
+  const dateFormatted = isTimeSpecific
+    ? `${new Intl.DateTimeFormat('es-PE', { dateStyle: 'short' }).format(d)} ${new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit' }).format(d)}`
+    : new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(d)
+
+  const now = Date.now()
+  const diffMs = d.getTime() - now
+  const diffMinutes = Math.round(diffMs / (1000 * 60))
+
+  if (isExpired || diffMs <= 0 || (diasRestantes !== null && diasRestantes !== undefined && diasRestantes < 0)) {
+    return {
+      badgeText: 'Expirado',
+      subText: `Venció ${dateFormatted}`,
+      color: 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400',
+    }
+  }
+
+  if (diffMinutes >= 0 && diffMinutes <= 60 && isTimeSpecific) {
+    return {
+      badgeText: diffMinutes <= 1 ? '< 1 min restante' : `${diffMinutes} min restantes`,
+      subText: `Vence ${dateFormatted}`,
+      color: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    }
+  }
+
+  if (diasRestantes !== null && diasRestantes !== undefined) {
+    if (diasRestantes === 0) {
+      return {
+        badgeText: 'Vence hoy',
+        subText: dateFormatted,
+        color: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      }
+    }
+    if (diasRestantes <= 7) {
+      return {
+        badgeText: `${diasRestantes}d restantes`,
+        subText: `Vence ${dateFormatted}`,
+        color: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+      }
+    }
+    return {
+      badgeText: `${diasRestantes}d restantes`,
+      subText: `Vence ${dateFormatted}`,
+      color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    }
+  }
+
   return {
-    date: new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(d),
-    time: new Intl.DateTimeFormat('es-PE', { timeStyle: 'short' }).format(d),
+    badgeText: dateFormatted,
+    subText: 'Fecha límite',
+    color: 'border-slate-500/30 bg-slate-500/10 text-slate-600 dark:text-slate-400',
   }
 }
 
@@ -55,23 +124,38 @@ export function AdminUsuariosPage() {
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'todos' | AdminAccountStatus>('todos')
+  const [filterStatus, setFilterStatus] = useState<'todos' | AdminAccountStatus | 'expired'>('todos')
   const [filterTier, setFilterTier] = useState<'todos' | AccountTier>('todos')
 
   const stats = useMemo(() => {
     return users.reduce(
       (acc, user) => {
         acc.total += 1
-        acc[user.estado_cuenta] += 1
+        if (user.estado_cuenta === 'pending') {
+          acc.pending += 1
+        } else if (user.estado_cuenta === 'blocked') {
+          acc.blocked += 1
+        } else if (user.is_expired) {
+          acc.expired += 1
+        } else {
+          acc.active += 1
+        }
         return acc
       },
-      { total: 0, pending: 0, active: 0, blocked: 0 },
+      { total: 0, pending: 0, active: 0, expired: 0, blocked: 0 },
     )
   }, [users])
 
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
-      if (filterStatus !== 'todos' && u.estado_cuenta !== filterStatus) return false
+      if (filterStatus === 'expired') {
+        if (!u.is_expired) return false
+      } else if (filterStatus === 'active') {
+        if (u.estado_cuenta !== 'active' || u.is_expired) return false
+      } else if (filterStatus !== 'todos' && u.estado_cuenta !== filterStatus) {
+        return false
+      }
+
       if (filterTier !== 'todos' && u.tipo_cuenta !== filterTier) return false
 
       if (searchTerm.trim()) {
@@ -107,7 +191,7 @@ export function AdminUsuariosPage() {
     void loadUsers()
   }, [])
 
-  function updateDraft(id: number, field: keyof AdminUserUpdatePayload, value: string) {
+  function updateDraft(id: number, field: keyof AdminUserUpdatePayload, value: string | null) {
     setDrafts((current) => ({
       ...current,
       [id]: {
@@ -117,13 +201,23 @@ export function AdminUsuariosPage() {
     }))
   }
 
+  function resetDraft(id: number) {
+    setDrafts((current) => {
+      const copy = { ...current }
+      delete copy[id]
+      return copy
+    })
+  }
+
   function hasUserChanges(user: AdminUser, values: AdminUserUpdatePayload) {
     return (
       (values.first_name ?? '') !== (user.first_name ?? '') ||
       (values.last_name ?? '') !== (user.last_name ?? '') ||
       (values.email ?? '') !== (user.email ?? '') ||
       (values.telefono ?? '') !== (user.telefono ?? '') ||
-      values.tipo_cuenta !== user.tipo_cuenta
+      values.tipo_cuenta !== user.tipo_cuenta ||
+      values.duracion !== undefined ||
+      values.fecha_expiracion !== undefined
     )
   }
 
@@ -185,7 +279,6 @@ export function AdminUsuariosPage() {
 
   return (
     <section className="space-y-6 text-slate-900 dark:text-slate-100">
-
       {/* Alertas */}
       {error && (
         <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
@@ -202,7 +295,7 @@ export function AdminUsuariosPage() {
       )}
 
       {/* Tarjetas Superiores de Métricas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           label="Total usuarios"
           value={stats.total}
@@ -228,6 +321,14 @@ export function AdminUsuariosPage() {
           onClick={() => setFilterStatus(filterStatus === 'active' ? 'todos' : 'active')}
         />
         <StatCard
+          label="Expirados"
+          value={stats.expired}
+          icon={Hourglass}
+          tone="slate"
+          isActive={filterStatus === 'expired'}
+          onClick={() => setFilterStatus(filterStatus === 'expired' ? 'todos' : 'expired')}
+        />
+        <StatCard
           label="Bloqueados"
           value={stats.blocked}
           icon={UserX}
@@ -246,9 +347,6 @@ export function AdminUsuariosPage() {
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Usuarios registrados
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Aprueba cuentas nuevas, asigna planes Básico / Avanzado o bloquea accesos.
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -352,11 +450,13 @@ export function AdminUsuariosPage() {
                 email: draft.email ?? user.email,
                 telefono: draft.telefono ?? user.telefono,
                 tipo_cuenta: (draft.tipo_cuenta ?? user.tipo_cuenta ?? 'basico') as AccountTier,
+                duracion: draft.duracion,
+                fecha_expiracion: draft.fecha_expiracion,
               }
               const isSaving = savingId === user.id
               const isCurrentUser = user.username === currentUsername
               const hasChanges = hasUserChanges(user, values)
-              const lastLoginFormatted = formatDate(user.last_login)
+              const vigenciaInfo = formatVigencia(user.fecha_expiracion, user.is_expired, user.dias_restantes)
 
               return (
                 <div key={user.id} className="space-y-3 p-4">
@@ -370,7 +470,9 @@ export function AdminUsuariosPage() {
                         </span>
                       )}
                     </div>
-                    <StatusBadge status={user.estado_cuenta} label={user.estado_cuenta_label} />
+                    <div className="flex items-center gap-1.5">
+                      <StatusBadge status={user.estado_cuenta} label={user.estado_cuenta_label} isExpired={user.is_expired} />
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -415,19 +517,38 @@ export function AdminUsuariosPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="mb-1 block text-[10px] font-medium text-slate-400">Tipo de cuenta (Plan)</label>
-                    <CustomSelect<AccountTier>
-                      value={values.tipo_cuenta}
-                      onChange={(val) => updateDraft(user.id, 'tipo_cuenta', val)}
-                      options={TIPO_CUENTA_OPTIONS}
-                      triggerClassName="!py-1.5 !px-2.5 !text-xs !rounded-lg"
-                      dropdownClassName="!min-w-full"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-400">Plan</label>
+                      <CustomSelect<AccountTier>
+                        value={values.tipo_cuenta}
+                        onChange={(val) => updateDraft(user.id, 'tipo_cuenta', val)}
+                        options={TIPO_CUENTA_OPTIONS}
+                        triggerClassName="!py-1.5 !px-2.5 !text-xs !rounded-lg"
+                        dropdownClassName="!min-w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium text-slate-400">
+                        {user.estado_cuenta === 'pending' ? 'Duración al aprobar' : 'Vigencia / Duración'}
+                      </label>
+                      <CustomSelect<string>
+                        value={values.duracion ? String(values.duracion) : ''}
+                        placeholder={user.estado_cuenta === 'pending' ? '1 mes (por defecto)' : vigenciaInfo.badgeText}
+                        onChange={(val) => updateDraft(user.id, 'duracion', val)}
+                        options={DURACION_OPTIONS}
+                        triggerClassName="!py-1.5 !px-2.5 !text-xs !rounded-lg"
+                        dropdownClassName="!min-w-full"
+                      />
+                    </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-400">
-                    Último ingreso: <span className="font-semibold text-slate-600 dark:text-slate-300">{lastLoginFormatted.date} {lastLoginFormatted.time}</span>
+                  {/* Estado de vigencia actual */}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3 text-slate-400" />
+                      <span>Vigencia: <span className="font-semibold text-slate-600 dark:text-slate-300">{vigenciaInfo.badgeText} ({vigenciaInfo.subText})</span></span>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5 dark:border-slate-800">
@@ -438,7 +559,13 @@ export function AdminUsuariosPage() {
                         <button
                           type="button"
                           disabled={isSaving || deletingId === user.id}
-                          onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
+                          onClick={() =>
+                            saveUser(user, {
+                              estado_cuenta: 'active',
+                              tipo_cuenta: values.tipo_cuenta,
+                              duracion: values.duracion ?? '1',
+                            })
+                          }
                           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/20 hover:bg-emerald-500 disabled:opacity-60"
                         >
                           <Check className="h-3.5 w-3.5" />
@@ -479,6 +606,17 @@ export function AdminUsuariosPage() {
                           <Save className="h-3 w-3" />
                           <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
                         </button>
+                        {hasChanges && (
+                          <button
+                            type="button"
+                            disabled={isSaving}
+                            onClick={() => resetDraft(user.id)}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 hover:text-rose-500 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                            title="Deshacer cambios"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
 
                         {user.estado_cuenta === 'active' ? (
                           <button
@@ -520,14 +658,41 @@ export function AdminUsuariosPage() {
         {/* Vista Escritorio: Tabla Sin Scroll Horizontal (100% Ajustada) */}
         <div className="hidden md:block w-full overflow-visible">
           <table className="w-full table-fixed divide-y divide-slate-100 text-xs dark:divide-slate-800">
-            <thead className="bg-slate-50/80 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:bg-slate-800/40 dark:text-slate-400">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-center text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
               <tr>
-                <th className="w-[21%] px-4 py-3">Usuario</th>
-                <th className="w-[22%] px-3 py-3">Contacto</th>
-                <th className="w-[16%] px-3 py-3">Nivel / Plan</th>
-                <th className="w-[12%] px-3 py-3">Estado</th>
-                <th className="w-[14%] px-3 py-3">Último ingreso</th>
-                <th className="w-[15%] px-4 py-3 text-right">Acciones</th>
+                <th className="w-[19%] px-3.5 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Usuario</span>
+                  </div>
+                </th>
+                <th className="w-[20%] px-3 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Contacto</span>
+                  </div>
+                </th>
+                <th className="w-[14%] px-2.5 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Plan</span>
+                  </div>
+                </th>
+                <th className="w-[18%] px-2.5 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Vigencia</span>
+                  </div>
+                </th>
+                <th className="w-[13%] px-2.5 py-3">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Estado</span>
+                  </div>
+                </th>
+                <th className="w-[16%] px-3.5 py-3 text-center">
+                  <span>Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
@@ -546,11 +711,13 @@ export function AdminUsuariosPage() {
                     email: draft.email ?? user.email,
                     telefono: draft.telefono ?? user.telefono,
                     tipo_cuenta: (draft.tipo_cuenta ?? user.tipo_cuenta ?? 'basico') as AccountTier,
+                    duracion: draft.duracion,
+                    fecha_expiracion: draft.fecha_expiracion,
                   }
                   const isSaving = savingId === user.id
                   const isCurrentUser = user.username === currentUsername
                   const hasChanges = hasUserChanges(user, values)
-                  const lastLoginFormatted = formatDate(user.last_login)
+                  const vigenciaInfo = formatVigencia(user.fecha_expiracion, user.is_expired, user.dias_restantes)
 
                   return (
                     <tr
@@ -558,7 +725,7 @@ export function AdminUsuariosPage() {
                       className="relative focus-within:z-40 transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
                     >
                       {/* Usuario */}
-                      <td className="px-4 py-3.5 align-top">
+                      <td className="px-3.5 py-3.5 align-top">
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-1.5">
                             <span className="truncate font-bold text-slate-900 dark:text-slate-100">
@@ -611,13 +778,13 @@ export function AdminUsuariosPage() {
                       </td>
 
                       {/* Nivel / Plan */}
-                      <td className="px-3 py-3.5 align-top relative focus-within:z-50">
+                      <td className="px-2.5 py-3.5 align-top relative focus-within:z-50">
                         <div className="space-y-1">
                           <CustomSelect<AccountTier>
                             value={values.tipo_cuenta}
                             onChange={(val) => updateDraft(user.id, 'tipo_cuenta', val)}
                             options={TIPO_CUENTA_OPTIONS}
-                            triggerClassName="!py-1.5 !px-2.5 !text-xs !rounded-lg"
+                            triggerClassName="!py-1.5 !px-2 !text-xs !rounded-lg"
                             dropdownClassName="!min-w-full"
                           />
                           {hasChanges && values.tipo_cuenta !== user.tipo_cuenta && (
@@ -628,27 +795,47 @@ export function AdminUsuariosPage() {
                         </div>
                       </td>
 
-                      {/* Estado */}
-                      <td className="px-3 py-3.5 align-top">
-                        <div className="pt-1">
-                          <StatusBadge status={user.estado_cuenta} label={user.estado_cuenta_label} />
-                        </div>
-                      </td>
-
-                      {/* Último ingreso (Sin partirse) */}
-                      <td className="px-3 py-3.5 align-top whitespace-nowrap">
-                        <div className="pt-1 text-slate-600 dark:text-slate-300">
-                          <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">
-                            {lastLoginFormatted.date}
-                          </p>
-                          {lastLoginFormatted.time && (
-                            <p className="text-[10px] text-slate-400">{lastLoginFormatted.time}</p>
+                      {/* Vigencia / Vencimiento */}
+                      <td className="px-2.5 py-3.5 align-top relative focus-within:z-50">
+                        <div className="space-y-1">
+                          {user.estado_cuenta === 'pending' ? (
+                            <div>
+                              <CustomSelect<string>
+                                value={values.duracion ? String(values.duracion) : '1'}
+                                onChange={(val) => updateDraft(user.id, 'duracion', val)}
+                                options={DURACION_OPTIONS}
+                                triggerClassName="!py-1.5 !px-2 !text-xs !rounded-lg border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20"
+                                dropdownClassName="!min-w-full"
+                              />
+                              <span className="block text-[10px] text-slate-400 mt-0.5">Duración al aprobar</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <CustomSelect<string>
+                                value={values.duracion ? String(values.duracion) : ''}
+                                placeholder={vigenciaInfo.badgeText}
+                                onChange={(val) => updateDraft(user.id, 'duracion', val)}
+                                options={DURACION_OPTIONS}
+                                triggerClassName={`!py-1.5 !px-2 !text-xs !rounded-lg ${values.duracion ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}
+                                dropdownClassName="!min-w-full"
+                              />
+                              <span className="block text-[10px] text-slate-400 mt-0.5 truncate" title={vigenciaInfo.subText}>
+                                {values.duracion ? 'Cambio pendiente' : vigenciaInfo.subText}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </td>
 
+                      {/* Estado */}
+                      <td className="px-2.5 py-3.5 align-top">
+                        <div className="pt-1 flex justify-center">
+                          <StatusBadge status={user.estado_cuenta} label={user.estado_cuenta_label} isExpired={user.is_expired} />
+                        </div>
+                      </td>
+
                       {/* Acciones */}
-                      <td className="px-4 py-3.5 text-right align-top">
+                      <td className="px-3.5 py-3.5 text-right align-top">
                         <div className="flex flex-col items-end gap-1.5 w-full max-w-[130px] ml-auto">
                           {isCurrentUser ? (
                             <span className="text-[11px] text-slate-400 italic px-1 pt-1">Tu cuenta</span>
@@ -658,7 +845,13 @@ export function AdminUsuariosPage() {
                               <button
                                 type="button"
                                 disabled={isSaving || deletingId === user.id}
-                                onClick={() => saveUser(user, { estado_cuenta: 'active', tipo_cuenta: values.tipo_cuenta })}
+                                onClick={() =>
+                                  saveUser(user, {
+                                    estado_cuenta: 'active',
+                                    tipo_cuenta: values.tipo_cuenta,
+                                    duracion: values.duracion ?? '1',
+                                  })
+                                }
                                 className="inline-flex w-full items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-xs font-bold text-white shadow-xs shadow-emerald-600/25 transition hover:bg-emerald-500 disabled:opacity-60"
                                 title="Aprobar acceso a este usuario"
                               >
@@ -667,6 +860,17 @@ export function AdminUsuariosPage() {
                               </button>
 
                               <div className="flex w-full items-center gap-1">
+                                {hasChanges && (
+                                  <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={() => resetDraft(user.id)}
+                                    className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 transition hover:bg-slate-100 hover:text-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+                                    title="Deshacer cambios"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   disabled={isSaving || deletingId === user.id}
@@ -694,18 +898,35 @@ export function AdminUsuariosPage() {
                           ) : (
                             <>
                               {/* Usuario Activo o Bloqueado */}
-                              <button
-                                type="button"
-                                disabled={isSaving || deletingId === user.id}
-                                onClick={() => saveUser(user, values)}
-                                className={`w-full rounded-lg py-1.5 text-xs font-bold text-white transition shadow-xs ${
-                                  hasChanges
-                                    ? 'bg-indigo-600 hover:bg-indigo-500 ring-2 ring-indigo-500/20'
-                                    : 'bg-slate-700 hover:bg-slate-600'
-                                } disabled:opacity-60`}
-                              >
-                                {isSaving ? 'Guardando…' : 'Guardar'}
-                              </button>
+                              {hasChanges ? (
+                                <div className="flex w-full items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={isSaving || deletingId === user.id}
+                                    onClick={() => saveUser(user, values)}
+                                    className="flex-1 rounded-lg bg-indigo-600 py-1.5 text-xs font-bold text-white shadow-xs shadow-indigo-600/25 transition hover:bg-indigo-500 disabled:opacity-60"
+                                  >
+                                    {isSaving ? 'Guardando…' : 'Guardar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={() => resetDraft(user.id)}
+                                    className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-rose-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-rose-400"
+                                    title="Deshacer cambios"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="w-full rounded-lg bg-slate-700/60 py-1.5 text-xs font-bold text-slate-400 opacity-60"
+                                >
+                                  Guardar
+                                </button>
+                              )}
 
                               <div className="flex w-full items-center gap-1">
                                 {user.estado_cuenta === 'active' ? (
@@ -753,27 +974,43 @@ export function AdminUsuariosPage() {
   )
 }
 
-function StatusBadge({ status, label }: { status: AdminAccountStatus; label: string }) {
-  if (status === 'active') {
-    return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
-        <span>{label}</span>
-      </span>
-    )
-  }
+function StatusBadge({
+  status,
+  label,
+  isExpired,
+}: {
+  status: AdminAccountStatus
+  label: string
+  isExpired?: boolean
+}) {
   if (status === 'blocked') {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-        <span>{label}</span>
+        <span>Bloqueada</span>
+      </span>
+    )
+  }
+  if (status === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" />
+        <span>Pendiente</span>
+      </span>
+    )
+  }
+  if (isExpired) {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-500/30 bg-slate-500/10 px-2.5 py-0.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+        <span>Expirada</span>
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 animate-pulse" />
-      <span>{label}</span>
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+      <span>{label || 'Activa'}</span>
     </span>
   )
 }
@@ -789,7 +1026,7 @@ function StatCard({
   label: string
   value: number
   icon: typeof Users
-  tone: 'indigo' | 'amber' | 'emerald' | 'rose'
+  tone: 'indigo' | 'amber' | 'emerald' | 'rose' | 'slate'
   isActive?: boolean
   onClick?: () => void
 }) {
@@ -808,6 +1045,11 @@ function StatCard({
       border: 'hover:border-emerald-500/50',
       activeBorder: 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20',
       iconBox: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
+    },
+    slate: {
+      border: 'hover:border-slate-400/50',
+      activeBorder: 'border-slate-500 ring-2 ring-slate-500/20 bg-slate-100/40 dark:bg-slate-800/40',
+      iconBox: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20',
     },
     rose: {
       border: 'hover:border-rose-500/50',
