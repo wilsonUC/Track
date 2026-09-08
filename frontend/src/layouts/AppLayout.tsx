@@ -48,11 +48,16 @@ export function AppLayout() {
     fetchProfile()
       .then((data) => {
         if (cancelled) return
-        // Si la cuenta expiró y no es admin, cerrar sesión automáticamente
+        // Si la cuenta expiró o fue bloqueada y no es admin, cerrar sesión automáticamente
         const isExp = data.is_expired || (data.fecha_expiracion && new Date(data.fecha_expiracion).getTime() <= Date.now())
         if (!data.is_staff && isExp) {
           logout()
           window.location.href = '/login?expired=1'
+          return
+        }
+        if (!data.is_staff && data.estado_cuenta === 'blocked') {
+          logout()
+          window.location.href = '/login?blocked=1'
           return
         }
         setProfile(data)

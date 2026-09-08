@@ -87,6 +87,10 @@ User = get_user_model()
 class FinanzasTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Login JWT con control de aprobación/bloqueo y expiración para usuarios normales."""
 
+    default_error_messages = {
+        "no_active_account": "Usuario o contraseña incorrectos.",
+    }
+
     def validate(self, attrs):
         data = super().validate(attrs)
         user = self.user
