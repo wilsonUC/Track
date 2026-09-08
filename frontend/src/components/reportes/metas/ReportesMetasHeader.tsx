@@ -1,4 +1,5 @@
 import type { MetaReportFilter, MetasKpis } from '../reportesTypes'
+import { CustomSelect } from '../../ui/CustomSelect'
 
 type ReportesMetasHeaderProps = {
   filter: MetaReportFilter
@@ -18,38 +19,58 @@ export function ReportesMetasHeader({
     { id: 'completadas', label: 'Completadas', count: kpis.completadasCount },
   ]
 
+  const selectOptions = options.map((opt) => ({
+    value: opt.id,
+    label: `${opt.label} (${opt.count})`,
+  }))
+
   return (
-    <div
-      className="inline-flex rounded-full border border-slate-200/80 bg-white p-1 shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
-      role="group"
-      aria-label="Filtrar metas por estado"
-    >
-      {options.map((opt) => {
-        const isActive = filter === opt.id
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onFilterChange(opt.id)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 sm:px-4 ${
-              isActive
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <span>{opt.label}</span>
-            <span
-              className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+    <>
+      {/* Selector dropdown en mobile */}
+      <div className="w-full sm:hidden">
+        <CustomSelect
+          value={filter}
+          onChange={(val) => onFilterChange(val as MetaReportFilter)}
+          options={selectOptions}
+          ariaLabel="Filtrar metas por estado"
+          triggerClassName="py-2 bg-white/90 dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xs font-semibold text-xs"
+        />
+      </div>
+
+      {/* Píldoras en tablet / desktop */}
+      <div
+        className="hidden sm:inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-slate-200/80 bg-white/90 p-1 shadow-xs backdrop-blur-sm scrollbar-none dark:border-slate-800/80 dark:bg-slate-900/90"
+        role="group"
+        aria-label="Filtrar metas por estado"
+      >
+        {options.map((opt) => {
+          const isActive = filter === opt.id
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onFilterChange(opt.id)}
+              className={`flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 ${
                 isActive
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 dark:bg-indigo-600 dark:text-white'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              {opt.count}
-            </span>
-          </button>
-        )
-      })}
-    </div>
+              <span>{opt.label}</span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                  isActive
+                    ? 'bg-white/25 text-white'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                {opt.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </>
   )
 }
+

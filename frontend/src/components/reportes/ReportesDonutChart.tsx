@@ -34,8 +34,13 @@ export function ReportesDonutChart({ filter, segments, loading }: ReportesDonutC
       )}
 
       {!loading && segments.length === 0 && (
-        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-          <p className="px-4 text-center text-sm text-slate-500 dark:text-slate-400">Sin datos para este filtro</p>
+        <div className="flex h-44 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+            <PieChart className="h-5 w-5" aria-hidden />
+          </div>
+          <p className="max-w-xs text-xs font-medium text-slate-500 dark:text-slate-400">
+            Sin datos para este filtro
+          </p>
         </div>
       )}
 

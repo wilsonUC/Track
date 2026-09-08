@@ -131,9 +131,12 @@ export function CustomSelect<T extends string | number = string | number>({
             : 'cursor-pointer text-slate-800 dark:text-slate-100'
         } ${triggerClassName}`}
       >
-        <span className={`truncate ${!selectedOption && placeholder ? 'text-slate-400 dark:text-slate-500' : ''}`}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {selectedOption?.icon && <span className="shrink-0">{selectedOption.icon}</span>}
+          <span className={`truncate ${!selectedOption && placeholder ? 'text-slate-400 dark:text-slate-500' : ''}`}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ease-out dark:text-slate-400 ${
             isOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''
@@ -171,7 +174,10 @@ export function CustomSelect<T extends string | number = string | number>({
                       : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-slate-100'
                   }`}
                 >
-                  <span className="truncate">{opt.label}</span>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+                    <span className="truncate">{opt.label}</span>
+                  </div>
                   {isSelected && (
                     <Check className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />
                   )}

@@ -42,8 +42,13 @@ export function ReporteAhorrosChart({
         {loading ? (
           <div className="flex h-48 items-center justify-center text-sm text-slate-500">Cargando…</div>
         ) : monthlyPoints.every((p) => p.aportes === 0) ? (
-          <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-            <p className="text-sm text-slate-400">Sin depósitos de ahorro registrados en los últimos meses</p>
+          <div className="flex h-48 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <TrendingUp className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="max-w-xs text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+              Sin depósitos de ahorro registrados en los últimos meses
+            </p>
           </div>
         ) : (
           <div className="flex h-48 items-end justify-between border-b border-slate-100 px-2 pb-2 dark:border-slate-800 sm:px-6">
@@ -81,8 +86,13 @@ export function ReporteAhorrosChart({
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-slate-500">Cargando…</div>
         ) : composition.length === 0 ? (
-          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-            <p className="text-center text-xs text-slate-400">No hay ahorros activos actualmente</p>
+          <div className="flex h-44 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <PieChart className="h-4 w-4" aria-hidden />
+            </div>
+            <p className="max-w-xs text-xs font-medium text-slate-500 dark:text-slate-400">
+              No hay ahorros activos actualmente
+            </p>
           </div>
         ) : (
           <>

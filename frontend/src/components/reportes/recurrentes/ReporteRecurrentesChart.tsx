@@ -46,8 +46,13 @@ export function ReporteRecurrentesChart({ items, loading }: ReporteRecurrentesCh
         {loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-slate-500">Cargando…</div>
         ) : segments.length === 0 ? (
-          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-            <p className="text-xs text-slate-400">Sin gastos recurrentes registrados</p>
+          <div className="flex h-40 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <PieChart className="h-4 w-4" aria-hidden />
+            </div>
+            <p className="max-w-xs text-xs font-medium text-slate-500 dark:text-slate-400">
+              Sin gastos recurrentes registrados
+            </p>
           </div>
         ) : (
           <>
@@ -141,8 +146,13 @@ export function ReporteRecurrentesChart({ items, loading }: ReporteRecurrentesCh
         {loading ? (
           <div className="flex h-44 items-center justify-center text-sm text-slate-500">Cargando…</div>
         ) : items.length === 0 ? (
-          <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-            <p className="text-xs text-slate-400">Sin compromisos recurrentes</p>
+          <div className="flex h-44 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+              <Repeat className="h-5 w-5" aria-hidden />
+            </div>
+            <p className="max-w-xs text-xs font-medium text-slate-500 dark:text-slate-400">
+              Sin compromisos recurrentes registrados para este mes
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -308,9 +308,9 @@ export function ReportesPage() {
           <ReporteGeneralKpis kpis={generalData.kpis} loading={initialLoading} />
 
           {/* Filtro específico de ingresos/gastos */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-start">
             <div
-              className="inline-flex rounded-full border border-slate-200/80 bg-white p-1 shadow-sm dark:border-slate-800/80 dark:bg-slate-900/80"
+              className="flex w-full items-center rounded-2xl border border-slate-200/80 bg-white/90 p-1 shadow-xs backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/90 sm:w-auto sm:rounded-full"
               role="group"
               aria-label="Filtrar tipo de reporte general"
             >
@@ -319,7 +319,7 @@ export function ReportesPage() {
                   key={opt.id}
                   type="button"
                   onClick={() => setGeneralFilter(opt.id)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-200 sm:px-5 ${
+                  className={`flex-1 rounded-xl px-4 py-1.5 text-center text-xs font-semibold transition-all duration-200 sm:flex-none sm:rounded-full sm:px-5 ${
                     generalFilter === opt.id
                       ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                       : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'

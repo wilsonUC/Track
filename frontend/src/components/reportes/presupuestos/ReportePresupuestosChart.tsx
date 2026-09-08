@@ -43,8 +43,13 @@ export function ReportePresupuestosChart({ items, loading }: ReportePresupuestos
       {loading ? (
         <div className="flex h-44 items-center justify-center text-sm text-slate-500">Cargando…</div>
       ) : items.length === 0 ? (
-        <div className="flex h-44 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
-          <p className="text-sm text-slate-400">No hay presupuestos creados</p>
+        <div className="flex h-44 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed border-slate-200/80 bg-slate-50/50 p-6 text-center dark:border-slate-800/80 dark:bg-slate-900/30">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+            <BarChart3 className="h-5 w-5" aria-hidden />
+          </div>
+          <p className="max-w-xs text-xs font-medium text-slate-500 dark:text-slate-400">
+            No hay presupuestos creados para este período
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
