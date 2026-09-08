@@ -13,6 +13,8 @@ from .models import (
     Presupuesto,
     Recurrente,
     Transaction,
+    procesar_avatar_webp,
+    procesar_imagen_original_webp,
 )
 from .metas_service import (
     calcular_acumulado,
@@ -25,7 +27,7 @@ from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcula
 from .recurrentes_service import MESES_ES, calcular_estado_recurrente
 
 
-def perfil_desde_usuario(user):
+def perfil_desde_usuario(user, request=None):
     """Datos del usuario logueado para mostrar en la app."""
     try:
         perfil = user.perfil
@@ -36,6 +38,22 @@ def perfil_desde_usuario(user):
         fecha_expiracion = perfil.fecha_expiracion
         is_expired = perfil.is_expired
         dias_restantes = perfil.dias_restantes
+        foto_url = None
+        foto_original_url = None
+        if perfil.foto:
+            try:
+                foto_url = request.build_absolute_uri(perfil.foto.url) if request else perfil.foto.url
+            except Exception:
+                foto_url = perfil.foto.url
+        if perfil.foto_original:
+            try:
+                foto_original_url = (
+                    request.build_absolute_uri(perfil.foto_original.url)
+                    if request
+                    else perfil.foto_original.url
+                )
+            except Exception:
+                foto_original_url = perfil.foto_original.url
     except PerfilUsuario.DoesNotExist:
         telefono = ""
         estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA if user.is_staff else PerfilUsuario.EstadoCuenta.PENDIENTE
@@ -44,12 +62,16 @@ def perfil_desde_usuario(user):
         fecha_expiracion = None
         is_expired = False
         dias_restantes = None
+        foto_url = None
+        foto_original_url = None
     return {
         "username": user.username,
         "first_name": user.first_name or "",
         "last_name": user.last_name or "",
         "email": user.email,
         "telefono": telefono,
+        "foto": foto_url,
+        "foto_original": foto_original_url or foto_url,
         "estado_cuenta": estado_cuenta,
         "tipo_cuenta": tipo_cuenta,
         "tipo_cuenta_label": tipo_cuenta_label,
@@ -776,6 +798,7 @@ class RegistroSerializer(serializers.Serializer):
 
 class AdminUsuarioSerializer(serializers.ModelSerializer):
     telefono = serializers.CharField(source="perfil.telefono", default="")
+    foto = serializers.SerializerMethodField()
     estado_cuenta = serializers.CharField(source="perfil.estado_cuenta", default=PerfilUsuario.EstadoCuenta.PENDIENTE)
     estado_cuenta_label = serializers.SerializerMethodField()
     tipo_cuenta = serializers.CharField(source="perfil.tipo_cuenta", default=PerfilUsuario.TipoCuenta.BASICO)
@@ -793,6 +816,7 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "telefono",
+            "foto",
             "estado_cuenta",
             "estado_cuenta_label",
             "tipo_cuenta",
@@ -805,6 +829,17 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
             "last_login",
         ]
         read_only_fields = fields
+
+    def get_foto(self, obj):
+        try:
+            if obj.perfil.foto:
+                request = self.context.get("request")
+                if request:
+                    return request.build_absolute_uri(obj.perfil.foto.url)
+                return obj.perfil.foto.url
+        except Exception:
+            pass
+        return None
 
     def get_estado_cuenta_label(self, obj):
         try:
@@ -935,6 +970,9 @@ class PerfilUpdateSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     email = serializers.EmailField(required=False)
     telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    foto = serializers.ImageField(required=False, allow_null=True)
+    foto_original = serializers.ImageField(required=False, allow_null=True)
+    eliminar_foto = serializers.BooleanField(required=False, default=False)
 
     def validate_email(self, value):
         user = self.context["user"]
@@ -954,20 +992,51 @@ class PerfilUpdateSerializer(serializers.Serializer):
         user = self.context["user"]
         data = self.validated_data
         telefono = data.pop("telefono", None)
+        foto = data.pop("foto", _MISSING)
+        foto_original = data.pop("foto_original", _MISSING)
+        eliminar_foto = data.pop("eliminar_foto", False)
 
         for field in ("first_name", "last_name", "email"):
             if field in data:
                 setattr(user, field, data[field])
         user.save()
 
-        if telefono is not None:
-            perfil, created = PerfilUsuario.objects.get_or_create(
-                usuario=user,
-                defaults={"telefono": telefono},
-            )
-            if not created and perfil.telefono != telefono:
-                perfil.telefono = telefono
-                perfil.save()
+        perfil, created = PerfilUsuario.objects.get_or_create(
+            usuario=user,
+            defaults={"telefono": telefono or ""},
+        )
+        needs_perfil_save = False
+
+        if telefono is not None and not created and perfil.telefono != telefono:
+            perfil.telefono = telefono
+            needs_perfil_save = True
+
+        if eliminar_foto:
+            if perfil.foto:
+                perfil.foto.delete(save=False)
+                perfil.foto = None
+                needs_perfil_save = True
+            if perfil.foto_original:
+                perfil.foto_original.delete(save=False)
+                perfil.foto_original = None
+                needs_perfil_save = True
+        else:
+            if foto_original is not _MISSING and foto_original is not None:
+                orig_content = procesar_imagen_original_webp(foto_original)
+                perfil.foto_original.save(f"orig_user_{user.id}.webp", orig_content, save=False)
+                needs_perfil_save = True
+
+            if foto is not _MISSING and foto is not None:
+                foto_content = procesar_avatar_webp(foto)
+                perfil.foto.save(f"user_{user.id}.webp", foto_content, save=False)
+                # Si no se pasó foto_original pero tampoco tiene una guardada, guardar la fuente como original
+                if not perfil.foto_original and foto_original is _MISSING:
+                    orig_content = procesar_imagen_original_webp(foto)
+                    perfil.foto_original.save(f"orig_user_{user.id}.webp", orig_content, save=False)
+                needs_perfil_save = True
+
+        if needs_perfil_save:
+            perfil.save()
 
         return user
 

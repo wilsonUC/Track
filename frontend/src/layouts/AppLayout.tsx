@@ -108,8 +108,9 @@ export function AppLayout() {
   }
 
   const displayName = profile ? profileDisplayName(profile) : '…'
+  const userEmail = profile?.email || ''
   const userInitial = profile ? profileInitial(profile) : '…'
-  const userEmail = profile?.email ?? ''
+  const userFoto = profile?.foto || null
   const isStaff = profile?.is_staff ?? false
   const isAvanzado = isStaff || profile?.tipo_cuenta === 'avanzado'
   const isAdminPath = pathname.startsWith('/admin')
@@ -142,6 +143,7 @@ export function AppLayout() {
         displayName={displayName}
         email={userEmail}
         initial={userInitial}
+        foto={userFoto}
         isStaff={isStaff}
         isAvanzado={isAvanzado}
       />
@@ -156,6 +158,7 @@ export function AppLayout() {
                 displayName={displayName}
                 userEmail={userEmail}
                 userInitial={userInitial}
+                userFoto={userFoto}
                 isStaff={isStaff}
                 onOpenNewTransaction={handleOpenNewTransaction}
                 onLogout={handleLogout}
@@ -177,6 +180,9 @@ export function AppLayout() {
                 setHeaderExtra,
                 onLogout: handleLogout,
                 isAvanzado,
+                userFoto,
+                userInitial,
+                profile,
               }}
             />
           </div>

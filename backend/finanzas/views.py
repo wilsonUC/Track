@@ -7,6 +7,7 @@ from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -869,19 +870,20 @@ class ConsejosView(APIView):
 
 class PerfilView(APIView):
     """GET/PATCH /api/perfil/ — datos y actualización del usuario logueado."""
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        return Response(perfil_desde_usuario(request.user))
+        return Response(perfil_desde_usuario(request.user, request=request))
 
     def patch(self, request):
         serializer = PerfilUpdateSerializer(
             data=request.data,
             partial=True,
-            context={"user": request.user},
+            context={"user": request.user, "request": request},
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(perfil_desde_usuario(request.user))
+        return Response(perfil_desde_usuario(request.user, request=request))
 
 
 class PreferenciasView(APIView):
@@ -946,7 +948,7 @@ class AdminUsuariosView(APIView):
 
     def get(self, request):
         usuarios = User.objects.select_related("perfil").order_by("-date_joined")
-        serializer = AdminUsuarioSerializer(usuarios, many=True)
+        serializer = AdminUsuarioSerializer(usuarios, many=True, context={"request": request})
         return Response(serializer.data)
 
 
@@ -975,12 +977,12 @@ class AdminUsuarioDetalleView(APIView):
         serializer = AdminUsuarioUpdateSerializer(
             data=request.data,
             partial=True,
-            context={"user": user},
+            context={"user": user, "request": request},
         )
         serializer.is_valid(raise_exception=True)
         updated_user = serializer.save()
         updated_user = User.objects.select_related("perfil").get(pk=updated_user.pk)
-        return Response(AdminUsuarioSerializer(updated_user).data)
+        return Response(AdminUsuarioSerializer(updated_user, context={"request": request}).data)
 
     def delete(self, request, user_id):
         try:

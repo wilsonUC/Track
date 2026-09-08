@@ -5,6 +5,8 @@ import type { IaMensaje } from './iaTypes'
 
 type IaMessageBubbleProps = {
   mensaje: IaMensaje
+  userFoto?: string | null
+  userInitial?: string
 }
 
 function renderFormattedNode(node: React.ReactNode): React.ReactNode {
@@ -28,24 +30,35 @@ function renderFormattedNode(node: React.ReactNode): React.ReactNode {
   return node
 }
 
-export function IaMessageBubble({ mensaje }: IaMessageBubbleProps) {
+export function IaMessageBubble({ mensaje, userFoto, userInitial }: IaMessageBubbleProps) {
   const isUser = mensaje.remitente === 'USER'
 
   return (
     <div
-      className={`flex max-w-[90%] sm:max-w-[85%] items-start gap-3.5 ${
+      className={`flex max-w-[90%] sm:max-w-[85%] items-start gap-3 ${
         isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'
       }`}
     >
-      <div
-        className={`shrink-0 rounded-xl p-2.5 shadow-sm ${
-          isUser
-            ? 'bg-indigo-600 text-white'
-            : 'border border-slate-100 bg-white text-indigo-600 dark:border-slate-800 dark:bg-slate-900 dark:text-indigo-400'
-        }`}
-      >
-        {isUser ? <User className="h-4 w-4" aria-hidden /> : <Bot className="h-4 w-4" aria-hidden />}
-      </div>
+      {/* Avatar del remitente */}
+      {isUser ? (
+        userFoto ? (
+          <div className="shrink-0 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 shadow-xs dark:from-indigo-400 dark:via-teal-400 dark:to-cyan-400">
+            <img
+              src={userFoto}
+              alt="Tú"
+              className="h-8 w-8 rounded-full object-cover border border-white/80 dark:border-slate-800"
+            />
+          </div>
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-xs font-bold text-white shadow-xs">
+            {userInitial || <User className="h-4 w-4" aria-hidden />}
+          </div>
+        )
+      ) : (
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-indigo-600 shadow-xs dark:border-slate-800 dark:bg-slate-800 dark:text-indigo-400">
+          <Bot className="h-4 w-4" aria-hidden />
+        </div>
+      )}
 
       <div className="max-w-full space-y-1 overflow-hidden">
         <div

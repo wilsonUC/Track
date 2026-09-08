@@ -15,6 +15,8 @@ export type UserProfile = {
   last_name: string
   email: string
   telefono: string
+  foto?: string | null
+  foto_original?: string | null
   estado_cuenta: 'pending' | 'active' | 'blocked'
   tipo_cuenta?: AccountTier
   tipo_cuenta_label?: string
@@ -153,6 +155,37 @@ export async function updateProfile(data: ProfileUpdatePayload): Promise<UserPro
   return res.json()
 }
 
+export async function uploadProfilePhoto(file: File, originalFile?: File): Promise<UserProfile> {
+  const formData = new FormData()
+  formData.append('foto', file)
+  if (originalFile) {
+    formData.append('foto_original', originalFile)
+  }
+  const res = await authFetch('/api/perfil/', {
+    method: 'PATCH',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.foto?.[0] || err.detail || 'Error al subir la imagen')
+  }
+  return res.json()
+}
+
+export async function removeProfilePhoto(): Promise<UserProfile> {
+  const formData = new FormData()
+  formData.append('eliminar_foto', 'true')
+  const res = await authFetch('/api/perfil/', {
+    method: 'PATCH',
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Error al eliminar la foto')
+  }
+  return res.json()
+}
+
 export type ChangePasswordPayload = {
   current_password: string
   new_password: string
@@ -244,6 +277,7 @@ export type AdminUser = {
   last_name: string
   email: string
   telefono: string
+  foto?: string | null
   estado_cuenta: AdminAccountStatus
   estado_cuenta_label: string
   tipo_cuenta: AccountTier

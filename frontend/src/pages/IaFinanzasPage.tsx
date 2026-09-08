@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useOutletContext } from 'react-router-dom'
+import type { UserProfile } from '../api/auth'
 import { IaChatPanel } from '../components/ia/IaChatPanel'
 import { IaChatToolbar } from '../components/ia/IaChatToolbar'
 import { useIaChat } from '../hooks/useIaChat'
@@ -8,8 +9,18 @@ type IaLocationState = {
   preguntaSugerida?: string
 }
 
+type IaOutletContext = {
+  userFoto?: string | null
+  userInitial?: string
+  profile?: UserProfile | null
+}
+
 export function IaFinanzasPage() {
   const location = useLocation()
+  const outletCtx = useOutletContext<IaOutletContext | undefined>()
+  const userFoto = outletCtx?.userFoto ?? outletCtx?.profile?.foto
+  const userInitial = outletCtx?.userInitial
+
   const {
     mensajes,
     input,
@@ -37,6 +48,8 @@ export function IaFinanzasPage() {
         chatEndRef={chatEndRef}
         onInputChange={setInput}
         onSubmit={manejarEnviar}
+        userFoto={userFoto}
+        userInitial={userInitial}
       />
     </section>
   )

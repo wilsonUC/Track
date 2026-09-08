@@ -11,6 +11,7 @@ type SidebarProps = {
   displayName: string
   email: string
   initial: string
+  foto?: string | null
   isStaff: boolean
   isAvanzado?: boolean
 }
@@ -27,7 +28,7 @@ function disabledNavClassName() {
   return 'flex w-full min-w-0 cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm text-indigo-300/50 opacity-70 dark:text-slate-600'
 }
 
-export function Sidebar({ onLogout, displayName, email, initial, isStaff, isAvanzado = false }: SidebarProps) {
+export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, isAvanzado = false }: SidebarProps) {
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.adminOnly && !isStaff) return false
     if (item.advancedOnly && !isAvanzado && !isStaff) return false
@@ -94,9 +95,19 @@ export function Sidebar({ onLogout, displayName, email, initial, isStaff, isAvan
           aria-label="Mi cuenta"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white dark:bg-slate-600">
-              {initial}
-            </div>
+            {foto ? (
+              <div className="shrink-0 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-300 via-teal-300 to-indigo-200 dark:from-indigo-500 dark:via-teal-400 dark:to-cyan-400 shadow-xs">
+                <img
+                  src={foto}
+                  alt={displayName}
+                  className="h-9 w-9 rounded-full object-cover border border-white/40 dark:border-slate-800"
+                />
+              </div>
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white shadow-xs ring-1 ring-white/20 dark:bg-slate-600">
+                {initial}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{displayName}</p>
               <p className="truncate text-xs text-indigo-200 dark:text-slate-400">{email || '—'}</p>

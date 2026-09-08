@@ -12,6 +12,7 @@ type MainHeaderProps = {
   displayName: string
   userEmail?: string
   userInitial?: string
+  userFoto?: string | null
   isStaff?: boolean
   onOpenNewTransaction: () => void
   onLogout?: () => void
@@ -42,6 +43,7 @@ export function MainHeader({
   displayName,
   userEmail = '',
   userInitial,
+  userFoto,
   isStaff = false,
   onOpenNewTransaction,
   onLogout,
@@ -173,9 +175,19 @@ export function MainHeader({
               aria-expanded={isMenuOpen}
               aria-haspopup="true"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-xs font-bold text-white shadow-sm shadow-indigo-500/20">
-                {userInitial || (displayName ? displayName.charAt(0).toUpperCase() : 'U')}
-              </div>
+              {userFoto ? (
+                <div className="rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 dark:from-indigo-400 dark:via-teal-400 dark:to-cyan-400 shadow-xs">
+                  <img
+                    src={userFoto}
+                    alt={displayName}
+                    className="h-8 w-8 rounded-full object-cover border border-white/60 dark:border-slate-850"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-xs font-bold text-white shadow-sm shadow-indigo-500/20">
+                  {userInitial || (displayName ? displayName.charAt(0).toUpperCase() : 'U')}
+                </div>
+              )}
             </button>
 
             {isMenuOpen && (

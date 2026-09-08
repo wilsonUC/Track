@@ -1,5 +1,51 @@
+import io
+import uuid
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+from PIL import Image, ImageOps
+
+
+def foto_perfil_upload_to(instance, filename):
+    unique_id = uuid.uuid4().hex[:8]
+    return f"perfiles/user_{instance.usuario_id}_{unique_id}.webp"
+
+
+def foto_original_upload_to(instance, filename):
+    unique_id = uuid.uuid4().hex[:8]
+    return f"perfiles/orig_user_{instance.usuario_id}_{unique_id}.webp"
+
+
+def procesar_avatar_webp(imagen_file, target_size=(400, 400), quality=85):
+    """Corrige rotación EXIF, recorta al centro y comprime en formato WebP."""
+    img = Image.open(imagen_file)
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        img = img.convert("RGBA")
+    else:
+        img = img.convert("RGB")
+    img = ImageOps.fit(img, target_size, Image.Resampling.LANCZOS)
+    output = io.BytesIO()
+    img.save(output, format="WEBP", quality=quality, optimize=True)
+    output.seek(0)
+    return ContentFile(output.read())
+
+
+def procesar_imagen_original_webp(imagen_file, max_size=(1600, 1600), quality=90):
+    """Corrige orientación EXIF y guarda la foto original completa (sin recortar) comprimida en WebP."""
+    img = Image.open(imagen_file)
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        img = img.convert("RGBA")
+    else:
+        img = img.convert("RGB")
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+    output = io.BytesIO()
+    img.save(output, format="WEBP", quality=quality, optimize=True)
+    output.seek(0)
+    return ContentFile(output.read())
 
 
 # Create your models here.
@@ -300,6 +346,18 @@ class PerfilUsuario(models.Model):
         choices=TipoCuenta.choices,
         default=TipoCuenta.BASICO,
     )
+    foto = models.ImageField(
+        upload_to=foto_perfil_upload_to,
+        null=True,
+        blank=True,
+        help_text="Foto de perfil recortada del usuario.",
+    )
+    foto_original = models.ImageField(
+        upload_to=foto_original_upload_to,
+        null=True,
+        blank=True,
+        help_text="Foto original completa sin recortar.",
+    )
     fecha_expiracion = models.DateTimeField(
         null=True,
         blank=True,
@@ -323,12 +381,34 @@ class PerfilUsuario(models.Model):
             return 0
         return diff.days
 
+    def save(self, *args, **kwargs):
+        # Si se actualiza el perfil y cambió la foto, eliminar el archivo físico antiguo del disco
+        if self.pk:
+            try:
+                perfil_previo = PerfilUsuario.objects.get(pk=self.pk)
+                if perfil_previo.foto and perfil_previo.foto != self.foto:
+                    perfil_previo.foto.delete(save=False)
+                if perfil_previo.foto_original and perfil_previo.foto_original != self.foto_original:
+                    perfil_previo.foto_original.delete(save=False)
+            except PerfilUsuario.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+
     class Meta: 
         verbose_name = "Perfil de Usuario"
         verbose_name_plural = "Perfiles de Usuarios"
 
     def __str__(self):
         return f"{self.usuario.username} - {self.telefono}"
+
+
+@receiver(post_delete, sender=PerfilUsuario)
+def auto_delete_foto_on_perfil_delete(sender, instance, **kwargs):
+    """Elimina los archivos físicos de fotos si se elimina el perfil de usuario."""
+    if instance.foto:
+        instance.foto.delete(save=False)
+    if instance.foto_original:
+        instance.foto_original.delete(save=False)
 
 
 class PreferenciasUsuario(models.Model):
