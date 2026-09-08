@@ -16,9 +16,37 @@ from django.db.models.functions import Coalesce
 from .models import MetaAhorro, Presupuesto, Recurrente, Transaction
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "openai/gpt-oss-20b"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
+FALLBACK_MODEL = "openai/gpt-oss-20b"
 MAX_HISTORY = 10
 MAX_RECENT_TX = 25
+
+CATALOGO_OPORTUNIDADES_INVERSION = """
+=== CATÁLOGO DE OPORTUNIDADES DE INVERSIÓN EXTERNAS RECOMENDADAS (INMOBILIARIA) ===
+[IMPORTANTE PARA LA IA: Esta es información de activos u oportunidades de inversión externas recomendadas por la plataforma. NO pertenece a los ingresos, gastos ni deudas personales del usuario. Mantén esta información estrictamente aislada y separada de las finanzas personales del usuario.]
+
+1. PROYECTO INMOBILIARIO: "Las Bugambilias" (Desarrolladora: INNOVA Inversiones)
+- Tipo de Inversión: Compra de lotes y terrenos campestres / residenciales en zona de alta plusvalía y desarrollo.
+- Ubicación: La Joya, Arequipa, Perú (zona campestre con sol y excelente clima todo el año).
+- Condiciones Comerciales y Facilidades de Pago:
+  * Cuotas mensuales accesibles desde S/ 199.
+  * Cuota inicial mínima desde S/ 1,998.
+  * Precio referencial financiable / saldo total: aprox. S/ 7,990.
+  * Plazos flexibles de 3 a 24 meses con CRÉDITO DIRECTO (sin bancos, sin intermediarios, sin evaluación crediticia).
+  * Descuento al contado de hasta S/ 1,000.
+  * Descuentos y promociones especiales por la adquisición de 2 lotes.
+- Características del Proyecto y Amenidades:
+  * Más de 16,000 m² de áreas verdes y espacios de recreación al aire libre.
+  * Zonas familiares de esparcimiento, parrillas y recreación campestre (zona de caja china).
+  * Respaldo y Confianza: Desarrollado por INNOVA Inversiones con más de 15 años de experiencia, más de 5 residenciales en el país y más de 150 familias propietarias felices.
+  * Proceso de compra 100% legal, seguro y con titulación garantizada.
+  * Beneficio adicional exclusivo: Planos arquitectónicos en PDF de regalo para el diseño y construcción de la casa al contactar y cotizar.
+  * Programa "Refiere y Gana con INNOVA": Gana hasta S/ 300 en efectivo o como descuento directo a tu lote por cada familiar o amigo referido que adquiera su terreno.
+- Canales de Contacto:
+  * WhatsApp Oficial: +51 926 289 293
+  * Oficina Principal: Calle Octavio Muñoz Najar N° 137, Oficina 204, Cercado, Arequipa.
+  * Web oficial del proyecto: https://www.innovainversiones.com/lasbugambilias
+"""
 
 
 def _decimal(value) -> Decimal:
@@ -495,7 +523,7 @@ def build_financial_context(user) -> str:
             )
 
             total_obj_metas = sum((m.monto_objetivo for m in metas), Decimal("0"))
-            total_acum_metas = sum((m.acumulado for m in metas), Decimal("0"))
+            total_acum_metas = sum((calcular_acumulado(m) for m in metas), Decimal("0"))
             pct_global_metas = (
                 round(float(total_acum_metas / total_obj_metas * 100)) if total_obj_metas > 0 else 0
             )
@@ -507,14 +535,14 @@ def build_financial_context(user) -> str:
             lines.append("Detalle por Meta:")
 
             for meta in metas:
-                acumulado = meta.acumulado
+                acumulado = calcular_acumulado(meta)
                 pct = calcular_porcentaje(acumulado, meta.monto_objetivo)
-                estado = calcular_estado_meta(acumulado, meta.monto_objetivo)
+                estado = calcular_estado_meta(meta, today)
                 faltante = max(Decimal("0"), meta.monto_objetivo - acumulado)
                 cat_ref = meta.categoria_referencia.nombre if meta.categoria_referencia else "General"
                 modo_str = "Libre" if meta.es_asignacion_libre else "Vinculada"
 
-                sugerido = calcular_ahorro_sugerido(meta)
+                sugerido = calcular_ahorro_sugerido(meta, today)
                 sugerido_str = f" | Ahorro sugerido/mes: S/ {sugerido:.2f}" if sugerido is not None else ""
 
                 if meta.fecha_inicio and meta.fecha_limite:
@@ -589,8 +617,10 @@ def _system_prompt(context: str, is_avanzado: bool = True) -> str:
         "6. FONDO DE AHORROS: En el historial de ahorros, la columna se llama 'Descripción'. Diferencia claramente: (a) Total Ahorrado (fondo acumulado), (b) Asignado a Metas, (c) Ahorro Libre, y (d) Saldo disponible para apartar.\n"
         "7. PRESUPUESTOS: Si el usuario pregunta por presupuestos, reporta el progreso mensual (gastado vs límite, porcentaje de consumo y margen restante). Si te piden el desglose o consumos de un presupuesto, menciona sus consumos registrados.\n"
         "8. METAS DE AHORRO: En las tablas de metas, respeta estrictamente las columnas: (a) 'Meta' (nombre exacto de la meta, ej. '1', 'meta 1'; NUNCA mezcles la categoría ni inventes números de orden como '2'), (b) 'Categoría' (ej. Hogar, Servicios; NUNCA pongas aquí la palabra 'Libre' o 'Vinculada'), (c) 'Modo' (Libre o Vinculada), y luego 'Acumulado', 'Objetivo', 'Progreso', 'Faltante' y 'Ahorro sugerido'.\n"
-        "9. FORMATO DE TABLAS: Usa Markdown estándar (GFM) limpio y conciso con montos en soles (S/). Los encabezados deben ser simples y limpios (ej. 'Fecha', 'Monto', 'Categoría', 'Descripción', 'Meta', 'Modo'), sin añadir aclaraciones entre paréntesis ni frases meta.\n\n"
-        f"DATOS REALES DEL USUARIO:\n{context}"
+        "9. FORMATO DE TABLAS: Usa Markdown estándar (GFM) limpio y conciso con montos en soles (S/). Los encabezados deben ser simples y limpios (ej. 'Fecha', 'Monto', 'Categoría', 'Descripción', 'Meta', 'Modo'), sin añadir aclaraciones entre paréntesis ni frases meta.\n"
+        "10. OPORTUNIDADES DE INVERSIÓN EXTERNAS: Si el usuario pregunta por opciones de inversión, bienes raíces, compra de terrenos, o sobre el proyecto Las Bugambilias / INNOVA Inversiones, utiliza la información detallada en el CATÁLOGO DE OPORTUNIDADES DE INVERSIÓN EXTERNAS. Explica las facilidades de cuotas desde S/ 199/mes, cuota inicial desde S/ 1,998, crédito directo sin bancos, alta plusvalía en La Joya (Arequipa), más de 16,000 m² de áreas verdes, regalos de planos arquitectónicos en PDF y canales de contacto (WhatsApp +51 926 289 293 / web). NUNCA mezcles estos montos como gastos o deudas actuales del usuario.\n\n"
+        f"DATOS REALES DEL USUARIO:\n{context}\n\n"
+        f"{CATALOGO_OPORTUNIDADES_INVERSION}"
     )
 
 
@@ -605,19 +635,16 @@ def _normalize_history(historial: list[dict]) -> list[dict]:
     return messages
 
 
-def request_groq_completion(
+def _single_groq_request(
     *,
+    api_key: str,
+    model: str,
     messages: list[dict],
-    temperature: float = 0.7,
-    max_tokens: int = 1024,
-    response_format: dict | None = None,
-    timeout: int = 45,
+    temperature: float,
+    max_tokens: int,
+    response_format: dict | None,
+    timeout: int,
 ) -> str:
-    api_key = (getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY no está configurada en el servidor.")
-
-    model = getattr(settings, "GROQ_MODEL", DEFAULT_MODEL) or DEFAULT_MODEL
     payload: dict = {
         "model": model,
         "messages": messages,
@@ -634,7 +661,7 @@ def request_groq_completion(
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "User-Agent": "FinanzasTrack/1.0 (Django backend)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
         method="POST",
     )
@@ -644,26 +671,59 @@ def request_groq_completion(
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 data = json.loads(response.read().decode("utf-8"))
-            break
+            return data["choices"][0]["message"]["content"].strip()
         except urllib.error.HTTPError as exc:
             is_retryable_status = exc.code == 429 or (500 <= exc.code <= 599)
             if is_retryable_status and attempt < max_retries - 1:
-                sleep_time = 2 ** attempt
-                time.sleep(sleep_time)
+                time.sleep(1.5 * (attempt + 1))
                 continue
             body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Groq respondió con error ({exc.code}): {body}") from exc
+            raise RuntimeError(f"Groq ({model}) respondió con error ({exc.code}): {body}") from exc
         except urllib.error.URLError as exc:
             if attempt < max_retries - 1:
-                sleep_time = 2 ** attempt
-                time.sleep(sleep_time)
+                time.sleep(1.5 * (attempt + 1))
                 continue
-            raise RuntimeError(f"No se pudo conectar con Groq: {exc.reason}") from exc
+            raise RuntimeError(f"No se pudo conectar con Groq ({model}): {exc.reason}") from exc
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"Respuesta inesperada de Groq ({model}).") from exc
 
-    try:
-        return data["choices"][0]["message"]["content"].strip()
-    except (KeyError, IndexError, TypeError) as exc:
-        raise RuntimeError("Respuesta inesperada de Groq.") from exc
+    raise RuntimeError(f"Groq ({model}) no respondió tras múltiples intentos.")
+
+
+def request_groq_completion(
+    *,
+    messages: list[dict],
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    response_format: dict | None = None,
+    timeout: int = 45,
+) -> str:
+    api_key = (getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY no está configurada en el servidor.")
+
+    primary_model = getattr(settings, "GROQ_MODEL", DEFAULT_MODEL) or DEFAULT_MODEL
+    models_to_try = [primary_model]
+    if FALLBACK_MODEL and FALLBACK_MODEL not in models_to_try:
+        models_to_try.append(FALLBACK_MODEL)
+
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            return _single_groq_request(
+                api_key=api_key,
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                response_format=response_format,
+                timeout=timeout,
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            continue
+
+    raise last_error or RuntimeError("No se pudo completar la solicitud con Groq.")
 
 
 def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -> str:

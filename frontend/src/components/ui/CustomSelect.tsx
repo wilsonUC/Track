@@ -16,6 +16,7 @@ export type CustomSelectProps<T extends string | number = string | number> = {
   className?: string
   triggerClassName?: string
   dropdownClassName?: string
+  direction?: 'auto' | 'top' | 'bottom'
   id?: string
   ariaLabel?: string
 }
@@ -29,13 +30,52 @@ export function CustomSelect<T extends string | number = string | number>({
   className = '',
   triggerClassName = '',
   dropdownClassName = '',
+  direction = 'auto',
   id,
   ariaLabel,
 }: CustomSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false)
+  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom')
+  const [maxMenuHeight, setMaxMenuHeight] = useState<number>(240)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((opt) => opt.value === value)
+
+  const calculatePlacement = () => {
+    if (direction === 'top') {
+      setPlacement('top')
+      setMaxMenuHeight(240)
+      return
+    }
+    if (direction === 'bottom') {
+      setPlacement('bottom')
+      setMaxMenuHeight(240)
+      return
+    }
+
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+    const menuDesiredHeight = 220
+
+    // Si no hay suficiente espacio abajo (menos de 220px) y arriba hay más espacio
+    if (spaceBelow < menuDesiredHeight && spaceAbove > spaceBelow) {
+      setPlacement('top')
+      setMaxMenuHeight(Math.min(280, Math.max(120, spaceAbove - 20)))
+    } else {
+      setPlacement('bottom')
+      setMaxMenuHeight(Math.min(280, Math.max(120, spaceBelow - 20)))
+    }
+  }
+
+  const handleToggle = () => {
+    if (disabled) return
+    if (!isOpen) {
+      calculatePlacement()
+    }
+    setIsOpen((prev) => !prev)
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -50,14 +90,24 @@ export function CustomSelect<T extends string | number = string | number>({
       }
     }
 
+    function handleScrollOrResize() {
+      if (isOpen) {
+        calculatePlacement()
+      }
+    }
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleKeyDown)
+      window.addEventListener('resize', handleScrollOrResize)
+      window.addEventListener('scroll', handleScrollOrResize, true)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('resize', handleScrollOrResize)
+      window.removeEventListener('scroll', handleScrollOrResize, true)
     }
   }, [isOpen])
 
@@ -70,7 +120,7 @@ export function CustomSelect<T extends string | number = string | number>({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-left text-sm font-medium transition-all shadow-xs ${
           isOpen
             ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-white dark:bg-slate-800 dark:border-indigo-500'
@@ -95,7 +145,12 @@ export function CustomSelect<T extends string | number = string | number>({
       {isOpen && (
         <div
           role="listbox"
-          className={`absolute left-0 top-full z-50 mt-1.5 max-h-64 w-full min-w-[200px] origin-top overflow-y-auto rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-2xl backdrop-blur-md transition-all dark:border-slate-700/80 dark:bg-slate-900/95 ${dropdownClassName}`}
+          style={{ maxHeight: `${maxMenuHeight}px` }}
+          className={`absolute left-0 z-50 w-full min-w-[200px] overflow-y-auto rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-2xl backdrop-blur-md transition-all dark:border-slate-700/80 dark:bg-slate-900 ${
+            placement === 'top'
+              ? 'bottom-full mb-1.5 origin-bottom animate-in fade-in slide-in-from-bottom-2 duration-150'
+              : 'top-full mt-1.5 origin-top animate-in fade-in slide-in-from-top-2 duration-150'
+          } ${dropdownClassName}`}
         >
           <div className="space-y-1">
             {options.map((opt) => {
@@ -110,7 +165,7 @@ export function CustomSelect<T extends string | number = string | number>({
                     onChange(opt.value)
                     setIsOpen(false)
                   }}
-                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors cursor-pointer ${
+                  className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-indigo-50 font-bold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
                       : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-slate-100'

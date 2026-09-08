@@ -23,14 +23,14 @@ export function ReportesMonthlyChart({ filter, data, loading }: ReportesMonthlyC
   const empty = !loading && !hasVisibleData(data, showIncome, showExpense)
 
   return (
-    <article className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
+    <article className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800/80 dark:bg-slate-900/60 sm:p-6 lg:col-span-2">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-indigo-600" aria-hidden />
-          <h2 className="text-sm font-bold text-slate-800">Historial: {chartTitle(filter)}</h2>
+          <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" aria-hidden />
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Historial: {chartTitle(filter)}</h2>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+        <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
           {showIncome && (
             <div className="flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
@@ -51,13 +51,13 @@ export function ReportesMonthlyChart({ filter, data, loading }: ReportesMonthlyC
       )}
 
       {empty && (
-        <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80">
-          <p className="text-sm text-slate-500">Sin movimientos en los últimos 6 meses</p>
+        <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/30">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Sin movimientos en los últimos 6 meses</p>
         </div>
       )}
 
       {!loading && !empty && (
-        <div className="flex h-48 items-end justify-between border-b border-slate-100 px-2 pb-2 sm:px-6">
+        <div className="flex h-48 items-end justify-between border-b border-slate-100 px-2 pb-2 dark:border-slate-800 sm:px-6">
           {data.map((bar) => (
             <div key={bar.mes} className="flex w-10 flex-col items-center gap-2 sm:w-12">
               <div className="flex h-36 w-full items-end justify-center gap-1.5 sm:gap-2">
@@ -67,7 +67,7 @@ export function ReportesMonthlyChart({ filter, data, loading }: ReportesMonthlyC
                     style={{ height: `${Math.max(bar.ingPercent, bar.ing > 0 ? 4 : 0)}%` }}
                   >
                     {bar.ing > 0 && (
-                      <div className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 dark:bg-slate-700">
                         S/ {bar.ing.toLocaleString('es-PE')}
                       </div>
                     )}
@@ -79,14 +79,14 @@ export function ReportesMonthlyChart({ filter, data, loading }: ReportesMonthlyC
                     style={{ height: `${Math.max(bar.gasPercent, bar.gas > 0 ? 4 : 0)}%` }}
                   >
                     {bar.gas > 0 && (
-                      <div className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 dark:bg-slate-700">
                         S/ {bar.gas.toLocaleString('es-PE')}
                       </div>
                     )}
                   </div>
                 )}
               </div>
-              <span className="text-[10px] font-bold text-slate-400">{bar.mes}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{bar.mes}</span>
             </div>
           ))}
         </div>

@@ -7,6 +7,27 @@ type IaMessageBubbleProps = {
   mensaje: IaMensaje
 }
 
+function renderFormattedNode(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string') {
+    if (/<br\s*\/?>/i.test(node)) {
+      const parts = node.split(/<br\s*\/?>/gi)
+      return parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && <br className="my-1" />}
+        </span>
+      ))
+    }
+    return node
+  }
+  if (Array.isArray(node)) {
+    return node.map((child, idx) => (
+      <span key={idx}>{renderFormattedNode(child)}</span>
+    ))
+  }
+  return node
+}
+
 export function IaMessageBubble({ mensaje }: IaMessageBubbleProps) {
   const isUser = mensaje.remitente === 'USER'
 
@@ -52,17 +73,21 @@ export function IaMessageBubble({ mensaje }: IaMessageBubbleProps) {
                       {...props}
                     />
                   ),
-                  th: ({ ...props }) => (
+                  th: ({ children, ...props }) => (
                     <th
-                      className="border-b border-slate-200 px-3 py-2 font-bold dark:border-slate-800"
+                      className="border-b border-slate-200 px-3 py-2 font-bold dark:border-slate-800 align-top"
                       {...props}
-                    />
+                    >
+                      {renderFormattedNode(children)}
+                    </th>
                   ),
-                  td: ({ ...props }) => (
+                  td: ({ children, ...props }) => (
                     <td
-                      className="border-b border-slate-100 px-3 py-2 text-slate-700 dark:border-slate-800/60 dark:text-slate-300"
+                      className="border-b border-slate-100 px-3 py-2 text-slate-700 dark:border-slate-800/60 dark:text-slate-300 align-top leading-normal"
                       {...props}
-                    />
+                    >
+                      {renderFormattedNode(children)}
+                    </td>
                   ),
                   tr: ({ ...props }) => (
                     <tr
@@ -76,11 +101,15 @@ export function IaMessageBubble({ mensaje }: IaMessageBubbleProps) {
                   ol: ({ ...props }) => (
                     <ol className="my-1.5 list-decimal space-y-1 pl-4" {...props} />
                   ),
-                  li: ({ ...props }) => (
-                    <li className="leading-relaxed" {...props} />
+                  li: ({ children, ...props }) => (
+                    <li className="leading-relaxed" {...props}>
+                      {renderFormattedNode(children)}
+                    </li>
                   ),
-                  p: ({ ...props }) => (
-                    <p className="my-1.5 leading-relaxed" {...props} />
+                  p: ({ children, ...props }) => (
+                    <p className="my-1.5 leading-relaxed" {...props}>
+                      {renderFormattedNode(children)}
+                    </p>
                   ),
                   strong: ({ ...props }) => (
                     <strong

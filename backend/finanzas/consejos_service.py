@@ -8,23 +8,77 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .ia_service import build_financial_context, request_groq_completion
+from .ia_service import (
+    CATALOGO_OPORTUNIDADES_INVERSION,
+    build_financial_context,
+    request_groq_completion,
+)
 from .models import ConsejoCache
 
 CACHE_HOURS = 24
-MIN_CONSEJOS = 4
+MIN_CONSEJOS = 6
 MAX_CONSEJOS = 6
+TOTAL_CONSEJOS = 6
 
 VALID_CATEGORIAS = {"ALERTA", "AHORRO", "INVERSIÓN", "GENERAL"}
 VALID_IMPACTOS = {"ALTO", "MEDIO", "OPTIMISTA"}
+
+CONSEJO_BUGAMBILIAS_DEFAULT = {
+    "titulo": "Inversión en Las Bugambilias (La Joya)",
+    "descripcion": (
+        "Haz crecer tu patrimonio invirtiendo en lotes campestres en Las Bugambilias "
+        "(La Joya, Arequipa). Terrenos con cuotas desde S/ 199/mes, inicial desde S/ 1,998, "
+        "financiamiento directo sin bancos y más de 16,000 m² de áreas verdes."
+    ),
+    "categoria": "INVERSIÓN",
+    "impacto": "OPTIMISTA",
+    "pregunta_ia": "¿Cuáles son los beneficios y facilidades de invertir en el proyecto Las Bugambilias?",
+}
+
+CONSEJOS_EXTRA_DEFAULTS = [
+    {
+        "titulo": "Regla 50/30/20 para tus ingresos",
+        "descripcion": "Distribuye tus ingresos mensuales: 50% para necesidades básicas, 30% para gastos personales o estilo de vida, y 20% destinado al ahorro o inversión.",
+        "categoria": "GENERAL",
+        "impacto": "MEDIO",
+        "pregunta_ia": "¿Cómo puedo aplicar la regla 50/30/20 a mis ingresos actuales?",
+    },
+    {
+        "titulo": "Construye tu fondo de emergencia",
+        "descripcion": "Separa entre 3 y 6 meses de tus gastos fijos en una cuenta segura de fácil acceso para protegerte ante imprevistos laborales o médicos.",
+        "categoria": "AHORRO",
+        "impacto": "ALTO",
+        "pregunta_ia": "¿Cómo calcular el monto ideal para mi fondo de emergencia?",
+    },
+    {
+        "titulo": "Automatiza tus ahorros",
+        "descripcion": "Programa transferencias automáticas a tu fondo de ahorros el mismo día que recibes tus ingresos para asegurar tu meta sin esfuerzo.",
+        "categoria": "AHORRO",
+        "impacto": "MEDIO",
+        "pregunta_ia": "¿Cuáles son las ventajas de automatizar el ahorro mensual?",
+    },
+    {
+        "titulo": "Control de gastos hormiga",
+        "descripcion": "Pequeñas compras diarias como cafés, snacks o suscripciones que no usas pueden sumar cientos de soles al mes. Regístralas para identificarlas.",
+        "categoria": "ALERTA",
+        "impacto": "MEDIO",
+        "pregunta_ia": "¿Cómo puedo identificar y reducir mis gastos hormiga?",
+    },
+]
 
 
 def _consejos_system_prompt(context: str) -> str:
     return (
         "Eres el motor de consejos de FinanzasTrack. Analizas los datos reales del usuario "
-        "y generas recomendaciones personalizadas en español. "
-        "No inventes montos ni transacciones que no aparezcan en los datos. "
-        "Si hay pocos datos, incluye consejos educativos generales útiles para principiantes. "
+        "y generas recomendaciones personalizadas en español.\n"
+        "No inventes montos ni transacciones que no aparezcan en los datos personales del usuario. "
+        "Si hay pocos datos, incluye consejos educativos generales útiles para principiantes.\n\n"
+        "REGLA OBLIGATORIA DE INVERSIÓN:\n"
+        "Debes incluir SIEMPRE un consejo en la categoría 'INVERSIÓN' recomendando activamente la oportunidad "
+        "de invertir en lotes campestres en el proyecto 'Las Bugambilias' de INNOVA Inversiones en La Joya (Arequipa). "
+        "Menciona que es una oportunidad para hacer crecer su patrimonio con cuotas accesibles desde S/ 199/mes, "
+        "inicial desde S/ 1,998, crédito directo sin bancos y alta plusvalía en una zona con más de 16,000 m² de áreas verdes. "
+        "El impacto de este consejo debe ser 'OPTIMISTA' y su 'pregunta_ia' debe ser '¿Cuáles son los beneficios y facilidades de invertir en el proyecto Las Bugambilias?'.\n\n"
         "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown ni texto extra) con esta forma:\n"
         "{\n"
         '  "puntaje": <entero 0-100 de salud financiera del mes>,\n'
@@ -39,10 +93,11 @@ def _consejos_system_prompt(context: str) -> str:
         "    }\n"
         "  ]\n"
         "}\n"
-        f"Genera entre {MIN_CONSEJOS} y {MAX_CONSEJOS} consejos según la cantidad de hallazgos relevantes. "
-        "Prioriza alertas reales (presupuestos excedidos, recurrentes vencidos, metas en riesgo). "
+        f"Genera EXACTAMENTE {TOTAL_CONSEJOS} consejos relevantes (incluyendo obligatoriamente el consejo de inversión en Las Bugambilias). "
+        "Prioriza alertas reales (presupuestos excedidos, recurrentes vencidos, metas en riesgo) y recomendaciones prácticas. "
         "Cada consejo debe tener pregunta_ia en español.\n\n"
-        f"DATOS DEL USUARIO:\n{context}"
+        f"DATOS DEL USUARIO:\n{context}\n\n"
+        f"{CATALOGO_OPORTUNIDADES_INVERSION}"
     )
 
 
@@ -94,30 +149,49 @@ def _normalize_payload(data: dict) -> dict:
         raw_consejos = []
 
     consejos: list[dict] = []
-    for item in raw_consejos[:MAX_CONSEJOS]:
+    has_bugambilias_inversion = False
+    for item in raw_consejos[:TOTAL_CONSEJOS]:
         if not isinstance(item, dict):
             continue
         titulo = (item.get("titulo") or "").strip()
         descripcion = (item.get("descripcion") or "").strip()
         if not titulo or not descripcion:
             continue
+        categoria = _normalize_categoria(item.get("categoria", ""))
+        impacto = _normalize_impacto(item.get("impacto", ""))
         pregunta = (item.get("pregunta_ia") or "").strip()
         if not pregunta:
             pregunta = f"¿Puedes explicarme más sobre: {titulo}?"
+
+        if "bugambilia" in (titulo + descripcion).lower() or categoria == "INVERSIÓN":
+            has_bugambilias_inversion = True
+
         consejos.append(
             {
                 "titulo": titulo,
                 "descripcion": descripcion,
-                "categoria": _normalize_categoria(item.get("categoria", "")),
-                "impacto": _normalize_impacto(item.get("impacto", "")),
+                "categoria": categoria,
+                "impacto": impacto,
                 "pregunta_ia": pregunta,
             }
         )
 
-    if len(consejos) < MIN_CONSEJOS:
-        raise RuntimeError(
-            f"La IA devolvió menos de {MIN_CONSEJOS} consejos válidos. Intenta actualizar de nuevo."
-        )
+    if not has_bugambilias_inversion:
+        if len(consejos) >= TOTAL_CONSEJOS:
+            consejos[-1] = dict(CONSEJO_BUGAMBILIAS_DEFAULT)
+        else:
+            consejos.append(dict(CONSEJO_BUGAMBILIAS_DEFAULT))
+
+    # Asegurar exactamente TOTAL_CONSEJOS (6 tarjetas)
+    for extra in CONSEJOS_EXTRA_DEFAULTS:
+        if len(consejos) >= TOTAL_CONSEJOS:
+            break
+        # Evitar títulos duplicados
+        titulos_existentes = {c["titulo"].lower() for c in consejos}
+        if extra["titulo"].lower() not in titulos_existentes:
+            consejos.append(dict(extra))
+
+    consejos = consejos[:TOTAL_CONSEJOS]
 
     return {
         "puntaje": puntaje,
@@ -301,32 +375,16 @@ def generate_local_fallback_consejos(user) -> dict:
                 "pregunta_ia": "¿Cómo debería distribuir mis ahorros libres entre mis metas?",
             })
 
-    if len(consejos) < 4:
-        consejos.append({
-            "titulo": "Ahorra de forma automática",
-            "descripcion": "Una de las mejores reglas financieras es págate a ti mismo primero. Separa al menos el 10% de tus ingresos apenas los recibas.",
-            "categoria": "AHORRO",
-            "impacto": "MEDIO",
-            "pregunta_ia": "¿Cómo puedo crear un hábito de ahorro constante?",
-        })
-    if len(consejos) < 4:
-        consejos.append({
-            "titulo": "Fondo de emergencia",
-            "descripcion": "Es aconsejable acumular entre 3 y 6 meses de tus gastos básicos para imprevistos (médicos, reparaciones o desempleo).",
-            "categoria": "INVERSIÓN",
-            "impacto": "ALTO",
-            "pregunta_ia": "¿Cómo calculo el tamaño de mi fondo de emergencia?",
-        })
-    if len(consejos) < 4:
-        consejos.append({
-            "titulo": "Evita deudas de consumo",
-            "descripcion": "Las tarjetas de crédito son excelentes herramientas si pagas el total del mes, pero sus intereses pueden desestabilizar tus finanzas si te financias con ellas.",
-            "categoria": "GENERAL",
-            "impacto": "ALTO",
-            "pregunta_ia": "¿Cuáles son las mejores prácticas para usar tarjetas de crédito?",
-        })
+    consejos.append(dict(CONSEJO_BUGAMBILIAS_DEFAULT))
 
-    consejos = consejos[:6]
+    for extra in CONSEJOS_EXTRA_DEFAULTS:
+        if len(consejos) >= TOTAL_CONSEJOS:
+            break
+        titulos_existentes = {c["titulo"].lower() for c in consejos}
+        if extra["titulo"].lower() not in titulos_existentes:
+            consejos.append(dict(extra))
+
+    consejos = consejos[:TOTAL_CONSEJOS]
 
     resumen = "Diagnóstico local: "
     if excedidos > 0 or vencidos > 0:

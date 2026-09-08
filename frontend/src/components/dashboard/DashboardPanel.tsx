@@ -108,8 +108,8 @@ export function DashboardPanel() {
     [periodExpense],
   )
   const monthlyChart = useMemo(
-    () => buildLast6MonthsChart(filtered, new Date()),
-    [filtered],
+    () => buildLast6MonthsChart(allTransactions, dateFilter.refDate),
+    [allTransactions, dateFilter.refDate],
   )
   const recent = useMemo(() => sortByDateDesc(filtered).slice(0, 8), [filtered])
 
