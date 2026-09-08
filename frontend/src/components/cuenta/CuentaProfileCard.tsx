@@ -32,7 +32,13 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [imageError, setImageError] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+
+  // Resetear error de carga cuando cambia la foto
+  useEffect(() => {
+    setImageError(false)
+  }, [profile.foto])
 
   // Estados para el modal de alineación / recorte
   const [cropModalOpen, setCropModalOpen] = useState(false)
@@ -179,11 +185,12 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
             >
               {/* Contenedor de la foto con borde limpio */}
               <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-[3.5px] border-white bg-slate-100 dark:border-slate-800 dark:bg-slate-700">
-                {profile.foto ? (
+                {profile.foto && !imageError ? (
                   <>
                     <img
                       src={profile.foto}
                       alt={fullName}
+                      onError={() => setImageError(true)}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     {/* Icono sutil de lupa/ampliar al pasar el cursor */}

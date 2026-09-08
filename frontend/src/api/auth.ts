@@ -130,10 +130,37 @@ export async function authFetch(path: string, init: RequestInit = {}) {
   return res
 }
 
+export function resolveMediaUrl(url?: string | null): string | null {
+  if (!url) return null
+  if (url.startsWith('blob:') || url.startsWith('data:')) {
+    return url
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (API && !API.includes('127.0.0.1') && !API.includes('localhost')) {
+      if (url.includes('127.0.0.1') || url.includes('localhost')) {
+        const path = url.replace(/^https?:\/\/[^/]+/, '')
+        return `${API}${path}`
+      }
+    }
+    return url
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`
+  return `${API}${cleanPath}`
+}
+
+export function normalizeProfile(profile: UserProfile): UserProfile {
+  return {
+    ...profile,
+    foto: resolveMediaUrl(profile.foto),
+    foto_original: resolveMediaUrl(profile.foto_original),
+  }
+}
+
 export async function fetchProfile(): Promise<UserProfile> {
   const res = await authFetch('/api/perfil/')
   if (!res.ok) throw new Error('No se pudo cargar el perfil')
-  return res.json()
+  const data = await res.json()
+  return normalizeProfile(data)
 }
 
 export type ProfileUpdatePayload = {
@@ -152,7 +179,8 @@ export async function updateProfile(data: ProfileUpdatePayload): Promise<UserPro
     const err = await res.json().catch(() => ({}))
     throw new Error(JSON.stringify(err))
   }
-  return res.json()
+  const updated = await res.json()
+  return normalizeProfile(updated)
 }
 
 export async function uploadProfilePhoto(file: File, originalFile?: File): Promise<UserProfile> {
@@ -169,7 +197,8 @@ export async function uploadProfilePhoto(file: File, originalFile?: File): Promi
     const err = await res.json().catch(() => ({}))
     throw new Error(err.foto?.[0] || err.detail || 'Error al subir la imagen')
   }
-  return res.json()
+  const data = await res.json()
+  return normalizeProfile(data)
 }
 
 export async function removeProfilePhoto(): Promise<UserProfile> {
@@ -183,7 +212,8 @@ export async function removeProfilePhoto(): Promise<UserProfile> {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.detail || 'Error al eliminar la foto')
   }
-  return res.json()
+  const data = await res.json()
+  return normalizeProfile(data)
 }
 
 export type ChangePasswordPayload = {
