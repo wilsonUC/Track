@@ -24,11 +24,12 @@ VALID_CATEGORIAS = {"ALERTA", "AHORRO", "INVERSIÓN", "GENERAL"}
 VALID_IMPACTOS = {"ALTO", "MEDIO", "OPTIMISTA"}
 
 CONSEJO_BUGAMBILIAS_DEFAULT = {
-    "titulo": "Inversión en Las Bugambilias (La Joya)",
+    "titulo": "Invierte en propiedades (preventa)",
     "descripcion": (
-        "Haz crecer tu patrimonio invirtiendo en lotes campestres en Las Bugambilias "
-        "(La Joya, Arequipa). Terrenos con cuotas desde S/ 199/mes, inicial desde S/ 1,998, "
-        "financiamiento directo sin bancos y más de 16,000 m² de áreas verdes."
+        "El proyecto 'Las Bugambilias' de INNOVA Inversiones ofrece lotes con cuotas accesibles "
+        "desde S/199/mes y una cuota inicial de S/1,998. El crédito directo sin bancos y la alta plusvalía "
+        "en una zona con más de 16,000 m² de áreas verdes hacen de esta una oportunidad para hacer crecer tu patrimonio. "
+        "Además, el proyecto ofrece descuentos al contado y la posibilidad de referir a familiares para obtener beneficios adicionales."
     ),
     "categoria": "INVERSIÓN",
     "impacto": "OPTIMISTA",
@@ -74,10 +75,11 @@ def _consejos_system_prompt(context: str) -> str:
         "No inventes montos ni transacciones que no aparezcan en los datos personales del usuario. "
         "Si hay pocos datos, incluye consejos educativos generales útiles para principiantes.\n\n"
         "REGLA OBLIGATORIA DE INVERSIÓN:\n"
-        "Debes incluir SIEMPRE un consejo en la categoría 'INVERSIÓN' recomendando activamente la oportunidad "
-        "de invertir en lotes campestres en el proyecto 'Las Bugambilias' de INNOVA Inversiones en La Joya (Arequipa). "
-        "Menciona que es una oportunidad para hacer crecer su patrimonio con cuotas accesibles desde S/ 199/mes, "
-        "inicial desde S/ 1,998, crédito directo sin bancos y alta plusvalía en una zona con más de 16,000 m² de áreas verdes. "
+        "Debes incluir SIEMPRE un consejo en la categoría 'INVERSIÓN' con el título EXACTO 'Invierte en propiedades (preventa)'. "
+        "En la descripción, explica que el proyecto 'Las Bugambilias' de INNOVA Inversiones ofrece lotes con "
+        "cuotas accesibles desde S/199/mes y una cuota inicial de S/1,998. Destaca que el crédito directo sin bancos y la alta plusvalía "
+        "en una zona con más de 16,000 m² de áreas verdes hacen de esta una oportunidad para hacer crecer su patrimonio. "
+        "Menciona además que el proyecto ofrece descuentos al contado y la posibilidad de referir a familiares para obtener beneficios adicionales. "
         "El impacto de este consejo debe ser 'OPTIMISTA' y su 'pregunta_ia' debe ser '¿Cuáles son los beneficios y facilidades de invertir en el proyecto Las Bugambilias?'.\n\n"
         "Responde ÚNICAMENTE con un objeto JSON válido (sin markdown ni texto extra) con esta forma:\n"
         "{\n"
@@ -93,7 +95,7 @@ def _consejos_system_prompt(context: str) -> str:
         "    }\n"
         "  ]\n"
         "}\n"
-        f"Genera EXACTAMENTE {TOTAL_CONSEJOS} consejos relevantes (incluyendo obligatoriamente el consejo de inversión en Las Bugambilias). "
+        f"Genera EXACTAMENTE {TOTAL_CONSEJOS} consejos relevantes (incluyendo obligatoriamente el consejo de inversión 'Invierte en propiedades (preventa)' sobre Las Bugambilias). "
         "Prioriza alertas reales (presupuestos excedidos, recurrentes vencidos, metas en riesgo) y recomendaciones prácticas. "
         "Cada consejo debe tener pregunta_ia en español.\n\n"
         f"DATOS DEL USUARIO:\n{context}\n\n"
@@ -165,6 +167,7 @@ def _normalize_payload(data: dict) -> dict:
 
         if "bugambilia" in (titulo + descripcion).lower() or categoria == "INVERSIÓN":
             has_bugambilias_inversion = True
+            titulo = "Invierte en propiedades (preventa)"
 
         consejos.append(
             {
