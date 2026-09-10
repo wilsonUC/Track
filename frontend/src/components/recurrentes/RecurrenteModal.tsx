@@ -264,7 +264,7 @@ export function RecurrenteModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                Comienza en (opcional)
+                Comienza en
               </label>
               <input
                 type="month"
@@ -275,7 +275,7 @@ export function RecurrenteModal({
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
-                Termina en (opcional)
+                Termina en
               </label>
               <input
                 type="month"

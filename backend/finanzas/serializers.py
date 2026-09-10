@@ -23,7 +23,12 @@ from .metas_service import (
     calcular_porcentaje as calcular_porcentaje_meta,
     calcular_ahorro_sugerido,
 )
-from .presupuestos_service import calcular_estado, calcular_gastado_mes, calcular_porcentaje
+from .presupuestos_service import (
+    calcular_estado,
+    calcular_estado_periodo,
+    calcular_gastado_mes,
+    calcular_porcentaje,
+)
 from .recurrentes_service import MESES_ES, calcular_estado_recurrente
 
 
@@ -186,6 +191,8 @@ class PresupuestoSerializer(serializers.ModelSerializer):
     porcentaje = serializers.SerializerMethodField()
     estado = serializers.SerializerMethodField()
     consumos = serializers.SerializerMethodField()
+    activo_en_mes = serializers.SerializerMethodField()
+    estado_periodo = serializers.SerializerMethodField()
     categoria_referencia_nombre = serializers.CharField(
         source="categoria_referencia.nombre",
         read_only=True,
@@ -201,7 +208,11 @@ class PresupuestoSerializer(serializers.ModelSerializer):
             "monto_rapido",
             "categoria_referencia",
             "categoria_referencia_nombre",
+            "fecha_inicio",
+            "fecha_fin",
             "activo",
+            "activo_en_mes",
+            "estado_periodo",
             "gastado",
             "porcentaje",
             "estado",
@@ -209,7 +220,27 @@ class PresupuestoSerializer(serializers.ModelSerializer):
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "gastado", "porcentaje", "estado", "consumos", "creado_en", "actualizado_en"]
+        read_only_fields = [
+            "id",
+            "activo_en_mes",
+            "estado_periodo",
+            "gastado",
+            "porcentaje",
+            "estado",
+            "consumos",
+            "creado_en",
+            "actualizado_en",
+        ]
+
+    def _periodo(self, obj: Presupuesto):
+        reference_date = self.context.get("reference_date", date.today())
+        return calcular_estado_periodo(obj, reference=reference_date)
+
+    def get_activo_en_mes(self, obj):
+        return self._periodo(obj)["activo_en_mes"]
+
+    def get_estado_periodo(self, obj):
+        return self._periodo(obj)["estado_periodo"]
 
     def _gastado(self, obj: Presupuesto):
         if hasattr(obj, "gastado") and obj.gastado is not None:
@@ -261,6 +292,15 @@ class PresupuestoSerializer(serializers.ModelSerializer):
         if value and value.tipo != Category.Tipo.GASTO:
             raise serializers.ValidationError("La categoría de referencia debe ser de gasto.")
         return value
+
+    def validate(self, attrs):
+        fecha_inicio = attrs.get("fecha_inicio", getattr(self.instance, "fecha_inicio", None))
+        fecha_fin = attrs.get("fecha_fin", getattr(self.instance, "fecha_fin", None))
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_fin:
+            raise serializers.ValidationError(
+                {"fecha_fin": "La fecha de fin debe ser posterior o igual a la de inicio."}
+            )
+        return attrs
 
 
 class RecurrenteSerializer(serializers.ModelSerializer):

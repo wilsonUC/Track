@@ -10,12 +10,14 @@ import {
   registrarPagoRecurrente,
   updateRecurrente,
   fetchCuentasAtrasadas,
+  reactivarRecurrente,
   type ApiCuentasAtrasadas,
   type ApiCuentasAtrasadasItem,
 } from '../api/recurrentes'
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
 import { AbonoRecurrenteModal } from '../components/recurrentes/AbonoRecurrenteModal'
 import { EliminarRecurrenteModal } from '../components/recurrentes/EliminarRecurrenteModal'
+import { ReactivarRecurrenteModal } from '../components/recurrentes/ReactivarRecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
 import { ResumenCuentasAtrasadas } from '../components/recurrentes/ResumenCuentasAtrasadas'
@@ -66,6 +68,11 @@ export function RecurrentesPage() {
 
   const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false)
   const [recurrenteAEliminar, setRecurrenteAEliminar] = useState<RecurrenteCardView | null>(null)
+
+  const [isReactivarModalOpen, setIsReactivarModalOpen] = useState(false)
+  const [recurrenteAReactivar, setRecurrenteAReactivar] = useState<RecurrenteCardView | null>(null)
+  const [reactivando, setReactivando] = useState(false)
+  const [reactivarError, setReactivarError] = useState('')
 
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
@@ -209,6 +216,9 @@ export function RecurrentesPage() {
 
   const abrirModalCrear = () => {
     resetForm()
+    const anio = fechaRef.getFullYear()
+    const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+    setFechaInicio(`${anio}-${mes}`)
     setModalMode('create')
     setIsModalOpen(true)
   }
@@ -397,6 +407,54 @@ export function RecurrentesPage() {
       )
     } finally {
       setProcesandoId(null)
+    }
+  }
+
+  const abrirModalReactivar = (recurrente: RecurrenteCardView) => {
+    setRecurrenteAReactivar(recurrente)
+    setReactivarError('')
+    setIsReactivarModalOpen(true)
+  }
+
+  const manejarConfirmarReactivar = async (data: {
+    fecha_inicio: string
+    fecha_fin: string | null
+    monto: string
+    desvincular_transacciones: boolean
+  }) => {
+    if (!recurrenteAReactivar) return
+    setReactivando(true)
+    setReactivarError('')
+    try {
+      const anio = fechaRef.getFullYear()
+      const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+      const mesParam = `${anio}-${mes}-01`
+      const actualizado = await reactivarRecurrente(
+        recurrenteAReactivar.id,
+        data,
+        mesParam,
+      )
+      setRecurrentes((prev) =>
+        prev.map((r) => (r.id === recurrenteAReactivar.id ? mapRecurrenteToCard(actualizado) : r)),
+      )
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      setIsReactivarModalOpen(false)
+      setRecurrenteAReactivar(null)
+      bumpTransactions()
+    } catch (err: unknown) {
+      let msg = 'No se pudo reactivar el recurrente.'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (parsed?.error) msg = parsed.error
+        } catch {
+          msg = err.message || msg
+        }
+      }
+      setReactivarError(msg)
+    } finally {
+      setReactivando(false)
     }
   }
 
@@ -633,6 +691,7 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onReactivar={abrirModalReactivar}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
                 onEliminar={abrirModalEliminar}
@@ -658,6 +717,7 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onReactivar={abrirModalReactivar}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
                 onEliminar={abrirModalEliminar}
@@ -700,6 +760,20 @@ export function RecurrentesPage() {
         onHacerManual={manejarHacerManual}
         onClose={cerrarModal}
         onSubmit={manejarGuardar}
+      />
+
+      <ReactivarRecurrenteModal
+        open={isReactivarModalOpen}
+        recurrente={recurrenteAReactivar}
+        mesInicial={formatIsoDate(fechaRef).slice(0, 7)}
+        saving={reactivando}
+        error={reactivarError}
+        onClose={() => {
+          setIsReactivarModalOpen(false)
+          setRecurrenteAReactivar(null)
+          setReactivarError('')
+        }}
+        onConfirm={manejarConfirmarReactivar}
       />
 
       <AbonoRecurrenteModal

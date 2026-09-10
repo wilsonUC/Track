@@ -100,7 +100,16 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
 
     ref_inicio_mes = today.replace(day=1)
 
-    if recurrente.fecha_inicio and ref_inicio_mes < recurrente.fecha_inicio.replace(day=1):
+    fecha_inicio_efectiva = recurrente.fecha_inicio
+    if not fecha_inicio_efectiva and recurrente.creado_en:
+        creado = (
+            recurrente.creado_en.date()
+            if hasattr(recurrente.creado_en, "date")
+            else recurrente.creado_en
+        )
+        fecha_inicio_efectiva = creado.replace(day=1)
+
+    if fecha_inicio_efectiva and ref_inicio_mes < fecha_inicio_efectiva.replace(day=1):
         activo_en_mes = False
         estado_periodo = "no_iniciado"
 

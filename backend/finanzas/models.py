@@ -90,6 +90,8 @@ class Presupuesto(models.Model):
         blank=True,
         related_name="presupuestos_referencia",
     )
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
     activo = models.BooleanField(default=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)

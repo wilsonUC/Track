@@ -209,3 +209,27 @@ export async function fetchCuentasAtrasadas(mes?: string): Promise<ApiCuentasAtr
   if (!res.ok) throw new Error('No se pudieron cargar las cuentas atrasadas')
   return res.json()
 }
+
+export async function reactivarRecurrente(
+  recurrenteId: number,
+  data: {
+    fecha_inicio?: string | null
+    fecha_fin?: string | null
+    monto?: string
+    desvincular_transacciones?: boolean
+  },
+  mes?: string,
+): Promise<ApiRecurrente> {
+  const url = mes
+    ? `/api/recurrentes/${recurrenteId}/reactivar/?mes=${encodeURIComponent(mes)}`
+    : `/api/recurrentes/${recurrenteId}/reactivar/`
+  const res = await authFetch(url, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(JSON.stringify(err))
+  }
+  return res.json()
+}

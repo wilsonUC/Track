@@ -7,6 +7,7 @@ type RecurrentesGridProps = {
   onAlternarPago: (id: number) => void
   onEditar: (recurrente: RecurrenteCardView) => void
   onAlternarActivo: (id: number, activo: boolean) => void
+  onReactivar?: (recurrente: RecurrenteCardView) => void
   onEliminarAbono: (transactionId: number) => void
   onDesmarcarTodo: (id: number) => void
   onEliminar?: (recurrente: RecurrenteCardView) => void
@@ -18,6 +19,7 @@ export function RecurrentesGrid({
   onAlternarPago,
   onEditar,
   onAlternarActivo,
+  onReactivar,
   onEliminarAbono,
   onDesmarcarTodo,
   onEliminar,
@@ -57,6 +59,7 @@ export function RecurrentesGrid({
               onAlternarPago={onAlternarPago}
               onEditar={onEditar}
               onAlternarActivo={onAlternarActivo}
+              onReactivar={onReactivar}
               onEliminarAbono={onEliminarAbono}
               onDesmarcarTodo={onDesmarcarTodo}
               onEliminar={onEliminar}

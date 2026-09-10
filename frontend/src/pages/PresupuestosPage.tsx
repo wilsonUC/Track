@@ -6,10 +6,12 @@ import {
   createPresupuesto,
   deletePresupuestoPermanente,
   fetchPresupuestos,
+  reactivarPresupuesto,
   registrarGastoRapido,
   updatePresupuesto,
 } from '../api/presupuestos'
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
+import { ReactivarPresupuestoModal } from '../components/presupuestos/ReactivarPresupuestoModal'
 import { EliminarPresupuestoModal } from '../components/presupuestos/EliminarPresupuestoModal'
 import { PresupuestosGrid } from '../components/presupuestos/PresupuestosGrid'
 import { PresupuestosSummaryCard } from '../components/presupuestos/PresupuestosSummaryCard'
@@ -39,6 +41,8 @@ export function PresupuestosPage() {
   const [limite, setLimite] = useState('')
   const [montoRapido, setMontoRapido] = useState('30')
   const [categoriaReferenciaId, setCategoriaReferenciaId] = useState<number | ''>('')
+  const [fechaInicio, setFechaInicio] = useState('')
+  const [fechaFin, setFechaFin] = useState('')
   const [categoriasGasto, setCategoriasGasto] = useState<Awaited<ReturnType<typeof fetchCategories>>>([])
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
@@ -48,6 +52,11 @@ export function PresupuestosPage() {
 
   const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false)
   const [presupuestoAEliminar, setPresupuestoAEliminar] = useState<PresupuestoCardView | null>(null)
+
+  const [isReactivarModalOpen, setIsReactivarModalOpen] = useState(false)
+  const [presupuestoAReactivar, setPresupuestoAReactivar] = useState<PresupuestoCardView | null>(null)
+  const [reactivando, setReactivando] = useState(false)
+  const [reactivarError, setReactivarError] = useState('')
 
   const [fechaRef, setFechaRef] = useState<Date>(() => {
     const d = new Date()
@@ -123,11 +132,17 @@ export function PresupuestosPage() {
   }, [transactionsVersion, fechaRef, mostrarInactivos])
 
   const totalLimite = useMemo(
-    () => presupuestos.filter((p) => p.activo).reduce((acc, p) => acc + p.limite, 0),
+    () =>
+      presupuestos
+        .filter((p) => p.activo && p.activoEnMes)
+        .reduce((acc, p) => acc + p.limite, 0),
     [presupuestos],
   )
   const totalGastado = useMemo(
-    () => presupuestos.filter((p) => p.activo).reduce((acc, p) => acc + p.gastado, 0),
+    () =>
+      presupuestos
+        .filter((p) => p.activo && p.activoEnMes)
+        .reduce((acc, p) => acc + p.gastado, 0),
     [presupuestos],
   )
   const porcentajeGlobal = totalLimite > 0 ? Math.round((totalGastado / totalLimite) * 100) : 0
@@ -137,12 +152,17 @@ export function PresupuestosPage() {
     setLimite('')
     setMontoRapido('30')
     setCategoriaReferenciaId('')
+    setFechaInicio('')
+    setFechaFin('')
     setEditingId(null)
     setModalError('')
   }
 
   const abrirModalCrear = () => {
     resetForm()
+    const anio = fechaRef.getFullYear()
+    const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+    setFechaInicio(`${anio}-${mes}`)
     setModalMode('create')
     setIsModalOpen(true)
   }
@@ -154,6 +174,8 @@ export function PresupuestosPage() {
     setLimite(String(presupuesto.limite))
     setMontoRapido(String(presupuesto.montoRapido))
     setCategoriaReferenciaId(presupuesto.categoriaReferenciaId ?? '')
+    setFechaInicio(presupuesto.fechaInicio ? presupuesto.fechaInicio.slice(0, 7) : '')
+    setFechaFin(presupuesto.fechaFin ? presupuesto.fechaFin.slice(0, 7) : '')
     setModalError('')
     setIsModalOpen(true)
   }
@@ -192,7 +214,10 @@ export function PresupuestosPage() {
     setProcesandoId(id)
     setError('')
     try {
-      const actualizado = await updatePresupuesto(id, { activo: nuevoEstadoActivo })
+      const anio = fechaRef.getFullYear()
+      const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+      const mesParam = `${anio}-${mes}-01`
+      const actualizado = await updatePresupuesto(id, { activo: nuevoEstadoActivo }, mesParam)
       setPresupuestos((prev) =>
         prev.map((p) => (p.id === id ? mapPresupuestoToCard(actualizado) : p))
       )
@@ -208,6 +233,52 @@ export function PresupuestosPage() {
       )
     } finally {
       setProcesandoId(null)
+    }
+  }
+
+  const abrirModalReactivar = (presupuesto: PresupuestoCardView) => {
+    setPresupuestoAReactivar(presupuesto)
+    setReactivarError('')
+    setIsReactivarModalOpen(true)
+  }
+
+  const manejarConfirmarReactivar = async (data: {
+    fecha_inicio: string
+    fecha_fin: string | null
+    limite: string
+    desvincular_transacciones: boolean
+  }) => {
+    if (!presupuestoAReactivar) return
+    setReactivando(true)
+    setReactivarError('')
+    try {
+      const anio = fechaRef.getFullYear()
+      const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+      const mesParam = `${anio}-${mes}-01`
+      const actualizado = await reactivarPresupuesto(
+        presupuestoAReactivar.id,
+        data,
+        mesParam,
+      )
+      setPresupuestos((prev) =>
+        prev.map((p) => (p.id === presupuestoAReactivar.id ? mapPresupuestoToCard(actualizado) : p)),
+      )
+      setIsReactivarModalOpen(false)
+      setPresupuestoAReactivar(null)
+      bumpTransactions()
+    } catch (err: unknown) {
+      let msg = 'No se pudo reactivar el presupuesto.'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (parsed?.error) msg = parsed.error
+        } catch {
+          msg = err.message || msg
+        }
+      }
+      setReactivarError(msg)
+    } finally {
+      setReactivando(false)
     }
   }
 
@@ -232,29 +303,50 @@ export function PresupuestosPage() {
     setSaving(true)
     setModalError('')
     try {
+      const anio = fechaRef.getFullYear()
+      const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+      const mesParam = `${anio}-${mes}-01`
+
       const payload = {
         nombre: nombre.trim(),
         limite,
         monto_rapido: montoRapido,
         categoria_referencia: categoriaReferenciaId || null,
+        fecha_inicio: fechaInicio ? `${fechaInicio}-01` : null,
+        fecha_fin: fechaFin ? `${fechaFin}-01` : null,
       }
 
       if (modalMode === 'edit' && editingId !== null) {
-        const actualizado = await updatePresupuesto(editingId, payload)
+        const actualizado = await updatePresupuesto(editingId, payload, mesParam)
         setPresupuestos((prev) =>
           prev.map((p) => (p.id === editingId ? mapPresupuestoToCard(actualizado) : p)),
         )
       } else {
-        const creado = await createPresupuesto(payload)
+        const creado = await createPresupuesto(payload, mesParam)
         setPresupuestos((prev) => [...prev, mapPresupuestoToCard(creado)])
       }
 
       cerrarModal()
-    } catch {
+    } catch (err) {
+      let customError = ''
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (parsed && typeof parsed === 'object') {
+            const vals = Object.values(parsed)
+            if (vals.length > 0) {
+              customError = Array.isArray(vals[0]) ? vals[0].join(', ') : String(vals[0])
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
       setModalError(
-        modalMode === 'edit'
-          ? 'No se pudo actualizar el presupuesto.'
-          : 'No se pudo crear el presupuesto. Revisa los datos.',
+        customError ||
+          (modalMode === 'edit'
+            ? 'No se pudo actualizar el presupuesto.'
+            : 'No se pudo crear el presupuesto. Revisa los datos.'),
       )
     } finally {
       setSaving(false)
@@ -268,6 +360,8 @@ export function PresupuestosPage() {
     })
     return () => setSecondaryHeaderAction(null)
   }, [setSecondaryHeaderAction])
+
+  const mesInicialStr = `${fechaRef.getFullYear()}-${String(fechaRef.getMonth() + 1).padStart(2, '0')}`
 
   return (
     <section className="space-y-6 text-slate-800 dark:text-slate-100">
@@ -322,6 +416,7 @@ export function PresupuestosPage() {
               onRegistrarGasto={registrarGasto}
               onEditar={abrirModalEditar}
               onAlternarActivo={manejarAlternarActivo}
+              onReactivar={abrirModalReactivar}
               onEliminar={abrirModalEliminar}
               registrandoId={registrandoId}
               procesandoId={procesandoId}
@@ -340,6 +435,8 @@ export function PresupuestosPage() {
         limite={limite}
         montoRapido={montoRapido}
         categoriaReferenciaId={categoriaReferenciaId}
+        fechaInicio={fechaInicio}
+        fechaFin={fechaFin}
         categoriasGasto={categoriasGasto}
         saving={saving}
         error={modalError}
@@ -347,8 +444,24 @@ export function PresupuestosPage() {
         onLimiteChange={setLimite}
         onMontoRapidoChange={setMontoRapido}
         onCategoriaReferenciaChange={setCategoriaReferenciaId}
+        onFechaInicioChange={setFechaInicio}
+        onFechaFinChange={setFechaFin}
         onClose={cerrarModal}
         onSubmit={manejarGuardarPresupuesto}
+      />
+
+      <ReactivarPresupuestoModal
+        open={isReactivarModalOpen}
+        presupuesto={presupuestoAReactivar}
+        mesInicial={mesInicialStr}
+        saving={reactivando}
+        error={reactivarError}
+        onClose={() => {
+          setIsReactivarModalOpen(false)
+          setPresupuestoAReactivar(null)
+          setReactivarError('')
+        }}
+        onConfirm={manejarConfirmarReactivar}
       />
 
       <EliminarPresupuestoModal

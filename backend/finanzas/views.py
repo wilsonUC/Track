@@ -146,6 +146,15 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
         if not incluir_inactivos and not es_detalle:
             base_qs = base_qs.filter(activo=True)
 
+        if not es_detalle and mes_param:
+            base_qs = base_qs.filter(
+                (
+                    (Q(fecha_inicio__isnull=False, fecha_inicio__lte=fin_mes) | Q(fecha_inicio__isnull=True, creado_en__date__lte=fin_mes))
+                    & (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=inicio_mes))
+                )
+                | Q(transacciones__fecha__gte=inicio_mes, transacciones__fecha__lte=fin_mes)
+            ).distinct()
+
         return (
             base_qs
             .select_related("categoria_referencia")
@@ -246,6 +255,19 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
                 pass
 
         presupuesto = self.get_object()
+        from .presupuestos_service import calcular_estado_periodo
+        periodo_info = calcular_estado_periodo(presupuesto, reference=today)
+        if not presupuesto.activo:
+            return Response(
+                {"error": "No se pueden registrar gastos en un presupuesto desactivado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not periodo_info["activo_en_mes"]:
+            return Response(
+                {"error": "El presupuesto no está vigente en este período."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         from .ahorros_service import validar_limite_saldo
         validar_limite_saldo(request.user, Transaction.Tipo.GASTO, presupuesto.monto_rapido)
 
@@ -258,6 +280,70 @@ class PresupuestoViewSet(viewsets.ModelViewSet):
             fecha=today,
             descripcion=f"Gasto presupuesto: {presupuesto.nombre}",
         )
+        presupuesto = self.get_queryset().get(pk=presupuesto.pk)
+        serializer = self.get_serializer(presupuesto)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="reactivar")
+    def reactivar(self, request, pk=None):
+        presupuesto = self.get_object()
+        fecha_inicio_str = request.data.get("fecha_inicio")
+        fecha_fin_str = request.data.get("fecha_fin")
+        nuevo_limite = request.data.get("limite")
+        desvincular = request.data.get("desvincular_transacciones", True)
+
+        ref_date = date.today().replace(day=1)
+        if fecha_inicio_str:
+            try:
+                if len(str(fecha_inicio_str)) == 7:
+                    parts = str(fecha_inicio_str).split("-")
+                    ref_date = date(int(parts[0]), int(parts[1]), 1)
+                else:
+                    ref_date = date.fromisoformat(str(fecha_inicio_str)[:10]).replace(day=1)
+            except Exception:
+                pass
+
+        fecha_fin_val = None
+        if fecha_fin_str:
+            try:
+                if len(str(fecha_fin_str)) == 7:
+                    parts = str(fecha_fin_str).split("-")
+                    fecha_fin_val = date(int(parts[0]), int(parts[1]), 1)
+                else:
+                    fecha_fin_val = date.fromisoformat(str(fecha_fin_str)[:10]).replace(day=1)
+            except Exception:
+                pass
+
+        if fecha_fin_val and ref_date > fecha_fin_val:
+            return Response(
+                {"error": "La fecha de finalización debe ser posterior o igual al mes de inicio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Desvincular transacciones previas para que el nuevo ciclo arranque en S/ 0.00
+        if desvincular:
+            txs = Transaction.objects.filter(presupuesto=presupuesto)
+            if txs.exists():
+                cat = presupuesto.categoria_referencia or Category.objects.filter(tipo=Category.Tipo.GASTO).first()
+                if not cat:
+                    cat, _ = Category.objects.get_or_create(nombre="Varios", tipo=Category.Tipo.GASTO)
+                for tx in txs:
+                    tx.categoria = cat
+                    tx.presupuesto = None
+                    tx.save()
+
+        presupuesto.activo = True
+        presupuesto.fecha_inicio = ref_date
+        presupuesto.fecha_fin = fecha_fin_val
+        if nuevo_limite:
+            try:
+                lim_dec = Decimal(str(nuevo_limite))
+                if lim_dec > 0:
+                    presupuesto.limite = lim_dec
+            except Exception:
+                pass
+        presupuesto.save()
+
         presupuesto = self.get_queryset().get(pk=presupuesto.pk)
         serializer = self.get_serializer(presupuesto)
         return Response(serializer.data)
@@ -302,7 +388,11 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
             try:
                 reference_date = date.fromisoformat(mes_param)
             except ValueError:
-                pass
+                try:
+                    parts = mes_param.split("-")
+                    reference_date = date(int(parts[0]), int(parts[1]), 1)
+                except Exception:
+                    pass
 
         inicio_mes, fin_mes = _bounds_mes(reference_date)
         inicio_anterior, fin_anterior = _bounds_mes_anterior(reference_date)
@@ -324,6 +414,15 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
         base_qs = Recurrente.objects.filter(usuario=self.request.user)
         if not incluir_inactivos and not es_detalle:
             base_qs = base_qs.filter(activo=True)
+
+        if not es_detalle and mes_param:
+            base_qs = base_qs.filter(
+                (
+                    (Q(fecha_inicio__isnull=False, fecha_inicio__lte=fin_mes) | Q(fecha_inicio__isnull=True, creado_en__date__lte=fin_mes))
+                    & (Q(fecha_fin__isnull=True) | Q(fecha_fin__gte=inicio_mes))
+                )
+                | Q(transacciones__fecha__gte=inicio_mes, transacciones__fecha__lte=fin_mes)
+            ).distinct()
 
         return (
             base_qs.select_related("categoria")
@@ -599,6 +698,74 @@ class RecurrenteViewSet(viewsets.ModelViewSet):
 
         context = self.get_serializer_context()
         context["reference_date"] = fecha_pago
+        recurrente = self.get_queryset().get(pk=recurrente.pk)
+        serializer = self.get_serializer(recurrente, context=context)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="reactivar")
+    def reactivar(self, request, pk=None):
+        recurrente = self.get_object()
+        fecha_inicio_str = request.data.get("fecha_inicio")
+        fecha_fin_str = request.data.get("fecha_fin")
+        nuevo_monto = request.data.get("monto")
+        desvincular = request.data.get("desvincular_transacciones", True)
+
+        ref_date = date.today().replace(day=1)
+        if fecha_inicio_str:
+            try:
+                if len(str(fecha_inicio_str)) == 7:
+                    parts = str(fecha_inicio_str).split("-")
+                    ref_date = date(int(parts[0]), int(parts[1]), 1)
+                else:
+                    ref_date = date.fromisoformat(str(fecha_inicio_str)[:10]).replace(day=1)
+            except Exception:
+                pass
+
+        fecha_fin_val = None
+        if fecha_fin_str:
+            try:
+                if len(str(fecha_fin_str)) == 7:
+                    parts = str(fecha_fin_str).split("-")
+                    fecha_fin_val = date(int(parts[0]), int(parts[1]), 1)
+                else:
+                    fecha_fin_val = date.fromisoformat(str(fecha_fin_str)[:10]).replace(day=1)
+            except Exception:
+                pass
+
+        if fecha_fin_val and ref_date > fecha_fin_val:
+            return Response(
+                {"error": "La fecha de finalización debe ser posterior o igual al mes de inicio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Desvincular transacciones previas para que el nuevo ciclo arranque en S/ 0.00 / Pendiente
+        if desvincular:
+            txs = Transaction.objects.filter(recurrente=recurrente)
+            if txs.exists():
+                cat = recurrente.categoria
+                for tx in txs:
+                    if cat:
+                        tx.categoria = cat
+                    tx.recurrente = None
+                    tx.save()
+
+        recurrente.activo = True
+        recurrente.fecha_inicio = ref_date
+        recurrente.fecha_fin = fecha_fin_val
+        if nuevo_monto:
+            try:
+                monto_dec = Decimal(str(nuevo_monto))
+                if monto_dec > 0:
+                    recurrente.monto = monto_dec
+            except Exception:
+                pass
+        recurrente.save()
+
+        # Limpiamos cualquier ajuste previo de mes para que empiece limpio
+        RecurrenteAjusteMes.objects.filter(recurrente=recurrente).delete()
+
+        context = self.get_serializer_context()
+        context["reference_date"] = ref_date
         recurrente = self.get_queryset().get(pk=recurrente.pk)
         serializer = self.get_serializer(recurrente, context=context)
         return Response(serializer.data)
