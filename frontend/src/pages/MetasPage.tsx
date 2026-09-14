@@ -95,7 +95,23 @@ export function MetasPage() {
   }, [transactionsVersion])
 
   const metasFiltradas = useMemo(() => {
-    if (mostrarTodas) return metas
+    const realNow = new Date()
+    const realYear = realNow.getFullYear()
+    const realMonth = realNow.getMonth()
+
+    if (mostrarTodas) {
+      return metas.map((m) => {
+        let estadoPeriodo: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro' = 'activo'
+        if (m.fechaInicio) {
+          const lastDayOfRealMonth = new Date(realYear, realMonth + 1, 0).getDate()
+          const endOfRealMonthStr = `${realYear}-${String(realMonth + 1).padStart(2, '0')}-${String(lastDayOfRealMonth).padStart(2, '0')}`
+          if (m.fechaInicio > endOfRealMonthStr) {
+            estadoPeriodo = 'futuro'
+          }
+        }
+        return { ...m, estadoPeriodo }
+      })
+    }
 
     const refYear = fechaRef.getFullYear()
     const refMonth = fechaRef.getMonth()
@@ -103,18 +119,32 @@ export function MetasPage() {
     const lastDay = new Date(refYear, refMonth + 1, 0).getDate()
     const endOfMonthStr = `${refYear}-${String(refMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-    return metas.filter((m) => {
-      if (m.fechaInicio && m.fechaLimite) {
-        return m.fechaInicio <= endOfMonthStr && m.fechaLimite >= startOfMonthStr
-      }
-      if (m.fechaLimite) {
-        return m.fechaLimite >= startOfMonthStr
-      }
-      if (m.fechaInicio) {
-        return m.fechaInicio <= endOfMonthStr
-      }
-      return true
-    })
+    const isMesFuturo = refYear > realYear || (refYear === realYear && refMonth > realMonth)
+
+    return metas
+      .filter((m) => {
+        if (m.fechaInicio && m.fechaLimite) {
+          return m.fechaInicio <= endOfMonthStr && m.fechaLimite >= startOfMonthStr
+        }
+        if (m.fechaLimite) {
+          return m.fechaLimite >= startOfMonthStr
+        }
+        if (m.fechaInicio) {
+          return m.fechaInicio <= endOfMonthStr
+        }
+        return true
+      })
+      .map((m) => {
+        let estadoPeriodo: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro' = 'activo'
+        if (m.fechaInicio && m.fechaInicio > endOfMonthStr) {
+          estadoPeriodo = 'no_iniciado'
+        } else if (m.fechaLimite && m.fechaLimite < startOfMonthStr) {
+          estadoPeriodo = 'finalizado'
+        } else if (isMesFuturo) {
+          estadoPeriodo = 'futuro'
+        }
+        return { ...m, estadoPeriodo }
+      })
   }, [metas, mostrarTodas, fechaRef])
 
   const totalObjetivo = useMemo(

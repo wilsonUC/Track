@@ -88,16 +88,16 @@ export function PresupuestoCard({
       } ${activo && !activoEnMes ? 'opacity-80' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`rounded-xl p-2.5 ${catInfo.bg}`}>{catInfo.icon}</div>
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-slate-200">{nombre}</h3>
-            <div className="flex items-center gap-x-1 text-[11px] whitespace-nowrap overflow-hidden text-ellipsis">
-              <span className="text-slate-400 dark:text-slate-400">Límite mensual</span>
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className={`shrink-0 rounded-xl p-2.5 ${catInfo.bg}`}>{catInfo.icon}</div>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{nombre}</h3>
+            <div className="flex items-center gap-x-1.5 text-[11px] text-slate-400 dark:text-slate-400">
+              <span className="shrink-0 font-medium">Límite mensual</span>
               {periodoText && (
                 <>
-                  <span className="text-slate-300 select-none dark:text-slate-600">·</span>
-                  <span className="text-slate-500 truncate dark:text-slate-400">
+                  <span className="select-none text-slate-300 dark:text-slate-600">·</span>
+                  <span className="truncate font-medium text-slate-500 dark:text-slate-400">
                     {periodoText}
                   </span>
                 </>
@@ -106,7 +106,7 @@ export function PresupuestoCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
           {!activo ? (
             <span className="rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400">
               DESACTIVADO
@@ -118,27 +118,27 @@ export function PresupuestoCard({
           ) : (
             <>
               {esMesPasado && (
-                <span className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400">
+                <span className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400">
                   <Lock className="h-3 w-3" />
                   CERRADO
                 </span>
               )}
               {esMesFuturo && (
-                <span className="flex items-center gap-1 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/50 dark:text-indigo-400">
+                <span className="flex items-center gap-1 rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-black text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
                   <Clock className="h-3 w-3" />
-                  PRÓXIMO
+                  PRÓXIMAMENTE
                 </span>
               )}
               {excedido && (
-                <span className="flex animate-pulse items-center gap-1 rounded-md border border-rose-100 bg-rose-50 px-2 py-1 text-[10px] font-black text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
+                <span className="flex animate-pulse items-center gap-1 rounded-md border border-rose-100 bg-rose-50 px-2.5 py-1 text-[10px] font-black text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
                   <AlertTriangle className="h-3 w-3" aria-hidden />
                   EXCEDIDO
                 </span>
               )}
               {alLimite && (
-                <span className="flex items-center gap-1 rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400">
+                <span className="flex items-center gap-1 rounded-md border border-amber-100 bg-amber-50 px-2.5 py-1 text-[10px] font-black text-amber-600 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-400">
                   <AlertTriangle className="h-3 w-3" aria-hidden />
-                  AJUSTADO
+                  AL LÍMITE
                 </span>
               )}
             </>

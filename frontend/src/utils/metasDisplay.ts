@@ -9,6 +9,7 @@ export type MetaCardView = {
   porcentaje: number
   completada: boolean
   estado: ApiMeta['estado']
+  estadoPeriodo?: 'activo' | 'no_iniciado' | 'finalizado' | 'futuro'
   esAsignacionLibre: boolean
   fechaInicio: string | null
   fechaInicioLabel: string | null
