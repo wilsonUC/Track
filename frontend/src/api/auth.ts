@@ -310,6 +310,41 @@ export async function login(username: string, password: string): Promise<LoginRe
   return res.json()
 }
 
+export async function loginWithGoogle(credential: string): Promise<LoginResponse> {
+  const res = await fetch(`${API}/api/auth/google/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const detail = typeof err.detail === 'string' ? err.detail : ''
+    const lower = detail.toLowerCase()
+
+    if (lower.includes('bloqueada') || lower.includes('blocked') || lower.includes('revocado')) {
+      throw new AuthError(
+        detail || 'Tu cuenta ha sido bloqueada. Contacta al administrador para solicitar acceso.',
+        'account_blocked'
+      )
+    }
+    if (lower.includes('expir') || lower.includes('vencid') || lower.includes('vigencia')) {
+      throw new AuthError(
+        detail || 'Tu periodo de acceso a la plataforma ha expirado. Contacta al administrador para renovar tu suscripción.',
+        'account_expired'
+      )
+    }
+    if (lower.includes('pendiente') || lower.includes('pending') || lower.includes('aprobación')) {
+      throw new AuthError(
+        detail || 'Tu cuenta está pendiente de aprobación por el administrador.',
+        'account_pending'
+      )
+    }
+
+    throw new AuthError(detail || 'Error al iniciar sesión con Google.', 'unknown')
+  }
+  return res.json()
+}
+
   export async function register(data: RegisterPayload) {
     const res = await fetch(`${API}/api/registro/`, {
       method: 'POST',

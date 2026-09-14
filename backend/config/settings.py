@@ -166,6 +166,9 @@ CORS_ALLOW_ALL_ORIGINS = True
 GROQ_API_KEY = config("GROQ_API_KEY", default="")
 GROQ_MODEL = config("GROQ_MODEL", default="openai/gpt-oss-20b")
 
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default="541141196828-4b01l6covnl5frka5oq2547c6h1savfh.apps.googleusercontent.com")
+
 # Tests: SQLite en memoria (no requiere PostgreSQL ni toca la DB real)
 import sys
 

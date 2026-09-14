@@ -1107,3 +1107,11 @@ class CambioPasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save()
         return user
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    credential = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        error_messages={"required": "El token de credencial de Google es obligatorio."}
+    )

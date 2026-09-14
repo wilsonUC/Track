@@ -2,6 +2,7 @@
 
 from datetime import date, timedelta
 from decimal import Decimal
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -1274,11 +1275,58 @@ class TiposCuentaTests(FinanzasAPITestCase):
         self.assertIn("expir", str(res.data))
 
 
+class GoogleAuthTestCase(FinanzasAPITestCase):
+    @mock.patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_auth_new_user_success(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "newgoogleuser@example.com",
+            "given_name": "Google",
+            "family_name": "User",
+            "sub": "1234567890",
+        }
+        res = self.client.post(
+            "/api/auth/google/",
+            {"credential": "mock_google_token"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("access", res.data)
+        self.assertIn("refresh", res.data)
+        self.assertEqual(res.data["user"]["email"], "newgoogleuser@example.com")
 
+        # Verificar que se creó el usuario en DB
+        user = User.objects.get(email="newgoogleuser@example.com")
+        self.assertEqual(user.first_name, "Google")
+        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.ACTIVA)
 
+    @mock.patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_auth_existing_user_blocked(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "blocked@example.com",
+            "given_name": "Blocked",
+            "family_name": "User",
+        }
+        user = User.objects.create_user(username="blocked_user", email="blocked@example.com")
+        PerfilUsuario.objects.create(
+            usuario=user,
+            telefono="999000111",
+            estado_cuenta=PerfilUsuario.EstadoCuenta.BLOQUEADA,
+        )
+        res = self.client.post(
+            "/api/auth/google/",
+            {"credential": "mock_google_token"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("bloqueada", str(res.data))
 
-
-
-
-
-
+    @mock.patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_auth_invalid_token(self, mock_verify):
+        mock_verify.side_effect = Exception("Token expired")
+        res = self.client.post(
+            "/api/auth/google/",
+            {"credential": "bad_token"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("inválido", str(res.data))

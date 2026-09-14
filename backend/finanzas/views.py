@@ -57,6 +57,7 @@ from .serializers import (
     RecurrenteSerializer,
     TransactionSerializer,
     RegistroSerializer,
+    GoogleAuthSerializer,
     CambioPasswordSerializer,
     PerfilUpdateSerializer,
     perfil_desde_usuario,
@@ -1198,3 +1199,106 @@ class RegistroView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )     
+
+
+class GoogleAuthView(APIView):
+    """
+    POST /api/auth/google/ — Iniciar sesión o registrarse con Google OAuth 2.0.
+    Público (AllowAny). Recibe { "credential": "<token_id_de_google>" }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from django.conf import settings
+        from rest_framework.exceptions import AuthenticationFailed
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        credential = serializer.validated_data["credential"]
+
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                credential,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Token de Google inválido o expirado: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        email = idinfo.get("email")
+        if not email:
+            return Response(
+                {"detail": "No se pudo obtener el correo electrónico desde Google."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        first_name = idinfo.get("given_name", "")
+        last_name = idinfo.get("family_name", "")
+
+        user = User.objects.filter(email__iexact=email).first()
+
+        if not user:
+            # Generar username único basado en el email
+            base_username = email.split("@")[0].lower()
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                password=None,
+            )
+            user.set_unusable_password()
+            user.save()
+
+            PerfilUsuario.objects.create(
+                usuario=user,
+                estado_cuenta=PerfilUsuario.EstadoCuenta.ACTIVA,
+                tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+            )
+            PreferenciasUsuario.objects.get_or_create(usuario=user)
+        else:
+            perfil, _ = PerfilUsuario.objects.get_or_create(
+                usuario=user,
+                defaults={
+                    "estado_cuenta": PerfilUsuario.EstadoCuenta.ACTIVA,
+                    "tipo_cuenta": PerfilUsuario.TipoCuenta.BASICO,
+                },
+            )
+            PreferenciasUsuario.objects.get_or_create(usuario=user)
+
+            if not user.is_staff and not user.is_superuser:
+                if perfil.estado_cuenta == PerfilUsuario.EstadoCuenta.PENDIENTE:
+                    raise AuthenticationFailed("Tu cuenta está pendiente de aprobación por el administrador.")
+                if perfil.estado_cuenta == PerfilUsuario.EstadoCuenta.BLOQUEADA:
+                    raise AuthenticationFailed("Tu cuenta está bloqueada. Contacta al administrador.")
+                if perfil.is_expired:
+                    raise AuthenticationFailed("Tu periodo de acceso a la plataforma ha expirado.")
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )

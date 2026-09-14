@@ -11,3 +11,5 @@ sqlparse==0.5.5
 tzdata==2026.1
 whitenoise==6.9.0
 Pillow>=10.4.0
+google-auth>=2.0.0
+requests>=2.31.0

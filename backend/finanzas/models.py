@@ -337,7 +337,7 @@ class PerfilUsuario(models.Model):
         on_delete = models.CASCADE,
         related_name = "perfil",
     )
-    telefono = models.CharField(max_length=15, unique=True)
+    telefono = models.CharField(max_length=15, unique=True, null=True, blank=True)
     estado_cuenta = models.CharField(
         max_length=10,
         choices=EstadoCuenta.choices,
