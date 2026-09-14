@@ -1015,8 +1015,12 @@ class IaChatView(APIView):
                 mensaje=serializer.validated_data["mensaje"],
                 historial=serializer.validated_data.get("historial", []),
             )
-        except RuntimeError as exc:
-            return Response({"detalle": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            logger.exception("Error inesperado en IaChatView: %s", exc)
+            return Response(
+                {"detalle": str(exc) or "No se pudo obtener respuesta del asistente."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response({"respuesta": respuesta})
 

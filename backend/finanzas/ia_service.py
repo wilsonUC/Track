@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-oss-120b"
-FALLBACK_MODELS = ["openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]
 MAX_HISTORY = 8
 MAX_RECENT_TX = 30
 
@@ -728,7 +728,7 @@ def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -
             temperature=0.7,
             max_tokens=2048,
         )
-    except RuntimeError as exc:
+    except Exception as exc:
         logger.error("chat_with_groq cayó al modo de contingencia local: %s", exc)
         from .models import Transaction
         today = date.today()
