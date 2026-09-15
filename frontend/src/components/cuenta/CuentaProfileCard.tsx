@@ -145,7 +145,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
     if (uploading) return
     if (profile.foto) {
       setIsPreviewOpen(true)
-    } else {
+    } else if (!profile.es_google) {
       fileInputRef.current?.click()
     }
   }
@@ -159,14 +159,16 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
         <div className="relative -mt-16 flex justify-center">
           <div className="relative group">
             {/* Input oculto para selección de imagen */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
+            {!profile.es_google && (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+            )}
 
             {/* Marco del Avatar con gradiente armonizado y bisel de integración */}
             <div
@@ -178,9 +180,19 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
               }}
               tabIndex={0}
               role="button"
-              title={profile.foto ? 'Haz clic para ver opciones de foto' : 'Haz clic para subir una foto'}
+              title={
+                profile.foto
+                  ? profile.es_google
+                    ? 'Foto sincronizada con Google (haz clic para ampliar)'
+                    : 'Haz clic para ver opciones de foto'
+                  : profile.es_google
+                  ? 'Foto de Google'
+                  : 'Haz clic para subir una foto'
+              }
               className={`relative rounded-full p-1 bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.03] hover:shadow-indigo-500/35 dark:shadow-indigo-950/50 ${
-                !uploading ? 'cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-500/40' : ''
+                !uploading && (profile.foto || !profile.es_google)
+                  ? 'cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-500/40'
+                  : ''
               }`}
             >
               {/* Contenedor de la foto con borde limpio */}
@@ -213,8 +225,8 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
               </div>
             </div>
 
-            {/* Botón de Cámara flotante (solo si NO tiene foto aún) */}
-            {!profile.foto && (
+            {/* Botón de Cámara flotante (solo si NO tiene foto aún y NO es usuario de Google) */}
+            {!profile.foto && !profile.es_google && (
               <button
                 type="button"
                 onClick={handleCameraClick}
@@ -364,32 +376,39 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
             </div>
 
             {/* Acciones dentro del modal */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={handleOpenRealign}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:bg-indigo-500 active:scale-95 sm:text-sm"
-              >
-                <Crop className="h-4 w-4" />
-                Ajustar encuadre
-              </button>
-              <button
-                type="button"
-                onClick={handleCameraClick}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 active:scale-95 sm:text-sm"
-              >
-                <Camera className="h-4 w-4" />
-                Subir nueva
-              </button>
-              <button
-                type="button"
-                onClick={handleDeletePhoto}
-                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60 active:scale-95 sm:text-sm"
-              >
-                <Trash2 className="h-4 w-4" />
-                Eliminar foto
-              </button>
-            </div>
+            {profile.es_google ? (
+              <div className="mt-6 flex items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-2.5 text-xs font-semibold text-slate-600 shadow-inner dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Foto sincronizada con tu cuenta de Google
+              </div>
+            ) : (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenRealign}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:bg-indigo-500 active:scale-95 sm:text-sm"
+                >
+                  <Crop className="h-4 w-4" />
+                  Ajustar encuadre
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCameraClick}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 active:scale-95 sm:text-sm"
+                >
+                  <Camera className="h-4 w-4" />
+                  Subir nueva
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeletePhoto}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-900/60 active:scale-95 sm:text-sm"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar foto
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body

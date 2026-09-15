@@ -1,11 +1,11 @@
 import { Lock, Mail, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { AuthError, login, loginWithGoogle, saveTokens } from '../api/auth'
 import { AccessDeniedCard, type AccessDeniedReason } from '../components/auth/AccessDeniedCard'
 import { AuthField } from '../components/auth/AuthField'
 import { AuthSplitCard } from '../components/auth/AuthLayout'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 
 import brandLogo from '../assets/brand/v4.svg'
 
@@ -74,15 +74,11 @@ export function LoginPage() {
     }
   }
 
-  async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
-    if (!credentialResponse.credential) {
-      setError('No se pudo obtener las credenciales de Google.')
-      return
-    }
+  async function handleGoogleSuccess(accessToken: string) {
     setError('')
     setLoading(true)
     try {
-      const data = await loginWithGoogle(credentialResponse.credential)
+      const data = await loginWithGoogle({ accessToken })
       saveTokens(data.access, data.refresh)
       setDeniedState(null)
       navigate('/', { replace: true })
@@ -221,31 +217,7 @@ export function LoginPage() {
             </p>
           )}
 
-          {/* Google Sign-In Button */}
-          <div className="mt-5 sm:mt-6">
-            <div className="flex w-full justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Error al conectar con Google. Por favor, intenta de nuevo.')}
-                theme="outline"
-                size="large"
-                text="continue_with"
-                shape="rectangular"
-                width="384"
-              />
-            </div>
-
-            <div className="relative my-4 flex items-center justify-center sm:my-5">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <span className="relative bg-white px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                o con usuario
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
             <AuthField
               id="login-username"
               label="USUARIO"
@@ -282,6 +254,25 @@ export function LoginPage() {
               </button>
             </div>
           </form>
+
+          {/* Google Sign-In Button (debajo de Iniciar Sesión) */}
+          <div className="mt-3">
+            <div className="relative mb-3 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200/90" />
+              </div>
+              <span className="relative bg-white px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                o continuar con
+              </span>
+            </div>
+
+            <GoogleSignInButton
+              onSuccess={handleGoogleSuccess}
+              onError={(msg) => setError(msg)}
+              text="Continuar con Google"
+              disabled={loading}
+            />
+          </div>
 
           <div className="mt-5 space-y-2.5 text-center sm:mt-8 sm:space-y-6">
             <p className="text-sm text-slate-500">

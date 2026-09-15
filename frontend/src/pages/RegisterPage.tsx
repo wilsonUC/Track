@@ -1,10 +1,10 @@
 import { AtSign, Lock, Mail, Phone, TrendingUp, User } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { AuthError, loginWithGoogle, register, saveTokens } from '../api/auth'
 import { AuthField } from '../components/auth/AuthField'
 import { AuthSplitCard } from '../components/auth/AuthLayout'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 import { formatApiError } from '../utils/apiErrors'
 
 import brandLogo from '../assets/brand/v4.svg'
@@ -22,19 +22,22 @@ export function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleGoogleSuccess(credentialResponse: CredentialResponse) {
-    if (!credentialResponse.credential) {
-      setError('No se pudo obtener las credenciales de Google.')
-      return
-    }
+  async function handleGoogleSuccess(accessToken: string) {
     setError('')
     setLoading(true)
     try {
-      const data = await loginWithGoogle(credentialResponse.credential)
+      const data = await loginWithGoogle({ accessToken })
       saveTokens(data.access, data.refresh)
       navigate('/', { replace: true })
     } catch (err) {
       if (err instanceof AuthError) {
+        if (err.code === 'account_pending') {
+          navigate('/login', {
+            replace: true,
+            state: { message: 'Cuenta registrada con Google. Tu acceso quedará habilitado cuando un administrador apruebe la cuenta.' },
+          })
+          return
+        }
         setError(err.detail)
       } else {
         setError(err instanceof Error ? err.message : 'Error al registrarse con Google.')
@@ -169,31 +172,7 @@ export function RegisterPage() {
           </div>
         </div>
 
-        {/* Google Register Button */}
-        <div className="mt-4">
-          <div className="flex w-full justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Error al conectar con Google. Por favor, intenta de nuevo.')}
-              theme="outline"
-              size="large"
-              text="signup_with"
-              shape="rectangular"
-              width="384"
-            />
-          </div>
-
-          <div className="relative my-3.5 flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <span className="relative bg-white px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              o completa el formulario
-            </span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
+        <form onSubmit={handleSubmit} className="mt-3.5 space-y-2.5 sm:mt-4 sm:space-y-3">
           {/* Fila 1: Nombre y Apellidos */}
           <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
             <AuthField
@@ -319,6 +298,25 @@ export function RegisterPage() {
             </button>
           </div>
         </form>
+
+        {/* Google Register Button (debajo de Crear Cuenta) */}
+        <div className="mt-2.5">
+          <div className="relative mb-2.5 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200/90" />
+            </div>
+            <span className="relative bg-white px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              o registrarse con
+            </span>
+          </div>
+
+          <GoogleSignInButton
+            onSuccess={handleGoogleSuccess}
+            onError={(msg) => setError(msg)}
+            text="Registrarse con Google"
+            disabled={loading}
+          />
+        </div>
 
         <p className="mt-3 text-center text-xs text-slate-500 sm:mt-3.5 sm:text-sm">
           ¿Ya tiene una cuenta?{' '}

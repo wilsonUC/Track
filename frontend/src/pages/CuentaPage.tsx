@@ -65,7 +65,7 @@ export function CuentaPage() {
 
       <div className="space-y-6">
         <CuentaPersonalForm profile={profile} onSaved={handleProfileSaved} />
-        <CuentaPasswordForm />
+        {!profile.es_google && <CuentaPasswordForm />}
         <CuentaResetDatos />
       </div>
     </section>

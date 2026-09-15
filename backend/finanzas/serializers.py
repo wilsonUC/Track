@@ -43,6 +43,13 @@ def perfil_desde_usuario(user, request=None):
         fecha_expiracion = perfil.fecha_expiracion
         is_expired = perfil.is_expired
         dias_restantes = perfil.dias_restantes
+        es_google = bool(perfil.es_google or (not user.has_usable_password()))
+        if es_google and not perfil.es_google:
+            perfil.es_google = True
+            try:
+                perfil.save(update_fields=["es_google"])
+            except Exception:
+                pass
         foto_url = None
         foto_original_url = None
         if perfil.foto:
@@ -50,6 +57,9 @@ def perfil_desde_usuario(user, request=None):
                 foto_url = request.build_absolute_uri(perfil.foto.url) if request else perfil.foto.url
             except Exception:
                 foto_url = perfil.foto.url
+        elif perfil.foto_google:
+            foto_url = perfil.foto_google
+
         if perfil.foto_original:
             try:
                 foto_original_url = (
@@ -59,6 +69,8 @@ def perfil_desde_usuario(user, request=None):
                 )
             except Exception:
                 foto_original_url = perfil.foto_original.url
+        elif perfil.foto_google:
+            foto_original_url = perfil.foto_google
     except PerfilUsuario.DoesNotExist:
         telefono = ""
         estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA if user.is_staff else PerfilUsuario.EstadoCuenta.PENDIENTE
@@ -67,6 +79,7 @@ def perfil_desde_usuario(user, request=None):
         fecha_expiracion = None
         is_expired = False
         dias_restantes = None
+        es_google = False
         foto_url = None
         foto_original_url = None
     return {
@@ -77,6 +90,7 @@ def perfil_desde_usuario(user, request=None):
         "telefono": telefono,
         "foto": foto_url,
         "foto_original": foto_original_url or foto_url,
+        "es_google": es_google,
         "estado_cuenta": estado_cuenta,
         "tipo_cuenta": tipo_cuenta,
         "tipo_cuenta_label": tipo_cuenta_label,
@@ -881,6 +895,8 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
                 if request:
                     return request.build_absolute_uri(obj.perfil.foto.url)
                 return obj.perfil.foto.url
+            elif obj.perfil.foto_google:
+                return obj.perfil.foto_google
         except Exception:
             pass
         return None
@@ -933,22 +949,28 @@ _MISSING = object()
 
 
 class AdminUsuarioUpdateSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
-    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False)
-    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True, allow_null=True)
     estado_cuenta = serializers.ChoiceField(
         choices=PerfilUsuario.EstadoCuenta.choices,
         required=False,
+        allow_null=True,
+        allow_blank=True,
     )
     tipo_cuenta = serializers.ChoiceField(
         choices=PerfilUsuario.TipoCuenta.choices,
         required=False,
+        allow_null=True,
+        allow_blank=True,
     )
     fecha_expiracion = serializers.DateTimeField(required=False, allow_null=True)
     duracion = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     def validate_email(self, value):
+        if not value:
+            return value
         user = self.context["user"]
         if User.objects.filter(email=value).exclude(pk=user.pk).exists():
             raise serializers.ValidationError("Ese correo ya está registrado.")
@@ -956,7 +978,8 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
 
     def validate_telefono(self, value):
         if not value or not str(value).strip():
-            raise serializers.ValidationError("El teléfono es obligatorio.")
+            return None
+        value = str(value).strip()
         user = self.context["user"]
         if PerfilUsuario.objects.filter(telefono=value).exclude(usuario=user).exists():
             raise serializers.ValidationError("Ese teléfono ya está registrado.")
@@ -965,7 +988,7 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
     def save(self):
         user = self.context["user"]
         data = dict(self.validated_data)
-        telefono = data.pop("telefono", None)
+        telefono = data.pop("telefono", _MISSING)
         estado_cuenta = data.pop("estado_cuenta", None)
         tipo_cuenta = data.pop("tipo_cuenta", None)
 
@@ -978,12 +1001,12 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
             fecha_expiracion = _MISSING
 
         for field in ("first_name", "last_name", "email"):
-            if field in data:
+            if field in data and data[field] is not None:
                 setattr(user, field, data[field])
         user.save()
 
         if (
-            telefono is not None
+            telefono is not _MISSING
             or estado_cuenta is not None
             or tipo_cuenta is not None
             or fecha_expiracion is not _MISSING
@@ -991,13 +1014,13 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
             perfil, _ = PerfilUsuario.objects.get_or_create(
                 usuario=user,
                 defaults={
-                    "telefono": telefono or "",
+                    "telefono": telefono if (telefono is not _MISSING and telefono) else None,
                     "estado_cuenta": estado_cuenta or PerfilUsuario.EstadoCuenta.PENDIENTE,
                     "tipo_cuenta": tipo_cuenta or PerfilUsuario.TipoCuenta.BASICO,
                 },
             )
-            if telefono is not None:
-                perfil.telefono = telefono
+            if telefono is not _MISSING:
+                perfil.telefono = telefono if telefono else None
             if estado_cuenta is not None:
                 perfil.estado_cuenta = estado_cuenta
             if tipo_cuenta is not None:
@@ -1010,10 +1033,10 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
 
 
 class PerfilUpdateSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
-    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False)
-    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    telefono = serializers.CharField(max_length=15, required=False, allow_blank=True, allow_null=True)
     foto = serializers.ImageField(required=False, allow_null=True)
     foto_original = serializers.ImageField(required=False, allow_null=True)
     eliminar_foto = serializers.BooleanField(required=False, default=False)
@@ -1025,17 +1048,28 @@ class PerfilUpdateSerializer(serializers.Serializer):
         return value
 
     def validate_telefono(self, value):
-        if not value or not str(value).strip():
-            raise serializers.ValidationError("El teléfono es obligatorio.")
         user = self.context["user"]
+        is_google = getattr(user.perfil, "es_google", False) if hasattr(user, "perfil") else False
+        if not value or not str(value).strip():
+            if is_google:
+                return None
+            raise serializers.ValidationError("El teléfono es obligatorio.")
+        value = str(value).strip()
         if PerfilUsuario.objects.filter(telefono=value).exclude(usuario=user).exists():
             raise serializers.ValidationError("Ese teléfono ya está registrado.")
         return value
 
+    def validate(self, attrs):
+        user = self.context.get("user")
+        if user and hasattr(user, "perfil") and user.perfil.es_google:
+            if "foto" in self.initial_data or "foto_original" in self.initial_data or self.initial_data.get("eliminar_foto") in (True, "true", "1"):
+                raise serializers.ValidationError({"foto": "Tu foto está sincronizada con tu cuenta de Google y no puede ser modificada manualmente."})
+        return attrs
+
     def save(self):
         user = self.context["user"]
         data = self.validated_data
-        telefono = data.pop("telefono", None)
+        telefono = data.pop("telefono", _MISSING)
         foto = data.pop("foto", _MISSING)
         foto_original = data.pop("foto_original", _MISSING)
         eliminar_foto = data.pop("eliminar_foto", False)
@@ -1047,13 +1081,15 @@ class PerfilUpdateSerializer(serializers.Serializer):
 
         perfil, created = PerfilUsuario.objects.get_or_create(
             usuario=user,
-            defaults={"telefono": telefono or ""},
+            defaults={"telefono": telefono if (telefono is not _MISSING and telefono) else None},
         )
         needs_perfil_save = False
 
-        if telefono is not None and not created and perfil.telefono != telefono:
-            perfil.telefono = telefono
-            needs_perfil_save = True
+        if telefono is not _MISSING and not created:
+            perfil_telefono = telefono if telefono else None
+            if perfil.telefono != perfil_telefono:
+                perfil.telefono = perfil_telefono
+                needs_perfil_save = True
 
         if eliminar_foto:
             if perfil.foto:
@@ -1110,8 +1146,12 @@ class CambioPasswordSerializer(serializers.Serializer):
 
 
 class GoogleAuthSerializer(serializers.Serializer):
-    credential = serializers.CharField(
-        required=True,
-        allow_blank=False,
-        error_messages={"required": "El token de credencial de Google es obligatorio."}
-    )
+    credential = serializers.CharField(required=False, allow_blank=False)
+    access_token = serializers.CharField(required=False, allow_blank=False)
+
+    def validate(self, attrs):
+        if not attrs.get("credential") and not attrs.get("access_token"):
+            raise serializers.ValidationError(
+                "Debe proporcionar 'credential' o 'access_token' de Google."
+            )
+        return attrs

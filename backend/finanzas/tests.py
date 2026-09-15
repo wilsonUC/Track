@@ -1315,6 +1315,256 @@ class GoogleAuthTestCase(FinanzasAPITestCase):
         res = self.client.post(
             "/api/auth/google/",
             {"credential": "mock_google_token"},
+            {
+                "nombre": "Spotify",
+                "monto": "20.00",
+                "tipo": "expense",
+                "dia_pago": 15,
+                "categoria": self.cat_gasto.id,
+            },
+            format="json",
+        )
+        rec_id2 = res2.data["id"]
+        self.client.post(f"/api/recurrentes/{rec_id2}/registrar-pago/?mes=2026-08-01", {"fecha": "2026-08-15"}, format="json")
+
+        res_del_todo = self.client.delete(f"/api/recurrentes/{rec_id2}/?modo=eliminar_todo")
+        self.assertEqual(res_del_todo.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Recurrente.objects.filter(id=rec_id2).exists())
+        self.assertFalse(Transaction.objects.filter(monto=Decimal("20.00"), descripcion__icontains="Spotify").exists())
+
+
+class TiposCuentaTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.crear_categorias()
+        self.user_basico = self.crear_usuario(
+            username="basico",
+            telefono="999111001",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+        )
+        self.user_avanzado = self.crear_usuario(
+            username="avanzado",
+            telefono="999111002",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.AVANZADO,
+        )
+        self.admin_user = self.crear_usuario(
+            username="adminuser",
+            telefono="999111003",
+            is_staff=True,
+        )
+
+    def test_usuario_basico_bloqueado_en_rutas_avanzadas(self):
+        self.autenticar(self.user_basico)
+
+        # Recurrentes
+        res = self.client.get("/api/recurrentes/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Metas
+        res = self.client.get("/api/metas/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Consejos
+        res = self.client.get("/api/consejos/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_usuario_basico_puede_acceder_a_modulos_basicos(self):
+        self.autenticar(self.user_basico)
+
+        # Transacciones (Ingresos / Gastos)
+        res = self.client.get("/api/transacciones/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Categorías
+        res = self.client.get("/api/categorias/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Presupuestos (ahora disponible en básico)
+        res = self.client.get("/api/presupuestos/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Ahorros (ahora disponible en básico)
+        res = self.client.get("/api/ahorros/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Perfil
+        res = self.client.get("/api/perfil/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "basico")
+
+    def test_usuario_avanzado_tiene_acceso_a_rutas_avanzadas(self):
+        self.autenticar(self.user_avanzado)
+
+        res = self.client.get("/api/presupuestos/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/recurrentes/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/metas/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        res = self.client.get("/api/ahorros/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_admin_puede_cambiar_tipo_cuenta_de_usuario(self):
+        self.autenticar(self.admin_user)
+
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"tipo_cuenta": "avanzado"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "avanzado")
+
+        self.user_basico.perfil.refresh_from_db()
+        self.assertEqual(self.user_basico.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.AVANZADO)
+
+    def test_admin_puede_asignar_vigencia_y_expiracion(self):
+        self.autenticar(self.admin_user)
+
+        # Asignar 1 mes
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+        self.assertGreaterEqual(res.data["dias_restantes"], 29)
+
+        # Asignar 1 minuto (prueba)
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "1m"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+
+        # Asignar permanente
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "permanente"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+        self.assertIsNone(res.data["dias_restantes"])
+
+    def test_admin_puede_editar_usuario_google_sin_telefono(self):
+        self.autenticar(self.admin_user)
+        google_user = User.objects.create_user(
+            username="google_user_test",
+            email="google_user_test@example.com",
+            first_name="Google",
+            last_name="User",
+        )
+        PerfilUsuario.objects.create(
+            usuario=google_user,
+            telefono=None,
+            estado_cuenta=PerfilUsuario.EstadoCuenta.PENDIENTE,
+            tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+            es_google=True,
+        )
+
+        # Admin cambia estado a activa, tipo a avanzado, duracion permanente y manda telefono vacio
+        res = self.client.patch(
+            f"/api/admin/usuarios/{google_user.id}/",
+            {
+                "first_name": "Google",
+                "last_name": "User",
+                "email": "google_user_test@example.com",
+                "telefono": "",
+                "tipo_cuenta": "avanzado",
+                "duracion": "permanente",
+                "estado_cuenta": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "avanzado")
+        self.assertEqual(res.data["estado_cuenta"], "active")
+        self.assertIsNone(res.data["telefono"])
+
+
+    def test_usuario_expirado_no_puede_loguear(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.user_basico.perfil.fecha_expiracion = timezone.now() - timedelta(minutes=2)
+        self.user_basico.perfil.save()
+
+        res = self.client.post(
+            "/api/token/",
+            {"username": self.user_basico.username, "password": "clavesegura1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("expir", str(res.data))
+
+
+class GoogleAuthTestCase(FinanzasAPITestCase):
+    @mock.patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_auth_new_user_created_as_pending(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "newgoogleuser@example.com",
+            "given_name": "Google",
+            "family_name": "User",
+            "sub": "1234567890",
+            "picture": "https://lh3.googleusercontent.com/a/mock_photo=s96-c",
+        }
+        res = self.client.post(
+            "/api/auth/google/",
+            {"credential": "mock_google_token"},
+            format="json",
+        )
+        # Usuario nuevo queda en PENDIENTE y no puede ingresar hasta ser aprobado
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("pendiente de aprobación", str(res.data))
+
+        # Verificar que se creó el usuario en DB con estado PENDIENTE, es_google=True y foto_google URL
+        user = User.objects.get(email="newgoogleuser@example.com")
+        self.assertEqual(user.first_name, "Google")
+        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.PENDIENTE)
+        self.assertTrue(user.perfil.es_google)
+        self.assertTrue(user.perfil.foto_google.startswith("https://lh3.googleusercontent.com/"))
+        self.assertFalse(bool(user.perfil.foto))  # No se crean archivos en disco
+
+        # Si el admin lo aprueba (estado ACTIVA), ahora sí puede iniciar sesión
+        user.perfil.estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA
+        user.perfil.save()
+
+        res_approved = self.client.post(
+            "/api/auth/google/",
+            {"credential": "mock_google_token"},
+            format="json",
+        )
+        self.assertEqual(res_approved.status_code, status.HTTP_200_OK)
+        self.assertIn("access", res_approved.data)
+        self.assertIn("refresh", res_approved.data)
+        self.assertEqual(res_approved.data["user"]["email"], "newgoogleuser@example.com")
+        self.assertTrue(res_approved.data["user"]["foto"].startswith("https://lh3.googleusercontent.com/"))
+
+    @mock.patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_auth_existing_user_blocked(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "blocked@example.com",
+            "given_name": "Blocked",
+            "family_name": "User",
+        }
+        user = User.objects.create_user(username="blocked_user", email="blocked@example.com")
+        PerfilUsuario.objects.create(
+            usuario=user,
+            telefono="999000111",
+            estado_cuenta=PerfilUsuario.EstadoCuenta.BLOQUEADA,
+            es_google=True,
+        )
+        res = self.client.post(
+            "/api/auth/google/",
+            {"credential": "mock_google_token"},
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -1330,3 +1580,38 @@ class GoogleAuthTestCase(FinanzasAPITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("inválido", str(res.data))
+
+    @mock.patch("requests.get")
+    def test_google_auth_with_access_token(self, mock_get):
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "email": "access_token_user@example.com",
+            "given_name": "Access",
+            "family_name": "Token",
+            "sub": "999888777",
+        }
+        mock_get.return_value = mock_resp
+
+        res = self.client.post(
+            "/api/auth/google/",
+            {"access_token": "valid_oauth_access_token"},
+            format="json",
+        )
+        # Usuario nuevo queda en PENDIENTE
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("pendiente de aprobación", str(res.data))
+
+        # Aprobar usuario y reintentar
+        user = User.objects.get(email="access_token_user@example.com")
+        user.perfil.estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA
+        user.perfil.save()
+
+        res2 = self.client.post(
+            "/api/auth/google/",
+            {"access_token": "valid_oauth_access_token"},
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data["user"]["email"], "access_token_user@example.com")
+

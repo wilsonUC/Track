@@ -23,6 +23,7 @@ export type UserProfile = {
   fecha_expiracion?: string | null
   is_expired?: boolean
   dias_restantes?: number | null
+  es_google?: boolean
   is_staff: boolean
 }
 
@@ -310,11 +311,21 @@ export async function login(username: string, password: string): Promise<LoginRe
   return res.json()
 }
 
-export async function loginWithGoogle(credential: string): Promise<LoginResponse> {
+export async function loginWithGoogle(
+  params: { credential?: string; accessToken?: string } | string
+): Promise<LoginResponse> {
+  const payload =
+    typeof params === 'string'
+      ? { credential: params }
+      : {
+          credential: params.credential,
+          access_token: params.accessToken,
+        }
+
   const res = await fetch(`${API}/api/auth/google/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

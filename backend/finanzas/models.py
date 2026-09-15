@@ -360,6 +360,16 @@ class PerfilUsuario(models.Model):
         blank=True,
         help_text="Foto original completa sin recortar.",
     )
+    es_google = models.BooleanField(
+        default=False,
+        help_text="Indica si el usuario se autentica mediante Google OAuth.",
+    )
+    foto_google = models.URLField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="URL directa de la foto de perfil provista por Google OAuth.",
+    )
     fecha_expiracion = models.DateTimeField(
         null=True,
         blank=True,
