@@ -3,6 +3,7 @@ import {
   Brain,
   Coins,
   ExternalLink,
+  FileText,
   Loader2,
   Palette,
   Shield,
@@ -344,6 +345,27 @@ export function ConfiguracionPage() {
             >
               Gestionar en Mi Cuenta
             </Link>
+          </ConfigRow>
+          <ConfigRow
+            label="Términos y Privacidad"
+            hint="Consulta los términos de servicio vigentes y políticas de datos."
+          >
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Link
+                to="/terminos"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:flex-none"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Términos
+              </Link>
+              <Link
+                to="/privacidad"
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:flex-none"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Privacidad
+              </Link>
+            </div>
           </ConfigRow>
         </ConfigSection>
       </div>

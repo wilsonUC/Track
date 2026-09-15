@@ -274,13 +274,23 @@ export function LoginPage() {
             />
           </div>
 
-          <div className="mt-5 space-y-2.5 text-center sm:mt-8 sm:space-y-6">
+          <div className="mt-5 space-y-2.5 text-center sm:mt-8 sm:space-y-4">
             <p className="text-sm text-slate-500">
               ¿No tiene una cuenta?{' '}
               <Link to="/register" className="font-semibold text-[#2563eb] hover:text-[#1d4ed8]">
                 Regístrese aquí
               </Link>
             </p>
+
+            <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-400 font-medium">
+              <Link to="/terminos" className="hover:text-slate-600 hover:underline">
+                Términos de Uso
+              </Link>
+              <span>•</span>
+              <Link to="/privacidad" className="hover:text-slate-600 hover:underline">
+                Privacidad
+              </Link>
+            </div>
 
             <p className="text-[10px] font-medium tracking-[0.2em] text-slate-400">
               SOLO PERSONAL AUTORIZADO

@@ -5,6 +5,7 @@ import { AuthError, loginWithGoogle, register, saveTokens } from '../api/auth'
 import { AuthField } from '../components/auth/AuthField'
 import { AuthSplitCard } from '../components/auth/AuthLayout'
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
+import { LegalModal, type LegalTabType } from '../components/legal/LegalModal'
 import { formatApiError } from '../utils/apiErrors'
 
 import brandLogo from '../assets/brand/v4.svg'
@@ -19,6 +20,8 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [legalModalOpen, setLegalModalOpen] = useState(false)
+  const [legalModalTab, setLegalModalTab] = useState<LegalTabType>('terms')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -270,19 +273,44 @@ export function RegisterPage() {
             />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-2 pt-0.5 text-xs text-slate-600">
+          <div className="flex items-start gap-2 pt-0.5 text-xs text-slate-600">
             <input
+              id="register-terms"
               type="checkbox"
               checked={acceptTerms}
               onChange={(e) => setAcceptTerms(e.target.checked)}
-              className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-[#0f2d6e] focus:ring-[#2563eb]/30"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-[#0f2d6e] focus:ring-[#2563eb]/30 cursor-pointer"
             />
-            <span>
+            <label htmlFor="register-terms" className="cursor-pointer select-none">
               Acepto los{' '}
-              <span className="font-semibold text-[#2563eb]">Términos y Condiciones</span> y la{' '}
-              <span className="font-semibold text-[#2563eb]">Política de Privacidad</span>.
-            </span>
-          </label>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setLegalModalTab('terms')
+                  setLegalModalOpen(true)
+                }}
+                className="font-semibold text-[#2563eb] hover:underline focus:outline-none"
+              >
+                Términos y Condiciones
+              </button>{' '}
+              y la{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setLegalModalTab('privacy')
+                  setLegalModalOpen(true)
+                }}
+                className="font-semibold text-[#2563eb] hover:underline focus:outline-none"
+              >
+                Política de Privacidad
+              </button>
+              .
+            </label>
+          </div>
 
           {error && (
             <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2 text-xs text-red-700">{error}</p>
@@ -325,6 +353,18 @@ export function RegisterPage() {
           </Link>
         </p>
       </div>
+
+      {/* Modal de Términos y Condiciones / Privacidad */}
+      <LegalModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        initialTab={legalModalTab}
+        onAccept={() => {
+          setAcceptTerms(true)
+          setError('')
+        }}
+        showAcceptButton={true}
+      />
     </AuthSplitCard>
   )
 }

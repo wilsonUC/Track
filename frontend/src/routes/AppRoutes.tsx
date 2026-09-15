@@ -18,6 +18,8 @@ import { CuentaPage } from '../pages/CuentaPage'
 import { IaFinanzasPage } from '../pages/IaFinanzasPage'
 import { AdminUsuariosPage } from '../pages/AdminUsuariosPage'
 
+import { LegalPage } from '../pages/LegalPage'
+
 function RequireAuth({ children }: { children: ReactNode }) {
   if (!getAccessToken()) {
     return <Navigate to="/login" replace />
@@ -35,6 +37,9 @@ function GuestOnly({ children }: { children: ReactNode }) {
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/terminos" element={<LegalPage forcedType="terms" />} />
+      <Route path="/privacidad" element={<LegalPage forcedType="privacy" />} />
+
       <Route
         path="/login"
         element={
