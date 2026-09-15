@@ -337,7 +337,7 @@ class PerfilUsuario(models.Model):
         on_delete = models.CASCADE,
         related_name = "perfil",
     )
-    telefono = models.CharField(max_length=15, unique=True)
+    telefono = models.CharField(max_length=15, unique=True, null=True, blank=True)
     estado_cuenta = models.CharField(
         max_length=10,
         choices=EstadoCuenta.choices,
@@ -359,6 +359,16 @@ class PerfilUsuario(models.Model):
         null=True,
         blank=True,
         help_text="Foto original completa sin recortar.",
+    )
+    es_google = models.BooleanField(
+        default=False,
+        help_text="Indica si el usuario se autentica mediante Google OAuth.",
+    )
+    foto_google = models.URLField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="URL directa de la foto de perfil provista por Google OAuth.",
     )
     fecha_expiracion = models.DateTimeField(
         null=True,

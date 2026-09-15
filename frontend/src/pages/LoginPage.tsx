@@ -1,10 +1,11 @@
 import { Lock, Mail, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { AuthError, login, saveTokens } from '../api/auth'
+import { AuthError, login, loginWithGoogle, saveTokens } from '../api/auth'
 import { AccessDeniedCard, type AccessDeniedReason } from '../components/auth/AccessDeniedCard'
 import { AuthField } from '../components/auth/AuthField'
 import { AuthSplitCard } from '../components/auth/AuthLayout'
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton'
 
 import brandLogo from '../assets/brand/v4.svg'
 
@@ -67,6 +68,37 @@ export function LoginPage() {
         setError(err.detail)
       } else {
         setError(err instanceof Error ? err.message : 'Usuario o contraseña incorrectos.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleGoogleSuccess(accessToken: string) {
+    setError('')
+    setLoading(true)
+    try {
+      const data = await loginWithGoogle({ accessToken })
+      saveTokens(data.access, data.refresh)
+      setDeniedState(null)
+      navigate('/', { replace: true })
+    } catch (err) {
+      if (err instanceof AuthError) {
+        if (err.code === 'account_blocked') {
+          setDeniedState({ reason: 'blocked', message: err.detail })
+          return
+        }
+        if (err.code === 'account_expired') {
+          setDeniedState({ reason: 'expired', message: err.detail })
+          return
+        }
+        if (err.code === 'account_pending') {
+          setDeniedState({ reason: 'pending', message: err.detail })
+          return
+        }
+        setError(err.detail)
+      } else {
+        setError(err instanceof Error ? err.message : 'Error al iniciar sesión con Google.')
       }
     } finally {
       setLoading(false)
@@ -185,7 +217,7 @@ export function LoginPage() {
             </p>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4 sm:mt-8 sm:space-y-5">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
             <AuthField
               id="login-username"
               label="USUARIO"
@@ -223,7 +255,26 @@ export function LoginPage() {
             </div>
           </form>
 
-          <div className="mt-5 space-y-2.5 text-center sm:mt-10 sm:space-y-6">
+          {/* Google Sign-In Button (debajo de Iniciar Sesión) */}
+          <div className="mt-3">
+            <div className="relative mb-3 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200/90" />
+              </div>
+              <span className="relative bg-white px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                o continuar con
+              </span>
+            </div>
+
+            <GoogleSignInButton
+              onSuccess={handleGoogleSuccess}
+              onError={(msg) => setError(msg)}
+              text="Continuar con Google"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="mt-5 space-y-2.5 text-center sm:mt-8 sm:space-y-6">
             <p className="text-sm text-slate-500">
               ¿No tiene una cuenta?{' '}
               <Link to="/register" className="font-semibold text-[#2563eb] hover:text-[#1d4ed8]">

@@ -20,6 +20,7 @@ from .views import (
     PresupuestoViewSet,
     RecurrenteViewSet,
     RegistroView,
+    GoogleAuthView,
     ResetDatosView,
     TransactionViewSet,
 )
@@ -44,5 +45,6 @@ urlpatterns = [
     path("perfil/cambiar-password/", CambioPasswordView.as_view(), name="perfil-cambiar-password"),
     path("perfil/resetear-datos/", ResetDatosView.as_view(), name="perfil-resetear-datos"),
     path("registro/", RegistroView.as_view(), name="registro"),
+    path("auth/google/", GoogleAuthView.as_view(), name="google-auth"),
     path("", include(router.urls)),
 ]

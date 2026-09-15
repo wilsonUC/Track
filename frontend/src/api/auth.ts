@@ -23,6 +23,7 @@ export type UserProfile = {
   fecha_expiracion?: string | null
   is_expired?: boolean
   dias_restantes?: number | null
+  es_google?: boolean
   is_staff: boolean
 }
 
@@ -306,6 +307,51 @@ export async function login(username: string, password: string): Promise<LoginRe
     }
 
     throw new AuthError(detail || 'Usuario o contraseña incorrectos.', 'unknown')
+  }
+  return res.json()
+}
+
+export async function loginWithGoogle(
+  params: { credential?: string; accessToken?: string } | string
+): Promise<LoginResponse> {
+  const payload =
+    typeof params === 'string'
+      ? { credential: params }
+      : {
+          credential: params.credential,
+          access_token: params.accessToken,
+        }
+
+  const res = await fetch(`${API}/api/auth/google/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const detail = typeof err.detail === 'string' ? err.detail : ''
+    const lower = detail.toLowerCase()
+
+    if (lower.includes('bloqueada') || lower.includes('blocked') || lower.includes('revocado')) {
+      throw new AuthError(
+        detail || 'Tu cuenta ha sido bloqueada. Contacta al administrador para solicitar acceso.',
+        'account_blocked'
+      )
+    }
+    if (lower.includes('expir') || lower.includes('vencid') || lower.includes('vigencia')) {
+      throw new AuthError(
+        detail || 'Tu periodo de acceso a la plataforma ha expirado. Contacta al administrador para renovar tu suscripción.',
+        'account_expired'
+      )
+    }
+    if (lower.includes('pendiente') || lower.includes('pending') || lower.includes('aprobación')) {
+      throw new AuthError(
+        detail || 'Tu cuenta está pendiente de aprobación por el administrador.',
+        'account_pending'
+      )
+    }
+
+    throw new AuthError(detail || 'Error al iniciar sesión con Google.', 'unknown')
   }
   return res.json()
 }

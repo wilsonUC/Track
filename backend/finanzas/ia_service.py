@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-oss-120b"
 FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b"]
-MAX_HISTORY = 6
-MAX_RECENT_TX = 15
+MAX_HISTORY = 8
+MAX_RECENT_TX = 30
 
 CATALOGO_OPORTUNIDADES_INVERSION = """=== CATÁLOGO DE OPORTUNIDADES DE INVERSIÓN EXTERNAS (INMOBILIARIA) ===
 [Proyecto externo recomendado por la plataforma. NO pertenece a ingresos, gastos ni deudas del usuario]
@@ -186,7 +186,7 @@ def build_financial_context(user) -> str:
 
     savings_qs = (
         Transaction.objects.filter(usuario=user, tipo=Transaction.Tipo.AHORRO)
-        .order_by("-fecha", "-creado_en")[:10]
+        .order_by("-fecha", "-creado_en")[:20]
     )
 
     # --- 4. Presupuestos Activos ---
@@ -609,8 +609,8 @@ def _normalize_history(historial: list[dict]) -> list[dict]:
         if not contenido or rol not in ("user", "assistant"):
             continue
         # Truncar respuestas previas muy largas del asistente para proteger el límite de tokens
-        if rol == "assistant" and len(contenido) > 350:
-            contenido = contenido[:350] + "..."
+        if rol == "assistant" and len(contenido) > 500:
+            contenido = contenido[:500] + "..."
         messages.append({"role": rol, "content": contenido})
     return messages
 
@@ -654,11 +654,8 @@ def _single_groq_request(
             return data["choices"][0]["message"]["content"].strip()
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
+            is_retryable = exc.code == 429 or (500 <= exc.code <= 599)
             logger.warning("Groq (%s) HTTP %d intento %d: %s", model, exc.code, attempt + 1, body[:200])
-            # Si es 429 (rate limit del modelo), saltar de inmediato al siguiente modelo en cascada
-            if exc.code == 429:
-                raise RuntimeError(f"Groq ({model}) Rate Limit 429: {body}") from exc
-            is_retryable = 500 <= exc.code <= 599
             if is_retryable and attempt < max_retries - 1:
                 time.sleep(1.0 * (attempt + 1))
                 continue
@@ -681,7 +678,7 @@ def request_groq_completion(
     temperature: float = 0.7,
     max_tokens: int = 2048,
     response_format: dict | None = None,
-    timeout: int = 25,
+    timeout: int = 35,
 ) -> str:
     api_key = (getattr(settings, "GROQ_API_KEY", "") or "").strip().strip('"').strip("'")
     if not api_key:
@@ -708,7 +705,7 @@ def request_groq_completion(
             )
         except RuntimeError as exc:
             last_error = exc
-            logger.warning("Fallo en modelo %s (%s), intentando siguiente en lista de respaldo...", model_name, exc)
+            logger.warning("Fallo en modelo %s, intentando siguiente en lista de respaldo...", model_name)
             continue
 
     logger.error("Todos los modelos de Groq fallaron: %s", last_error)
