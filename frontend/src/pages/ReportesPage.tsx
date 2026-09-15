@@ -87,11 +87,11 @@ export function ReportesPage() {
     Promise.all([
       fetchTransactions(),
       fetchCategories(),
-      fetchPresupuestos(mesIso),
-      fetchMetas(),
-      fetchAhorros(),
+      fetchPresupuestos(mesIso).catch(() => []),
+      fetchMetas().catch(() => []),
+      fetchAhorros().catch(() => []),
       fetchResumenAhorros().catch(() => null),
-      fetchRecurrentes(mesIso),
+      fetchRecurrentes(mesIso).catch(() => []),
     ])
       .then(([txs, cats, pres, mts, ahs, resAh, recs]) => {
         if (cancelled) return
@@ -121,8 +121,8 @@ export function ReportesPage() {
     let cancelled = false
 
     Promise.all([
-      fetchPresupuestos(mesIso),
-      fetchRecurrentes(mesIso),
+      fetchPresupuestos(mesIso).catch(() => []),
+      fetchRecurrentes(mesIso).catch(() => []),
     ])
       .then(([pres, recs]) => {
         if (cancelled) return
