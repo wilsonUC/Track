@@ -25,7 +25,11 @@ from .models import (
     RecurrenteAjusteMes,
     Transaction,
 )
-from .ia_service import chat_with_groq
+from .ia_service import (
+    chat_with_groq,
+    obtener_cuota_ia_usuario,
+    registrar_mensaje_ia,
+)
 from .consejos_service import get_or_generate_consejos
 from .ahorros_service import (
     ahorro_libre,
@@ -1004,9 +1008,29 @@ class AhorroViewSet(viewsets.ModelViewSet):
 
 
 class IaChatView(APIView):
-    """POST /api/ia/chat/ — asistente financiero con contexto real del usuario."""
+    """GET /api/ia/chat/ — consulta la cuota diaria disponible de mensajes IA.
+    POST /api/ia/chat/ — asistente financiero con límite de 6 mensajes/día para plan básico.
+    """
+
+    def get(self, request):
+        cuota = obtener_cuota_ia_usuario(request.user)
+        return Response(cuota)
 
     def post(self, request):
+        cuota = obtener_cuota_ia_usuario(request.user)
+        if not cuota["es_ilimitado"] and cuota["restantes_hoy"] <= 0:
+            return Response(
+                {
+                    "detalle": (
+                        f"Has alcanzado el límite diario de {cuota['limite_diario']} mensajes "
+                        "de tu plan básico. Actualiza al plan Avanzado para disfrutar de consultas ilimitadas."
+                    ),
+                    "limite_alcanzado": True,
+                    "cuota": cuota,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         serializer = IaChatSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -1023,7 +1047,11 @@ class IaChatView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        return Response({"respuesta": respuesta})
+        nueva_cuota = registrar_mensaje_ia(request.user)
+        return Response({
+            "respuesta": respuesta,
+            "cuota": nueva_cuota,
+        })
 
 
 class ConsejosView(APIView):

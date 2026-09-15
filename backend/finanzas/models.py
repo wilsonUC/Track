@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils import timezone
 from PIL import Image, ImageOps
 
 
@@ -519,3 +520,29 @@ class AsignacionMeta(models.Model):
 
     def __str__(self):
         return f"{self.meta.nombre}: S/ {self.monto}"
+
+
+class UsoIaDiario(models.Model):
+    """Registro de mensajes enviados al asistente IA por día y usuario."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="usos_ia",
+    )
+    fecha = models.DateField(default=timezone.localdate)
+    total_mensajes = models.PositiveIntegerField(default=0)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Uso diario de IA"
+        verbose_name_plural = "Usos diarios de IA"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["usuario", "fecha"],
+                name="uniq_usuario_fecha_uso_ia",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.fecha}: {self.total_mensajes} msgs"

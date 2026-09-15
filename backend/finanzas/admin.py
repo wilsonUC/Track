@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, PerfilUsuario, Transaction
+from .models import Category, PerfilUsuario, Transaction, UsoIaDiario
 
 
 @admin.register(Category)
@@ -22,3 +22,11 @@ class PerfilUsuarioAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'telefono', 'estado_cuenta', 'tipo_cuenta')
     list_filter = ('estado_cuenta', 'tipo_cuenta')
     search_fields = ('usuario__username', 'usuario__email', 'telefono')
+
+
+@admin.register(UsoIaDiario)
+class UsoIaDiarioAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'fecha', 'total_mensajes', 'actualizado_en')
+    list_filter = ('fecha',)
+    search_fields = ('usuario__username', 'usuario__email')
+

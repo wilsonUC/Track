@@ -1615,3 +1615,80 @@ class GoogleAuthTestCase(FinanzasAPITestCase):
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
         self.assertEqual(res2.data["user"]["email"], "access_token_user@example.com")
 
+
+class IaChatLimitsAPITestCase(FinanzasAPITestCase):
+    def setUp(self):
+        self.user_basico = self.crear_usuario(
+            username="user_basico_ia",
+            telefono="987111222",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+        )
+        self.user_avanzado = self.crear_usuario(
+            username="user_avanzado_ia",
+            telefono="987111333",
+            tipo_cuenta=PerfilUsuario.TipoCuenta.AVANZADO,
+        )
+
+    def test_get_cuota_ia_usuario_basico(self):
+        self.autenticar(self.user_basico)
+        res = self.client.get("/api/ia/chat/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "basico")
+        self.assertFalse(res.data["es_ilimitado"])
+        self.assertEqual(res.data["limite_diario"], 6)
+        self.assertEqual(res.data["usados_hoy"], 0)
+        self.assertEqual(res.data["restantes_hoy"], 6)
+        self.assertFalse(res.data["limite_alcanzado"])
+
+    def test_get_cuota_ia_usuario_avanzado(self):
+        self.autenticar(self.user_avanzado)
+        res = self.client.get("/api/ia/chat/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["tipo_cuenta"], "avanzado")
+        self.assertTrue(res.data["es_ilimitado"])
+        self.assertIsNone(res.data["limite_diario"])
+        self.assertIsNone(res.data["restantes_hoy"])
+
+    @mock.patch("finanzas.views.chat_with_groq")
+    def test_usuario_basico_limite_6_mensajes(self, mock_chat):
+        mock_chat.return_value = "Consejo simulado de IA."
+        self.autenticar(self.user_basico)
+
+        # Enviar 6 mensajes (debe permitir los 6)
+        for i in range(1, 7):
+            res = self.client.post(
+                "/api/ia/chat/",
+                {"mensaje": f"Pregunta {i}"},
+                format="json",
+            )
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(res.data["respuesta"], "Consejo simulado de IA.")
+            self.assertEqual(res.data["cuota"]["usados_hoy"], i)
+            self.assertEqual(res.data["cuota"]["restantes_hoy"], 6 - i)
+
+        # El 7mo mensaje debe ser rechazado con 429 Too Many Requests
+        res_septimo = self.client.post(
+            "/api/ia/chat/",
+            {"mensaje": "Pregunta 7 excedida"},
+            format="json",
+        )
+        self.assertEqual(res_septimo.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertTrue(res_septimo.data["limite_alcanzado"])
+        self.assertIn("Has alcanzado el límite diario", res_septimo.data["detalle"])
+
+    @mock.patch("finanzas.views.chat_with_groq")
+    def test_usuario_avanzado_mensajes_ilimitados(self, mock_chat):
+        mock_chat.return_value = "Consejo simulado de IA."
+        self.autenticar(self.user_avanzado)
+
+        # Enviar 8 mensajes sin bloqueo
+        for i in range(1, 9):
+            res = self.client.post(
+                "/api/ia/chat/",
+                {"mensaje": f"Consulta avanzada {i}"},
+                format="json",
+            )
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertTrue(res.data["cuota"]["es_ilimitado"])
+
+

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { sendIaMessage } from '../api/ia'
+import { getIaCuota, sendIaMessage } from '../api/ia'
 import { createWelcomeMessage, formatIaTime } from '../components/ia/iaConstants'
-import type { IaHistorialItem, IaMensaje } from '../components/ia/iaTypes'
+import type { IaCuota, IaHistorialItem, IaMensaje } from '../components/ia/iaTypes'
 import {
   clearIaChatStorage,
   getInitialIaMessages,
@@ -23,7 +23,21 @@ export function useIaChat() {
   const [input, setInput] = useState('')
   const [estaCargando, setEstaCargando] = useState(false)
   const [error, setError] = useState('')
+  const [cuota, setCuota] = useState<IaCuota | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  const refrescarCuota = useCallback(async () => {
+    try {
+      const data = await getIaCuota()
+      setCuota(data)
+    } catch {
+      // Ignorar fallo de cuota inicial silenciosamente
+    }
+  }, [])
+
+  useEffect(() => {
+    refrescarCuota()
+  }, [refrescarCuota])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,6 +61,18 @@ export function useIaChat() {
       e.preventDefault()
       if (!input.trim() || estaCargando) return
 
+      // Si es plan básico y ya no quedan mensajes
+      if (cuota && !cuota.es_ilimitado && cuota.restantes_hoy !== null && cuota.restantes_hoy <= 0) {
+        const mensajeAviso: IaMensaje = {
+          id: Date.now(),
+          remitente: 'IA',
+          texto: 'Has alcanzado el límite diario de 6 mensajes de tu plan básico. Pásate al plan Avanzado para consultas ilimitadas.',
+          fecha: formatIaTime(),
+        }
+        setMensajes((prev) => [...prev, mensajeAviso])
+        return
+      }
+
       const mensajeUsuario: IaMensaje = {
         id: Date.now(),
         remitente: 'USER',
@@ -63,16 +89,23 @@ export function useIaChat() {
       setError('')
 
       try {
-        const respuesta = await sendIaMessage(pregunta, historial)
+        const res = await sendIaMessage(pregunta, historial)
+        if (res.cuota) {
+          setCuota(res.cuota)
+        }
         const mensajeIa: IaMensaje = {
           id: Date.now() + 1,
           remitente: 'IA',
-          texto: respuesta,
+          texto: res.respuesta,
           fecha: formatIaTime(),
         }
         setMensajes((prev) => [...prev, mensajeIa])
-      } catch (err) {
-        const detalle = err instanceof Error ? err.message : 'Error desconocido'
+      } catch (err: unknown) {
+        const anyErr = err as { message?: string; cuota?: IaCuota }
+        if (anyErr.cuota) {
+          setCuota(anyErr.cuota)
+        }
+        const detalle = anyErr.message || 'Error desconocido'
         setError(detalle)
         const mensajeError: IaMensaje = {
           id: Date.now() + 1,
@@ -85,7 +118,7 @@ export function useIaChat() {
         setEstaCargando(false)
       }
     },
-    [estaCargando, input, mensajes],
+    [cuota, estaCargando, input, mensajes],
   )
 
   return {
@@ -94,8 +127,11 @@ export function useIaChat() {
     setInput,
     estaCargando,
     error,
+    cuota,
+    refrescarCuota,
     chatEndRef,
     limpiarChat,
     manejarEnviar,
   }
 }
+

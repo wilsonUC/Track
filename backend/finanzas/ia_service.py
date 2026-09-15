@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db.models import DecimalField, Q, Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from .models import MetaAhorro, Presupuesto, Recurrente, Transaction
 
@@ -754,4 +755,67 @@ def chat_with_groq(*, user, mensaje: str, historial: list[dict] | None = None) -
             f"- **Balance mensual:** S/ {balance:.2f}\n\n"
             "Por favor, intenta de nuevo en unos minutos cuando la conexión se haya restablecido."
         )
+
+
+LIMITE_MENSAJES_DIARIOS_BASICO = 6
+
+
+def es_usuario_ilimitado(user) -> bool:
+    """Retorna True si el usuario tiene plan avanzado o es admin/staff."""
+    if user.is_staff or user.is_superuser:
+        return True
+    try:
+        return user.perfil.tipo_cuenta == "avanzado"
+    except Exception:
+        return False
+
+
+def obtener_cuota_ia_usuario(user) -> dict:
+    """Devuelve el estado de uso diario de mensajes de IA del usuario."""
+    ilimitado = es_usuario_ilimitado(user)
+    hoy = timezone.localdate()
+
+    from .models import UsoIaDiario
+
+    uso = UsoIaDiario.objects.filter(usuario=user, fecha=hoy).first()
+    usados_hoy = uso.total_mensajes if uso else 0
+
+    if ilimitado:
+        return {
+            "tipo_cuenta": "avanzado",
+            "es_ilimitado": True,
+            "limite_diario": None,
+            "usados_hoy": usados_hoy,
+            "restantes_hoy": None,
+            "limite_alcanzado": False,
+        }
+
+    restantes = max(0, LIMITE_MENSAJES_DIARIOS_BASICO - usados_hoy)
+    return {
+        "tipo_cuenta": "basico",
+        "es_ilimitado": False,
+        "limite_diario": LIMITE_MENSAJES_DIARIOS_BASICO,
+        "usados_hoy": usados_hoy,
+        "restantes_hoy": restantes,
+        "limite_alcanzado": restantes <= 0,
+    }
+
+
+def registrar_mensaje_ia(user) -> dict:
+    """Incrementa en 1 el contador de mensajes de IA del usuario para hoy y retorna la nueva cuota."""
+    hoy = timezone.localdate()
+    from django.db.models import F
+    from .models import UsoIaDiario
+
+    uso, created = UsoIaDiario.objects.get_or_create(
+        usuario=user,
+        fecha=hoy,
+        defaults={"total_mensajes": 1},
+    )
+    if not created:
+        UsoIaDiario.objects.filter(pk=uso.pk).update(total_mensajes=F("total_mensajes") + 1)
+        uso.refresh_from_db()
+
+    return obtener_cuota_ia_usuario(user)
+
 

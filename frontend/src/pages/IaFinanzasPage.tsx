@@ -26,6 +26,7 @@ export function IaFinanzasPage() {
     input,
     setInput,
     estaCargando,
+    cuota,
     chatEndRef,
     limpiarChat,
     manejarEnviar,
@@ -40,7 +41,7 @@ export function IaFinanzasPage() {
 
   return (
     <section className="mx-auto max-w-4xl space-y-5">
-      <IaChatToolbar onClear={limpiarChat} disabled={estaCargando} />
+      <IaChatToolbar onClear={limpiarChat} disabled={estaCargando} cuota={cuota} />
       <IaChatPanel
         mensajes={mensajes}
         input={input}
@@ -50,7 +51,9 @@ export function IaFinanzasPage() {
         onSubmit={manejarEnviar}
         userFoto={userFoto}
         userInitial={userInitial}
+        cuota={cuota}
       />
     </section>
   )
 }
+
