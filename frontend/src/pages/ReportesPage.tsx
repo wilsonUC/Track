@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { fetchCategories, fetchTransactions, type ApiCategory, type ApiTransaction } from '../api/finanzas'
 import { fetchPresupuestos, type ApiPresupuesto } from '../api/presupuestos'
@@ -27,6 +27,7 @@ import type { MetaReportFilter, ReportFilter, ReportTab } from '../components/re
 import { ReportesMonthHeader } from '../components/reportes/ReportesMonthHeader'
 import { ReportesMetasHeader } from '../components/reportes/metas/ReportesMetasHeader'
 import { useDateFilter } from '../hooks/useDateFilter'
+import { exportElementToPdf } from '../utils/exportPdf'
 import {
   buildDonutSegments,
   calculateAhorrosReport,
@@ -61,8 +62,10 @@ export function ReportesPage() {
   const [generalFilter, setGeneralFilter] = useState<ReportFilter>('todos')
   const [metaFilter, setMetaFilter] = useState<MetaReportFilter>('todas')
   const [initialLoading, setInitialLoading] = useState(true)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const [error, setError] = useState('')
 
+  const reportContentRef = useRef<HTMLDivElement>(null)
   const dateFilter = useDateFilter({ defaultPreset: 'month' })
 
   // State data
@@ -180,7 +183,7 @@ export function ReportesPage() {
     return calculateRecurrentesReport(recurrentes)
   }, [recurrentes])
 
-  // Export handler
+  // Export handler CSV
   function handleExport() {
     switch (activeTab) {
       case 'general':
@@ -208,6 +211,30 @@ export function ReportesPage() {
       case 'recurrentes':
         downloadRecurrentesCsv(recurrentesData.kpis, recurrentesData.items, dateFilter.label)
         break
+    }
+  }
+
+  // Export handler PDF (captura de pantalla en alta resolución)
+  async function handleExportPdf() {
+    if (!reportContentRef.current) return
+    setExportingPdf(true)
+    try {
+      const periodSanitized = (dateFilter.label || 'periodo')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+      const filename = `reporte-${activeTab}-${periodSanitized}`
+      await exportElementToPdf(reportContentRef.current, {
+        filename,
+        title: `Reporte ${activeTab.toUpperCase()}`,
+        dateLabel: dateFilter.label,
+      })
+    } catch (err) {
+      console.error('Error al exportar reporte a PDF:', err)
+    } finally {
+      setExportingPdf(false)
     }
   }
 
@@ -286,6 +313,8 @@ export function ReportesPage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onExport={handleExport}
+        onExportPdf={handleExportPdf}
+        exportingPdf={exportingPdf}
         exportLabel={`Exportar ${
           activeTab === 'general'
             ? 'General'
@@ -299,108 +328,111 @@ export function ReportesPage() {
         } CSV`}
       />
 
-      {/* =========================================
-          1. VISTA GENERAL
-         ========================================= */}
-      {activeTab === 'general' && (
-        <div className="space-y-6">
-          {/* Tarjetas KPI */}
-          <ReporteGeneralKpis kpis={generalData.kpis} loading={initialLoading} />
+      {/* Contenedor capturable para exportación a PDF */}
+      <div ref={reportContentRef} data-export-pdf-target className="space-y-6">
+        {/* =========================================
+            1. VISTA GENERAL
+           ========================================= */}
+        {activeTab === 'general' && (
+          <div className="space-y-6">
+            {/* Tarjetas KPI */}
+            <ReporteGeneralKpis kpis={generalData.kpis} loading={initialLoading} />
 
-          {/* Filtro específico de ingresos/gastos */}
-          <div className="flex items-center justify-start">
-            <div
-              className="flex w-full items-center rounded-2xl border border-slate-200/80 bg-white/90 p-1 shadow-xs backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/90 sm:w-auto sm:rounded-full"
-              role="group"
-              aria-label="Filtrar tipo de reporte general"
-            >
-              {GENERAL_FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setGeneralFilter(opt.id)}
-                  className={`flex-1 rounded-xl px-4 py-1.5 text-center text-xs font-semibold transition-all duration-200 sm:flex-none sm:rounded-full sm:px-5 ${
-                    generalFilter === opt.id
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
-                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            {/* Filtro específico de ingresos/gastos */}
+            <div className="flex items-center justify-start">
+              <div
+                className="flex w-full items-center rounded-2xl border border-slate-200/80 bg-white/90 p-1 shadow-xs backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/90 sm:w-auto sm:rounded-full"
+                role="group"
+                aria-label="Filtrar tipo de reporte general"
+              >
+                {GENERAL_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setGeneralFilter(opt.id)}
+                    className={`flex-1 rounded-xl px-4 py-1.5 text-center text-xs font-semibold transition-all duration-200 sm:flex-none sm:rounded-full sm:px-5 ${
+                      generalFilter === opt.id
+                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Gráficos */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <ReportesMonthlyChart
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <ReportesMonthlyChart
+                filter={generalFilter}
+                data={generalData.monthlyBars}
+                loading={initialLoading}
+              />
+              <ReportesDonutChart
+                filter={generalFilter}
+                segments={generalData.donutSegments}
+                loading={initialLoading}
+              />
+            </div>
+
+            {/* Tabla de categorías */}
+            <ReportesCategoryTable
               filter={generalFilter}
-              data={generalData.monthlyBars}
+              categories={generalData.categoryRows}
               loading={initialLoading}
             />
-            <ReportesDonutChart
-              filter={generalFilter}
-              segments={generalData.donutSegments}
+          </div>
+        )}
+
+        {/* =========================================
+            2. VISTA AHORROS
+           ========================================= */}
+        {activeTab === 'ahorros' && (
+          <div className="space-y-6">
+            <ReporteAhorrosKpis kpis={ahorrosData.kpis} loading={initialLoading} />
+            <ReporteAhorrosChart
+              composition={ahorrosData.composition}
+              monthlyPoints={ahorrosData.monthlyPoints}
               loading={initialLoading}
             />
+            <ReporteAhorrosTable movimientos={ahorrosData.rows} loading={initialLoading} />
           </div>
+        )}
 
-          {/* Tabla de categorías */}
-          <ReportesCategoryTable
-            filter={generalFilter}
-            categories={generalData.categoryRows}
-            loading={initialLoading}
-          />
-        </div>
-      )}
+        {/* =========================================
+            3. VISTA PRESUPUESTOS
+           ========================================= */}
+        {activeTab === 'presupuestos' && (
+          <div className="space-y-6">
+            <ReportePresupuestosKpis kpis={presupuestosData.kpis} loading={initialLoading} />
+            <ReportePresupuestosChart items={presupuestosData.items} loading={initialLoading} />
+            <ReportePresupuestosTable items={presupuestosData.items} loading={initialLoading} />
+          </div>
+        )}
 
-      {/* =========================================
-          2. VISTA AHORROS
-         ========================================= */}
-      {activeTab === 'ahorros' && (
-        <div className="space-y-6">
-          <ReporteAhorrosKpis kpis={ahorrosData.kpis} loading={initialLoading} />
-          <ReporteAhorrosChart
-            composition={ahorrosData.composition}
-            monthlyPoints={ahorrosData.monthlyPoints}
-            loading={initialLoading}
-          />
-          <ReporteAhorrosTable movimientos={ahorrosData.rows} loading={initialLoading} />
-        </div>
-      )}
+        {/* =========================================
+            4. VISTA METAS
+           ========================================= */}
+        {activeTab === 'metas' && (
+          <div className="space-y-6">
+            <ReporteMetasKpis kpis={metasData.kpis} loading={initialLoading} />
+            <ReporteMetasChart items={metasData.items} loading={initialLoading} />
+            <ReporteMetasTable items={metasData.items} loading={initialLoading} />
+          </div>
+        )}
 
-      {/* =========================================
-          3. VISTA PRESUPUESTOS
-         ========================================= */}
-      {activeTab === 'presupuestos' && (
-        <div className="space-y-6">
-          <ReportePresupuestosKpis kpis={presupuestosData.kpis} loading={initialLoading} />
-          <ReportePresupuestosChart items={presupuestosData.items} loading={initialLoading} />
-          <ReportePresupuestosTable items={presupuestosData.items} loading={initialLoading} />
-        </div>
-      )}
-
-      {/* =========================================
-          4. VISTA METAS
-         ========================================= */}
-      {activeTab === 'metas' && (
-        <div className="space-y-6">
-          <ReporteMetasKpis kpis={metasData.kpis} loading={initialLoading} />
-          <ReporteMetasChart items={metasData.items} loading={initialLoading} />
-          <ReporteMetasTable items={metasData.items} loading={initialLoading} />
-        </div>
-      )}
-
-      {/* =========================================
-          5. VISTA RECURRENTES
-         ========================================= */}
-      {activeTab === 'recurrentes' && (
-        <div className="space-y-6">
-          <ReporteRecurrentesKpis kpis={recurrentesData.kpis} loading={initialLoading} />
-          <ReporteRecurrentesChart items={recurrentesData.items} loading={initialLoading} />
-          <ReporteRecurrentesTable items={recurrentesData.items} loading={initialLoading} />
-        </div>
-      )}
+        {/* =========================================
+            5. VISTA RECURRENTES
+           ========================================= */}
+        {activeTab === 'recurrentes' && (
+          <div className="space-y-6">
+            <ReporteRecurrentesKpis kpis={recurrentesData.kpis} loading={initialLoading} />
+            <ReporteRecurrentesChart items={recurrentesData.items} loading={initialLoading} />
+            <ReporteRecurrentesTable items={recurrentesData.items} loading={initialLoading} />
+          </div>
+        )}
+      </div>
     </section>
   )
 }

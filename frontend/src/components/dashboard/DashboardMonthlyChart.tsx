@@ -33,11 +33,11 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
   const yTicks = [0, Math.round(maxValue / 2), maxValue]
 
   const chartWidth = 500
-  const chartHeight = 190
+  const chartHeight = 195
   const startX = 45
   const endX = 480
-  const startY = 20
-  const endY = 150
+  const startY = 25
+  const endY = 152
   const usableWidth = endX - startX
   const usableHeight = endY - startY
 
@@ -98,23 +98,33 @@ export function DashboardMonthlyChart({ data, loading }: DashboardMonthlyChartPr
         {loading && <p className="py-16 text-center text-sm text-slate-500">Cargando…</p>}
 
         {!loading && (
-          <div className="relative w-full min-w-0 overflow-hidden">
-            {hoveredIndex !== null && points[hoveredIndex] && (
-              <div
-                className="pointer-events-none absolute z-10 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-lg transition-all duration-150 ease-out"
-                style={{
-                  left: `${(points[hoveredIndex].x / chartWidth) * 100}%`,
-                  top: `${(points[hoveredIndex].y / chartHeight) * 100 - 25}%`,
-                  transform: 'translate(-50%, -100%)',
-                }}
-              >
-                <div className="font-semibold text-center">{points[hoveredIndex].mes}</div>
-                <div className="text-[10px] text-slate-300 text-center">
-                  {formatSoles(points[hoveredIndex].value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          <div className="relative w-full min-w-0">
+            {hoveredIndex !== null && points[hoveredIndex] && (() => {
+              const p = points[hoveredIndex]
+              const isNearTop = p.y < 55
+              return (
+                <div
+                  className="pointer-events-none absolute z-20 rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-xl transition-all duration-150 ease-out"
+                  style={{
+                    left: `${(p.x / chartWidth) * 100}%`,
+                    top: `${(p.y / chartHeight) * 100}%`,
+                    transform: isNearTop
+                      ? 'translate(-50%, 14px)'
+                      : 'translate(-50%, calc(-100% - 14px))',
+                  }}
+                >
+                  <div className="font-semibold text-center whitespace-nowrap">{p.mes}</div>
+                  <div className="text-[10px] text-slate-300 text-center whitespace-nowrap font-medium">
+                    {formatSoles(p.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </div>
+                  <div
+                    className={`absolute left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900 ${
+                      isNearTop ? 'top-0 -translate-y-1/2' : 'bottom-0 translate-y-1/2'
+                    }`}
+                  />
                 </div>
-                <div className="absolute bottom-0 left-1/2 h-1.5 w-1.5 -translate-x-1/2 translate-y-1/2 rotate-45 bg-slate-900" />
-              </div>
-            )}
+              )
+            })()}
 
             <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full max-w-full block overflow-visible" style={{ height: 'auto' }}>
               <defs>
