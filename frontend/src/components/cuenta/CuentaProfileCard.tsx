@@ -34,10 +34,17 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [imageError, setImageError] = useState(false)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [optimisticFoto, setOptimisticFoto] = useState<string | null>(null)
 
-  // Resetear error de carga cuando cambia la foto
+  const currentFoto = optimisticFoto || profile.foto
+
+  // Resetear error de carga y limpiar preview temporal cuando se confirma la foto del backend
   useEffect(() => {
     setImageError(false)
+    if (optimisticFoto) {
+      URL.revokeObjectURL(optimisticFoto)
+      setOptimisticFoto(null)
+    }
   }, [profile.foto])
 
   // Estados para el modal de alineación / recorte
@@ -93,9 +100,14 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
   }
 
   const handleCropComplete = async (croppedFile: File) => {
+    // Vista previa instantánea en la memoria RAM del navegador (0 bytes en disco de servidor)
+    const localPreviewUrl = URL.createObjectURL(croppedFile)
+    setOptimisticFoto(localPreviewUrl)
+    setImageError(false)
+    setUploading(true)
+    setPhotoError(null)
+
     try {
-      setUploading(true)
-      setPhotoError(null)
       const updated = await uploadProfilePhoto(croppedFile, pendingOriginalFile || undefined)
       onProfileUpdated?.(updated)
       if (cropImageSrc && cropImageSrc.startsWith('blob:')) {
@@ -103,9 +115,10 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
       }
       setCropImageSrc(null)
       setPendingOriginalFile(null)
-      // Reabrir la previsualización con las 3 opciones una vez guardados los cambios
-      setIsPreviewOpen(true)
+      setIsPreviewOpen(false)
     } catch (err: unknown) {
+      setOptimisticFoto(null)
+      URL.revokeObjectURL(localPreviewUrl)
       const message = err instanceof Error ? err.message : 'Error al subir la imagen'
       setPhotoError(message)
     } finally {
@@ -115,11 +128,11 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
 
   const handleOpenRealign = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!profile.foto) return
+    if (!currentFoto) return
     setCropFileName('avatar.webp')
     setPendingOriginalFile(null)
     // Cargar la foto original completa (sin recortar) si existe, o la foto actual
-    setCropImageSrc(profile.foto_original || profile.foto)
+    setCropImageSrc(profile.foto_original || currentFoto)
     setIsPreviewOpen(false)
     setCropModalOpen(true)
   }
@@ -143,7 +156,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
 
   const handleAvatarClick = () => {
     if (uploading) return
-    if (profile.foto) {
+    if (currentFoto) {
       setIsPreviewOpen(true)
     } else if (!profile.es_google) {
       fileInputRef.current?.click()
@@ -181,7 +194,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
               tabIndex={0}
               role="button"
               title={
-                profile.foto
+                currentFoto
                   ? profile.es_google
                     ? 'Foto sincronizada con Google (haz clic para ampliar)'
                     : 'Haz clic para ver opciones de foto'
@@ -190,19 +203,24 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
                   : 'Haz clic para subir una foto'
               }
               className={`relative rounded-full p-1 bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:scale-[1.03] hover:shadow-indigo-500/35 dark:shadow-indigo-950/50 ${
-                !uploading && (profile.foto || !profile.es_google)
+                !uploading && (currentFoto || !profile.es_google)
                   ? 'cursor-pointer focus:outline-none focus:ring-4 focus:ring-indigo-500/40'
                   : ''
               }`}
             >
               {/* Contenedor de la foto con borde limpio */}
               <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border-[3.5px] border-white bg-slate-100 dark:border-slate-800 dark:bg-slate-700">
-                {profile.foto && !imageError ? (
+                {currentFoto && !imageError ? (
                   <>
                     <img
-                      src={profile.foto}
+                      key={currentFoto}
+                      src={currentFoto}
                       alt={fullName}
-                      onError={() => setImageError(true)}
+                      onError={() => {
+                        if (!optimisticFoto) {
+                          setImageError(true)
+                        }
+                      }}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     {/* Icono sutil de lupa/ampliar al pasar el cursor */}
@@ -218,7 +236,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
 
                 {/* Overlay de carga */}
                 {uploading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs text-white">
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-[2px] text-white">
                     <Loader2 className="h-7 w-7 animate-spin text-white" />
                   </div>
                 )}
@@ -226,7 +244,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
             </div>
 
             {/* Botón de Cámara flotante (solo si NO tiene foto aún y NO es usuario de Google) */}
-            {!profile.foto && !profile.es_google && (
+            {!currentFoto && !profile.es_google && (
               <button
                 type="button"
                 onClick={handleCameraClick}
@@ -361,11 +379,16 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
             {/* Imagen en grande con borde y marco armónico */}
             <div className="relative rounded-full p-1 bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 shadow-2xl">
               <div className="flex h-64 w-64 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-inner dark:border-slate-800 dark:bg-slate-800 sm:h-72 sm:w-72">
-                <img
-                  src={profile.foto}
-                  alt={fullName}
-                  className="h-full w-full object-cover"
-                />
+                {currentFoto ? (
+                  <img
+                    key={currentFoto}
+                    src={currentFoto}
+                    alt={fullName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-28 w-28 text-slate-400" />
+                )}
               </div>
             </div>
 

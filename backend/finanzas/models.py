@@ -11,12 +11,14 @@ from PIL import Image, ImageOps
 
 def foto_perfil_upload_to(instance, filename):
     unique_id = uuid.uuid4().hex[:8]
-    return f"perfiles/user_{instance.usuario_id}_{unique_id}.webp"
+    user_id = getattr(instance, "usuario_id", None) or getattr(getattr(instance, "usuario", None), "id", "temp")
+    return f"perfiles/user_{user_id}/avatar_{unique_id}.webp"
 
 
 def foto_original_upload_to(instance, filename):
     unique_id = uuid.uuid4().hex[:8]
-    return f"perfiles/orig_user_{instance.usuario_id}_{unique_id}.webp"
+    user_id = getattr(instance, "usuario_id", None) or getattr(getattr(instance, "usuario", None), "id", "temp")
+    return f"perfiles/user_{user_id}/original_{unique_id}.webp"
 
 
 def procesar_avatar_webp(imagen_file, target_size=(400, 400), quality=85):
