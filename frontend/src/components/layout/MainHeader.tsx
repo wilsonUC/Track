@@ -57,6 +57,7 @@ export function MainHeader({
   const isCuenta = pathname === cuentaPath
   const isAdmin = section === 'admin'
   const isConfiguracion = section === 'configuracion'
+  const [imgError, setImgError] = useState(false)
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -175,11 +176,13 @@ export function MainHeader({
               aria-expanded={isMenuOpen}
               aria-haspopup="true"
             >
-              {userFoto ? (
+              {userFoto && !imgError ? (
                 <div className="rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-500 via-teal-400 to-indigo-600 dark:from-indigo-400 dark:via-teal-400 dark:to-cyan-400 shadow-xs">
                   <img
                     src={userFoto}
                     alt={displayName}
+                    referrerPolicy="no-referrer"
+                    onError={() => setImgError(true)}
                     className="h-8 w-8 rounded-full object-cover border border-white/60 dark:border-slate-850"
                   />
                 </div>

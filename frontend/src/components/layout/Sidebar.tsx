@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { LogOut } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import brandLogo from '../../assets/brand/v4.svg'
@@ -29,6 +30,7 @@ function disabledNavClassName() {
 }
 
 export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, isAvanzado = false }: SidebarProps) {
+  const [imgError, setImgError] = useState(false)
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.adminOnly && !isStaff) return false
     if (item.advancedOnly && !isAvanzado && !isStaff) return false
@@ -95,11 +97,13 @@ export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, 
           aria-label="Mi cuenta"
         >
           <div className="flex items-center gap-3">
-            {foto ? (
+            {foto && !imgError ? (
               <div className="shrink-0 rounded-full p-[1.5px] bg-gradient-to-tr from-indigo-300 via-teal-300 to-indigo-200 dark:from-indigo-500 dark:via-teal-400 dark:to-cyan-400 shadow-xs">
                 <img
                   src={foto}
                   alt={displayName}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
                   className="h-9 w-9 rounded-full object-cover border border-white/40 dark:border-slate-800"
                 />
               </div>

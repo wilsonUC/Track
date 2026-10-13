@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import update_last_login
 from django.db import transaction
 from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
@@ -1245,201 +1246,6 @@ class GoogleAuthView(APIView):
 
         serializer = GoogleAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        credential = serializer.validated_data["credential"]
-        return Response({"respuesta": respuesta})
-
-
-class ConsejosView(APIView):
-    """GET /api/consejos/ — consejos IA con caché 24 h. ?regenerar=1 fuerza nueva generación."""
-
-    permission_classes = [IsAvanzadoOrAdmin]
-
-    def get(self, request):
-        force = request.query_params.get("regenerar") in ("1", "true", "yes")
-        try:
-            payload = get_or_generate_consejos(request.user, force=force)
-        except RuntimeError as exc:
-            return Response({"detalle": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response(payload)
-
-
-class PerfilView(APIView):
-    """GET/PATCH /api/perfil/ — datos y actualización del usuario logueado."""
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-
-    def get(self, request):
-        return Response(perfil_desde_usuario(request.user, request=request))
-
-    def patch(self, request):
-        serializer = PerfilUpdateSerializer(
-            data=request.data,
-            partial=True,
-            context={"user": request.user, "request": request},
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(perfil_desde_usuario(request.user, request=request))
-
-
-class PreferenciasView(APIView):
-    """GET/PATCH /api/preferencias/ — preferencias de la app del usuario logueado."""
-
-    def get(self, request):
-        prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
-        return Response(PreferenciasSerializer(prefs).data)
-
-    def patch(self, request):
-        prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=request.user)
-        serializer = PreferenciasSerializer(prefs, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(PreferenciasSerializer(prefs).data)
-
-
-class CambioPasswordView(APIView):
-    """POST /api/perfil/cambiar-password/ — cambiar contraseña del usuario logueado."""
-
-    def post(self, request):
-        serializer = CambioPasswordSerializer(
-            data=request.data,
-            context={"user": request.user},
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"mensaje": "Contraseña actualizada correctamente."})
-
-
-class ResetDatosView(APIView):
-    """POST /api/perfil/resetear-datos/ — borra los datos financieros del usuario.
-
-    Elimina transacciones, presupuestos, recurrentes, metas y la caché de consejos.
-    NO toca la cuenta del usuario (credenciales, perfil, teléfono).
-    """
-
-    def post(self, request):
-        user = request.user
-
-        eliminados = {
-            "transacciones": Transaction.objects.filter(usuario=user).delete()[0],
-            "presupuestos": Presupuesto.objects.filter(usuario=user).delete()[0],
-            "recurrentes": Recurrente.objects.filter(usuario=user).delete()[0],
-            "asignaciones": AsignacionMeta.objects.filter(usuario=user).delete()[0],
-            "metas": MetaAhorro.objects.filter(usuario=user).delete()[0],
-            "consejos_cache": ConsejoCache.objects.filter(usuario=user).delete()[0],
-        }
-
-        return Response(
-            {
-                "mensaje": "Tus datos financieros se borraron. Empiezas desde cero.",
-                "eliminados": eliminados,
-            }
-        )
-
-
-class AdminUsuariosView(APIView):
-    """GET /api/admin/usuarios/ — lista usuarios para el panel administrativo."""
-
-    permission_classes = [IsAdminUser]
-
-    def get(self, request):
-        usuarios = User.objects.select_related("perfil").order_by("-date_joined")
-        serializer = AdminUsuarioSerializer(usuarios, many=True, context={"request": request})
-        return Response(serializer.data)
-
-
-class AdminUsuarioDetalleView(APIView):
-    """PATCH /api/admin/usuarios/<id>/ — editar datos o estado de un usuario."""
-
-    permission_classes = [IsAdminUser]
-
-    def patch(self, request, user_id):
-        try:
-            user = User.objects.select_related("perfil").get(pk=user_id)
-        except User.DoesNotExist:
-            return Response({"detalle": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
-
-        if user.is_superuser and not request.user.is_superuser:
-            return Response(
-                {"detalle": "Solo un superusuario puede editar a otro superusuario."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if user.pk == request.user.pk and request.data.get("estado_cuenta"):
-            return Response(
-                {"detalle": "No puedes cambiar el estado de tu propia cuenta desde este panel."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        serializer = AdminUsuarioUpdateSerializer(
-            data=request.data,
-            partial=True,
-            context={"user": user, "request": request},
-        )
-        serializer.is_valid(raise_exception=True)
-        updated_user = serializer.save()
-        updated_user = User.objects.select_related("perfil").get(pk=updated_user.pk)
-        return Response(AdminUsuarioSerializer(updated_user, context={"request": request}).data)
-
-    def delete(self, request, user_id):
-        try:
-            user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return Response({"detalle": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
-
-        if user.is_superuser and not request.user.is_superuser:
-            return Response(
-                {"detalle": "Solo un superusuario puede eliminar a otro superusuario."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if user.pk == request.user.pk:
-            return Response(
-                {"detalle": "No puedes eliminar tu propia cuenta."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        with transaction.atomic():
-            Transaction.objects.filter(usuario=user).delete()
-            user.delete()
-
-        return Response({"mensaje": "Usuario eliminado correctamente."}, status=status.HTTP_200_OK)
-
-
-
-class RegistroView(APIView):
-    """
-    POST /api/registro/ — crear cuenta. Público (sin token).
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = RegistroSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response(
-            {
-                "mensaje": "Usuario creado correctamente",
-                "username": user.username,
-                "email": user.email,
-            },
-            status=status.HTTP_201_CREATED,
-        )     
-
-
-class GoogleAuthView(APIView):
-    """
-    POST /api/auth/google/ — Iniciar sesión o registrarse con Google OAuth 2.0.
-    Público (AllowAny). Recibe { "credential": "<token_id_de_google>" }
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        from django.conf import settings
-        from rest_framework.exceptions import AuthenticationFailed
-        from rest_framework_simplejwt.tokens import RefreshToken
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as google_requests
-
-        serializer = GoogleAuthSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         credential = serializer.validated_data.get("credential")
         access_token = serializer.validated_data.get("access_token")
 
@@ -1546,6 +1352,9 @@ class GoogleAuthView(APIView):
                 raise AuthenticationFailed("Tu cuenta está bloqueada. Contacta al administrador.")
             if perfil.is_expired:
                 raise AuthenticationFailed("Tu periodo de acceso a la plataforma ha expirado.")
+
+        # Actualizar fecha y hora del último login en auth_user
+        update_last_login(None, user)
 
         refresh = RefreshToken.for_user(user)
 

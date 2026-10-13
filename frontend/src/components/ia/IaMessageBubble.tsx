@@ -46,6 +46,7 @@ export function IaMessageBubble({ mensaje, userFoto, userInitial }: IaMessageBub
             <img
               src={userFoto}
               alt="Tú"
+              referrerPolicy="no-referrer"
               className="h-8 w-8 rounded-full object-cover border border-white/80 dark:border-slate-800"
             />
           </div>

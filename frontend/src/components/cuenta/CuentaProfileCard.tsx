@@ -216,6 +216,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
                       key={currentFoto}
                       src={currentFoto}
                       alt={fullName}
+                      referrerPolicy="no-referrer"
                       onError={() => {
                         if (!optimisticFoto) {
                           setImageError(true)
@@ -384,6 +385,7 @@ export function CuentaProfileCard({ profile, onLogout, onProfileUpdated }: Cuent
                     key={currentFoto}
                     src={currentFoto}
                     alt={fullName}
+                    referrerPolicy="no-referrer"
                     className="h-full w-full object-cover"
                   />
                 ) : (
