@@ -10,6 +10,7 @@ import {
 import type { MovementType } from '../../types/finance'
 import { formatSoles } from '../../utils/financeFormat'
 import { CustomSelect } from '../ui/CustomSelect'
+import { CustomDatePicker } from '../ui/CustomDatePicker'
 
 type NewTransactionModalProps = {
   open: boolean
@@ -281,13 +282,11 @@ export function NewTransactionModal({
               <label htmlFor="tx-date" className="mb-1 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">
                 Fecha
               </label>
-              <input
+              <CustomDatePicker
                 id="tx-date"
-                type="date"
                 value={date}
-                onChange={(e) => onDateChange(e.target.value)}
-                className={inputClass}
-                required
+                onChange={onDateChange}
+                placeholder="Seleccionar fecha"
               />
             </div>
 

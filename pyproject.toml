@@ -1,6 +1,9 @@
 [tool.pyrefly]
 python-interpreter-path = "backend/.venv/Scripts/python.exe"
+search-path = ["backend"]
 project-excludes = ["backend/finanzas/**"]
 
 [tool.pyrefly.errors]
 unsupported-operation = false
+untyped-import = false
+

@@ -9,6 +9,7 @@ type RecurrenteCardProps = {
   onAlternarPago: (id: number) => void
   onEditar: (recurrente: RecurrenteCardView) => void
   onAlternarActivo: (id: number, activo: boolean) => void
+  onDesactivar?: (recurrente: RecurrenteCardView) => void
   onReactivar?: (recurrente: RecurrenteCardView) => void
   onEliminarAbono: (transactionId: number) => void
   onDesmarcarTodo: (id: number) => void
@@ -21,6 +22,7 @@ export function RecurrenteCard({
   onAlternarPago,
   onEditar,
   onAlternarActivo,
+  onDesactivar,
   onReactivar,
   onEliminarAbono,
   onDesmarcarTodo,
@@ -128,6 +130,11 @@ export function RecurrenteCard({
             <span className="rounded-md border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-black text-indigo-600 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-400">
               PRÓXIMAMENTE
             </span>
+          ) : vencido ? (
+            <span className="flex animate-pulse items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-black text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
+              <AlertTriangle className="h-3 w-3" aria-hidden />
+              VENCIDO
+            </span>
           ) : (
             <span
               className={`flex animate-pulse items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-black ${
@@ -137,12 +144,6 @@ export function RecurrenteCard({
               }`}
             >
               PENDIENTE
-            </span>
-          )}
-          {!registradoMes && vencido && (
-            <span className="flex items-center gap-1 rounded-md border border-rose-100 bg-rose-50 px-2 py-0.5 text-[9px] font-black text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400">
-              <AlertTriangle className="h-3 w-3" aria-hidden />
-              VENCIDO
             </span>
           )}
           {!registradoMes && mesAnteriorSinRegistrar && (
@@ -175,7 +176,7 @@ export function RecurrenteCard({
         <div className="max-w-[55%] space-y-0.5 text-right">
           <span className="block text-[11px] font-medium text-slate-400 dark:text-slate-400">{etiquetaFecha}</span>
           <span className="flex items-center justify-end gap-1 text-sm font-bold text-slate-700 dark:text-slate-300">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-400" aria-hidden />
+            <Calendar className="h-3.5 w-3.5 shrink-0 text-indigo-500 dark:text-indigo-400" aria-hidden />
             <span className="text-right leading-tight">{textoDiaPago(diaPago)}</span>
           </span>
         </div>
@@ -374,17 +375,31 @@ export function RecurrenteCard({
 
               {menuEstadoAbierto && (
                 <div className="absolute bottom-full right-0 mb-2 w-48 overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-lg backdrop-blur-sm z-30 dark:border-slate-800 dark:bg-slate-900">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuEstadoAbierto(false)
-                      onAlternarActivo(id, false)
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
-                  >
-                    <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Desactivar</span>
-                  </button>
+                  {onDesactivar ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuEstadoAbierto(false)
+                        onDesactivar(recurrente)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                    >
+                      <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Desactivar</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuEstadoAbierto(false)
+                        onAlternarActivo(id, false)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                    >
+                      <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Desactivar</span>
+                    </button>
+                  )}
                   {onEliminar && (
                     <button
                       type="button"

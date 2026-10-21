@@ -102,7 +102,7 @@ export const POLITICA_PRIVACIDAD: LegalDocument = {
         'Nunca vendemos ni comercializamos tus datos personales o financieros con terceros anunciantes.',
       content: [
         'Google OAuth: Si eliges registrarte o iniciar sesión con Google, recibimos tu identificador, nombre y correo electrónico bajo los protocolos seguros de Google.',
-        'Procesamiento de IA (Groq / Modelos LLM): Las consultas dirigidas al asistente son procesadas mediante conexiones seguras cifradas exclusivamente para formular la respuesta solicitada.',
+        'Procesamiento de IA (Modelos de Lenguaje Avanzados): Las consultas dirigidas al asistente son procesadas mediante conexiones seguras cifradas exclusivamente para formular la respuesta solicitada.',
       ],
     },
     {

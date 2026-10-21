@@ -31,15 +31,15 @@ export type CategoryExpenseRow = {
 
 
 export function getBalanceSubtitle(balance: number) {
-  if (balance > 0) return '¡Excelente balance! 💰'
-  if (balance === 0) return 'Sin saldo disponible en el período'
-  return 'Los gastos superan los ingresos'
+  if (balance > 0) return 'Superávit del período 💰'
+  if (balance === 0) return 'Sin saldo en el período'
+  return 'Gastos superan ingresos'
 }
 
 export function getTotalBalanceSubtitle(balance: number) {
-  if (balance > 0) return 'Ingresos − gastos · todos los meses'
-  if (balance === 0) return 'Sin movimientos netos acumulados'
-  return 'Déficit histórico (gastos > ingresos)'
+  if (balance > 0) return 'Todos los meses sumados'
+  if (balance === 0) return 'Sin movimientos netos'
+  return 'Déficit acumulado total'
 }
 
 export function buildCategoryMap(categories: ApiCategory[]) {

@@ -20,6 +20,7 @@ import { MetasSummaryCard } from '../components/metas/MetasSummaryCard'
 import { sectionPaths } from '../constants/routes'
 import { formatSoles } from '../utils/financeFormat'
 import { mapMetaToCard, type MetaCardView } from '../utils/metasDisplay'
+import { useStoredMonth } from '../hooks/useStoredMonth'
 
 type OutletContext = {
   transactionsVersion: number
@@ -41,7 +42,7 @@ export function MetasPage() {
   const { transactionsVersion, bumpTransactions, setSecondaryHeaderAction } =
     useOutletContext<OutletContext>()
   const [metas, setMetas] = useState<MetaCardView[]>([])
-  const [fechaRef, setFechaRef] = useState<Date>(() => new Date())
+  const [fechaRef, setFechaRef] = useStoredMonth('metas')
   const [mostrarTodas, setMostrarTodas] = useState(false)
   const [libre, setLibre] = useState(0)
   const [loading, setLoading] = useState(true)

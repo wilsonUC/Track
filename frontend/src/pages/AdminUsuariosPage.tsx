@@ -546,7 +546,7 @@ export function AdminUsuariosPage() {
                   {/* Estado de vigencia actual */}
                   <div className="flex items-center justify-between text-[11px] text-slate-400">
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3 w-3 text-slate-400" />
+                      <Calendar className="h-3 w-3 text-indigo-500 dark:text-indigo-400" />
                       <span>Vigencia: <span className="font-semibold text-slate-600 dark:text-slate-300">{vigenciaInfo.badgeText} ({vigenciaInfo.subText})</span></span>
                     </div>
                   </div>

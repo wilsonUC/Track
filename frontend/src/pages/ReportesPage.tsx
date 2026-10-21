@@ -66,7 +66,7 @@ export function ReportesPage() {
   const [error, setError] = useState('')
 
   const reportContentRef = useRef<HTMLDivElement>(null)
-  const dateFilter = useDateFilter({ defaultPreset: 'month' })
+  const dateFilter = useDateFilter({ defaultPreset: 'month', storageKey: 'reportes' })
 
   // State data
   const [transactions, setTransactions] = useState<ApiTransaction[]>([])

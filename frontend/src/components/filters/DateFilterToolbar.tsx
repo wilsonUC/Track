@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
 import { datePresetOptions, type DatePreset } from '../../utils/dateFilters'
+import { CustomDatePicker } from '../ui/CustomDatePicker'
 
 export type DateFilterToolbarProps = {
   preset: DatePreset
@@ -165,24 +166,28 @@ export function DateFilterToolbar({
       {preset === 'custom' && (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2 shadow-xs backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/80 dark:shadow-slate-950/40">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <CalendarRange className="h-3.5 w-3.5 text-indigo-500" aria-hidden />
+            <CalendarRange className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" aria-hidden />
             <span>Desde</span>
           </div>
-          <input
-            type="date"
-            value={customStart}
-            onChange={(e) => onCustomStartChange(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            aria-label="Fecha desde"
-          />
+          <div className="w-40">
+            <CustomDatePicker
+              value={customStart}
+              onChange={onCustomStartChange}
+              placeholder="Desde"
+              triggerClassName="h-8 !py-1 text-xs rounded-lg"
+              ariaLabel="Fecha desde"
+            />
+          </div>
           <span className="text-xs text-slate-400">hasta</span>
-          <input
-            type="date"
-            value={customEnd}
-            onChange={(e) => onCustomEndChange(e.target.value)}
-            className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            aria-label="Fecha hasta"
-          />
+          <div className="w-40">
+            <CustomDatePicker
+              value={customEnd}
+              onChange={onCustomEndChange}
+              placeholder="Hasta"
+              triggerClassName="h-8 !py-1 text-xs rounded-lg"
+              ariaLabel="Fecha hasta"
+            />
+          </div>
         </div>
       )}
     </div>

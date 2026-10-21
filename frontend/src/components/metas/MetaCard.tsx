@@ -95,7 +95,7 @@ export function MetaCard({ meta, onAsignar, onDesasignar, onEditar, onEliminar, 
 
           {(fechaInicioLabel || fechaLimiteLabel) && (
             <span className="flex items-center gap-1 rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-400">
-              <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
+              <Calendar className="h-3 w-3 text-indigo-500 dark:text-indigo-400 shrink-0" />
               <span>
                 {fechaInicioLabel && fechaLimiteLabel
                   ? `${fechaInicioLabel} al ${fechaLimiteLabel}`

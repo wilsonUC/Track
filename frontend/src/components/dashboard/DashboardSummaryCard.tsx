@@ -4,6 +4,8 @@ type DashboardSummaryCardProps = {
   title: string
   amount: string
   subtitle?: string
+  badge?: string
+  tooltip?: string
   variant: 'balance' | 'income' | 'expense' | 'savings' | 'totalBalance'
   isActive?: boolean
   onClick?: () => void
@@ -18,7 +20,16 @@ function CardIcon({ variant }: { variant: DashboardSummaryCardProps['variant'] }
   return <PiggyBank className={cls} aria-hidden />
 }
 
-export function DashboardSummaryCard({ title, amount, subtitle, variant, isActive, onClick }: DashboardSummaryCardProps) {
+export function DashboardSummaryCard({
+  title,
+  amount,
+  subtitle,
+  badge,
+  tooltip,
+  variant,
+  isActive,
+  onClick,
+}: DashboardSummaryCardProps) {
   if (isActive) {
     let activeGradient = 'from-indigo-600 via-violet-600 to-indigo-700'
     if (variant === 'income') activeGradient = 'from-emerald-600 via-teal-600 to-emerald-700'
@@ -29,16 +40,24 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
     return (
       <article
         onClick={onClick}
+        title={tooltip}
         className={`overflow-hidden rounded-2xl bg-gradient-to-br ${activeGradient} p-4 sm:p-5 text-white shadow-md cursor-pointer transform hover:scale-[1.01] transition-all duration-150`}
       >
         <div>
-          <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/80">{title}</p>
+          <div className="flex items-center justify-between gap-1.5">
+            <p className="text-[10.5px] font-bold uppercase tracking-wider text-white/80 truncate">{title}</p>
+            {badge && (
+              <span className="shrink-0 rounded-md bg-white/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                {badge}
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-lg font-bold tracking-tight tabular-nums text-white sm:text-xl leading-tight">
             {amount}
           </p>
         </div>
         <div className="mt-1.5 flex items-end justify-between gap-2">
-          <p className="text-xs font-semibold text-white/80 truncate">{subtitle || ' '}</p>
+          <p className="text-xs font-semibold text-white/80 truncate" title={subtitle}>{subtitle || ' '}</p>
           <div className="shrink-0 rounded-xl bg-white/20 p-2 text-white shadow-sm">
             <CardIcon variant={variant} />
           </div>
@@ -47,37 +66,61 @@ export function DashboardSummaryCard({ title, amount, subtitle, variant, isActiv
     )
   }
 
+  const isClickable = Boolean(onClick)
+
   const iconBg =
     variant === 'income'
-      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
+      ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/20'
       : variant === 'expense'
-        ? 'bg-rose-50 text-rose-600 border border-rose-100/50'
+        ? 'bg-rose-50 text-rose-600 border border-rose-100/50 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/20'
         : variant === 'totalBalance'
-          ? 'bg-slate-100 text-slate-600 border border-slate-200/50'
-          : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50'
+          ? 'bg-sky-50 text-sky-600 border border-sky-100/60 dark:bg-sky-500/15 dark:text-sky-400 dark:border-sky-500/20'
+          : 'bg-indigo-50 text-indigo-600 border border-indigo-100/50 dark:bg-indigo-500/15 dark:text-indigo-400 dark:border-indigo-500/20'
 
   const amountColor =
     variant === 'income'
-      ? 'text-emerald-600'
+      ? 'text-emerald-600 dark:text-emerald-400'
       : variant === 'expense'
-        ? 'text-rose-600'
+        ? 'text-rose-600 dark:text-rose-400'
         : variant === 'totalBalance'
-          ? 'text-slate-800'
-          : 'text-slate-800'
+          ? 'text-slate-800 dark:text-slate-100'
+          : 'text-slate-800 dark:text-slate-100'
 
   return (
     <article
       onClick={onClick}
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-150 transform hover:scale-[1.01]"
+      title={tooltip}
+      className={`overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition-all duration-150 ${
+        isClickable
+          ? 'cursor-pointer hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transform hover:scale-[1.01]'
+          : 'cursor-default'
+      }`}
     >
       <div>
-        <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">{title}</p>
+        <div className="flex items-center justify-between gap-1.5">
+          <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 truncate">
+            {title}
+          </p>
+          {badge && (
+            <span
+              className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                variant === 'totalBalance'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/60 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/20'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200/60 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+              }`}
+            >
+              {badge}
+            </span>
+          )}
+        </div>
         <p className={`mt-0.5 text-lg font-bold tracking-tight tabular-nums sm:text-xl leading-tight ${amountColor}`}>
           {amount}
         </p>
       </div>
       <div className="mt-1.5 flex items-end justify-between gap-2">
-        <p className="text-xs font-semibold text-slate-400 truncate">{subtitle || ' '}</p>
+        <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 truncate" title={subtitle}>
+          {subtitle || ' '}
+        </p>
         <div className={`shrink-0 rounded-xl p-2 ${iconBg}`}>
           <CardIcon variant={variant} />
         </div>

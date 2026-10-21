@@ -1,5 +1,8 @@
 python-interpreter-path = "backend/.venv/Scripts/python.exe"
+search-path = ["backend"]
 project-excludes = ["backend/finanzas/**"]
 
 [errors]
 unsupported-operation = false
+untyped-import = false
+

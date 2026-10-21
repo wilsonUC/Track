@@ -44,7 +44,10 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [modal, setModal] = useState<ModalState>({ open: false })
 
-  const dateFilter = useDateFilter({ defaultPreset: 'month' })
+  const dateFilter = useDateFilter({
+    defaultPreset: 'month',
+    storageKey: `transactions_${variant}`,
+  })
 
   useEffect(() => {
     let cancelled = false

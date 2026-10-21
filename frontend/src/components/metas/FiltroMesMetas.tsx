@@ -61,7 +61,7 @@ export function FiltroMesMetas({
     <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-2.5 px-3.5 shadow-xs backdrop-blur-sm transition-all duration-300 dark:border-slate-800/80 dark:bg-slate-900/80 dark:shadow-slate-950/40 sm:flex-row sm:items-center sm:justify-between sm:p-4">
       {/* Lado izquierdo */}
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 sm:h-10 sm:w-10 sm:rounded-xl sm:p-2 sm:text-indigo-500">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 sm:h-10 sm:w-10 sm:rounded-xl sm:p-2 sm:text-indigo-600 dark:sm:text-indigo-400">
           <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         <div>

@@ -62,9 +62,38 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* Ajustar íconos nativos de date/time pickers en modo oscuro */
+/* Ajustar íconos nativos de date/time pickers en modo oscuro y claro */
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+  transition: filter 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.1);
+}
+
+/* En modo claro: gris pizarra elegante con hover índigo */
+html:not(.dark) ::-webkit-calendar-picker-indicator {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(15%) saturate(800%) hue-rotate(180deg) brightness(95%) contrast(90%);
+  opacity: 0.75;
+}
+
+html:not(.dark) ::-webkit-calendar-picker-indicator:hover {
+  filter: brightness(0) saturate(100%) invert(32%) sepia(85%) saturate(2250%) hue-rotate(222deg) brightness(94%) contrast(98%);
+  opacity: 1;
+}
+
+/* En modo oscuro: color índigo brillante (#818cf8) con visibilidad óptima */
 html.dark ::-webkit-calendar-picker-indicator {
-  filter: invert(0.85);
+  filter: brightness(0) saturate(100%) invert(67%) sepia(38%) saturate(1682%) hue-rotate(202deg) brightness(101%) contrast(97%);
+  opacity: 0.95;
+}
+
+html.dark ::-webkit-calendar-picker-indicator:hover {
+  filter: brightness(0) saturate(100%) invert(83%) sepia(21%) saturate(2000%) hue-rotate(205deg) brightness(105%) contrast(102%);
+  opacity: 1;
 }
 
 html[data-compact="true"] [data-app-shell] .list-row-compact {

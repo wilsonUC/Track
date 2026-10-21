@@ -12,6 +12,7 @@ import {
 } from '../../utils/transactionPayload'
 import type { EnrichedTransaction } from '../../utils/dashboardMetrics'
 import { CustomSelect } from '../ui/CustomSelect'
+import { CustomDatePicker } from '../ui/CustomDatePicker'
 
 type TransactionEditModalProps = {
   open: boolean
@@ -186,15 +187,16 @@ export function TransactionEditModal({
               />
             </label>
 
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">Fecha</span>
-              <input
-                type="date"
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300">
+                Fecha
+              </label>
+              <CustomDatePicker
                 value={form.date}
-                onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-                className={inputClass}
+                onChange={(val) => setForm((prev) => ({ ...prev, date: val }))}
+                placeholder="Seleccionar fecha"
               />
-            </label>
+            </div>
 
             <label className="block text-sm">
               <span className="mb-1 block text-slate-600">Descripción</span>

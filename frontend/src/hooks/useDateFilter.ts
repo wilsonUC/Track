@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   formatDateRangeLabel,
   formatPeriodStepperLabel,
@@ -9,18 +9,71 @@ import {
   type DateRange,
 } from '../utils/dateFilters'
 
-type UseDateFilterOptions = {
+export type UseDateFilterOptions = {
   defaultPreset?: DatePreset
+  storageKey?: string
 }
 
-export function useDateFilter({ defaultPreset = 'month' }: UseDateFilterOptions = {}) {
-  const [preset, setPresetState] = useState<DatePreset>(defaultPreset)
-  const [refDate, setRefDate] = useState<Date>(() => new Date())
+function getStoredFilterState(storageKey?: string, defaultPreset: DatePreset = 'month') {
+  if (!storageKey || typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(`track_date_filter_${storageKey}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const validPresets: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'total', 'custom']
+    const preset = validPresets.includes(parsed.preset) ? (parsed.preset as DatePreset) : defaultPreset
+
+    let refDate = new Date()
+    if (parsed.refDate && preset !== 'today' && preset !== 'yesterday') {
+      const parsedDate = new Date(parsed.refDate)
+      if (!isNaN(parsedDate.getTime())) {
+        refDate = parsedDate
+      }
+    }
+
+    const customStart =
+      typeof parsed.customStart === 'string' && parsed.customStart
+        ? parsed.customStart
+        : undefined
+    const customEnd =
+      typeof parsed.customEnd === 'string' && parsed.customEnd
+        ? parsed.customEnd
+        : undefined
+
+    return { preset, refDate, customStart, customEnd }
+  } catch {
+    return null
+  }
+}
+
+export function useDateFilter({ defaultPreset = 'month', storageKey }: UseDateFilterOptions = {}) {
+  const initial = useMemo(() => getStoredFilterState(storageKey, defaultPreset), [storageKey, defaultPreset])
+
+  const [preset, setPresetState] = useState<DatePreset>(() => initial?.preset ?? defaultPreset)
+  const [refDate, setRefDate] = useState<Date>(() => initial?.refDate ?? new Date())
   const [customStart, setCustomStart] = useState(() => {
+    if (initial?.customStart) return initial.customStart
     const now = new Date()
     return toISODate(new Date(now.getFullYear(), now.getMonth(), 1))
   })
-  const [customEnd, setCustomEnd] = useState(() => toISODate(new Date()))
+  const [customEnd, setCustomEnd] = useState(() => initial?.customEnd ?? toISODate(new Date()))
+
+  useEffect(() => {
+    if (!storageKey || typeof window === 'undefined') return
+    try {
+      localStorage.setItem(
+        `track_date_filter_${storageKey}`,
+        JSON.stringify({
+          preset,
+          refDate: refDate.toISOString(),
+          customStart,
+          customEnd,
+        })
+      )
+    } catch {
+      // Ignorar errores de cuota o localStorage bloqueado
+    }
+  }, [storageKey, preset, refDate, customStart, customEnd])
 
   const setPreset = useCallback((newPreset: DatePreset) => {
     setPresetState(newPreset)

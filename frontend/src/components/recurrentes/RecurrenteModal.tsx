@@ -2,6 +2,7 @@ import { useMemo, type FormEvent } from 'react'
 import { AlertCircle, AlertTriangle, Trash2, X } from 'lucide-react'
 import type { ApiCategory } from '../../api/finanzas'
 import { CustomSelect } from '../ui/CustomSelect'
+import { CustomMonthPicker } from '../ui/CustomMonthPicker'
 
 type RecurrenteModalProps = {
   open: boolean
@@ -266,22 +267,21 @@ export function RecurrenteModal({
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Comienza en
               </label>
-              <input
-                type="month"
+              <CustomMonthPicker
                 value={fechaInicio}
-                onChange={(e) => onFechaInicioChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                onChange={onFechaInicioChange}
+                placeholder="Mes de inicio"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Termina en
               </label>
-              <input
-                type="month"
+              <CustomMonthPicker
                 value={fechaFin}
-                onChange={(e) => onFechaFinChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                onChange={onFechaFinChange}
+                placeholder="Indefinido"
+                clearable
               />
             </div>
           </div>

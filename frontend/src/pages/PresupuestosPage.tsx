@@ -1,23 +1,30 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Power, PowerOff } from 'lucide-react'
-import { fetchCategories } from '../api/finanzas'
+import { deleteTransaction, fetchCategories } from '../api/finanzas'
 import {
   createPresupuesto,
   deletePresupuestoPermanente,
   fetchPresupuestos,
+  limpiarConsumosPresupuesto,
   reactivarPresupuesto,
   registrarGastoRapido,
   updatePresupuesto,
 } from '../api/presupuestos'
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
 import { ReactivarPresupuestoModal } from '../components/presupuestos/ReactivarPresupuestoModal'
+import { DesactivarPresupuestoModal } from '../components/presupuestos/DesactivarPresupuestoModal'
 import { EliminarPresupuestoModal } from '../components/presupuestos/EliminarPresupuestoModal'
+import {
+  EliminarConsumoModal,
+  type EliminarConsumoTarget,
+} from '../components/presupuestos/EliminarConsumoModal'
 import { PresupuestosGrid } from '../components/presupuestos/PresupuestosGrid'
 import { PresupuestosSummaryCard } from '../components/presupuestos/PresupuestosSummaryCard'
 import { FiltroMesPresupuestos } from '../components/presupuestos/FiltroMesPresupuestos'
 import type { PresupuestoCardView } from '../components/presupuestos/presupuestosTypes'
 import { mapPresupuestoToCard } from '../utils/presupuestosDisplay'
+import { useStoredMonth } from '../hooks/useStoredMonth'
 
 type OutletContext = {
   transactionsVersion: number
@@ -48,21 +55,41 @@ export function PresupuestosPage() {
   const [modalError, setModalError] = useState('')
   const [registrandoId, setRegistrandoId] = useState<number | null>(null)
   const [procesandoId, setProcesandoId] = useState<number | null>(null)
-  const [mostrarInactivos, setMostrarInactivos] = useState(false)
+
+  const STORAGE_KEY_INACTIVOS_PRESUPUESTOS = 'track_mostrar_inactivos_presupuestos'
+  const [mostrarInactivos, setMostrarInactivos] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_INACTIVOS_PRESUPUESTOS) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_INACTIVOS_PRESUPUESTOS, String(mostrarInactivos))
+    } catch {
+      // Ignore localStorage write error
+    }
+  }, [mostrarInactivos])
 
   const [isEliminarModalOpen, setIsEliminarModalOpen] = useState(false)
   const [presupuestoAEliminar, setPresupuestoAEliminar] = useState<PresupuestoCardView | null>(null)
+
+  const [isEliminarConsumoModalOpen, setIsEliminarConsumoModalOpen] = useState(false)
+  const [consumoAEliminar, setConsumoAEliminar] = useState<EliminarConsumoTarget | null>(null)
 
   const [isReactivarModalOpen, setIsReactivarModalOpen] = useState(false)
   const [presupuestoAReactivar, setPresupuestoAReactivar] = useState<PresupuestoCardView | null>(null)
   const [reactivando, setReactivando] = useState(false)
   const [reactivarError, setReactivarError] = useState('')
 
-  const [fechaRef, setFechaRef] = useState<Date>(() => {
-    const d = new Date()
-    d.setDate(1)
-    return d
-  })
+  const [isDesactivarModalOpen, setIsDesactivarModalOpen] = useState(false)
+  const [presupuestoADesactivar, setPresupuestoADesactivar] = useState<PresupuestoCardView | null>(null)
+  const [desactivando, setDesactivando] = useState(false)
+  const [desactivarError, setDesactivarError] = useState('')
+
+  const [fechaRef, setFechaRef] = useStoredMonth('presupuestos')
 
   const MESES = [
     'Enero',
@@ -201,13 +228,41 @@ export function PresupuestosPage() {
     }
   }
 
+  const abrirModalDesactivar = (presupuesto: PresupuestoCardView) => {
+    setPresupuestoADesactivar(presupuesto)
+    setDesactivarError('')
+    setIsDesactivarModalOpen(true)
+  }
+
+  const manejarConfirmarDesactivar = async (id: number) => {
+    setDesactivando(true)
+    setDesactivarError('')
+    try {
+      const anio = fechaRef.getFullYear()
+      const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+      const mesParam = `${anio}-${mes}-01`
+      const actualizado = await updatePresupuesto(id, { activo: false }, mesParam)
+      setPresupuestos((prev) =>
+        prev.map((p) => (p.id === id ? mapPresupuestoToCard(actualizado) : p)),
+      )
+      if (!mostrarInactivos) {
+        setPresupuestos((prev) => prev.filter((p) => p.id !== id))
+      }
+      setIsDesactivarModalOpen(false)
+      setPresupuestoADesactivar(null)
+      bumpTransactions()
+    } catch {
+      setDesactivarError('No se pudo desactivar el presupuesto.')
+    } finally {
+      setDesactivando(false)
+    }
+  }
+
   const manejarAlternarActivo = async (id: number, nuevoEstadoActivo: boolean) => {
     if (!nuevoEstadoActivo) {
-      if (
-        !window.confirm(
-          '¿Estás seguro de que deseas desactivar este presupuesto? Dejará de figurar en el cálculo activo, pero tus gastos previos se conservarán.'
-        )
-      ) {
+      const pres = presupuestos.find((p) => p.id === id)
+      if (pres) {
+        abrirModalDesactivar(pres)
         return
       }
     }
@@ -219,7 +274,7 @@ export function PresupuestosPage() {
       const mesParam = `${anio}-${mes}-01`
       const actualizado = await updatePresupuesto(id, { activo: nuevoEstadoActivo }, mesParam)
       setPresupuestos((prev) =>
-        prev.map((p) => (p.id === id ? mapPresupuestoToCard(actualizado) : p))
+        prev.map((p) => (p.id === id ? mapPresupuestoToCard(actualizado) : p)),
       )
       if (!nuevoEstadoActivo && !mostrarInactivos) {
         setPresupuestos((prev) => prev.filter((p) => p.id !== id))
@@ -229,7 +284,7 @@ export function PresupuestosPage() {
       setError(
         nuevoEstadoActivo
           ? 'No se pudo reactivar el presupuesto.'
-          : 'No se pudo desactivar el presupuesto.'
+          : 'No se pudo desactivar el presupuesto.',
       )
     } finally {
       setProcesandoId(null)
@@ -296,6 +351,60 @@ export function PresupuestosPage() {
     bumpTransactions()
   }
 
+  const abrirModalEliminarConsumo = (consumo: {
+    id: number
+    monto: number
+    fecha: string
+    presupuestoId: number
+    presupuestoNombre: string
+  }) => {
+    setConsumoAEliminar({
+      tipo: 'individual',
+      consumoId: consumo.id,
+      monto: consumo.monto,
+      fecha: consumo.fecha,
+      presupuestoId: consumo.presupuestoId,
+      presupuestoNombre: consumo.presupuestoNombre,
+    })
+    setIsEliminarConsumoModalOpen(true)
+  }
+
+  const abrirModalLimpiarConsumos = (presupuesto: PresupuestoCardView) => {
+    setConsumoAEliminar({
+      tipo: 'todos',
+      presupuestoId: presupuesto.id,
+      presupuestoNombre: presupuesto.nombre,
+      totalMonto: presupuesto.gastado,
+      totalConsumos: presupuesto.consumos?.length || 0,
+    })
+    setIsEliminarConsumoModalOpen(true)
+  }
+
+  const manejarConfirmarEliminarConsumo = async () => {
+    if (!consumoAEliminar) return
+    const anio = fechaRef.getFullYear()
+    const mes = String(fechaRef.getMonth() + 1).padStart(2, '0')
+    const mesParam = `${anio}-${mes}-01`
+
+    if (consumoAEliminar.tipo === 'individual') {
+      await deleteTransaction(consumoAEliminar.consumoId)
+      const data = await fetchPresupuestos(mesParam, mostrarInactivos)
+      setPresupuestos(data.map(mapPresupuestoToCard))
+      bumpTransactions()
+    } else {
+      const actualizado = await limpiarConsumosPresupuesto(
+        consumoAEliminar.presupuestoId,
+        mesParam,
+      )
+      setPresupuestos((prev) =>
+        prev.map((p) =>
+          p.id === consumoAEliminar.presupuestoId ? mapPresupuestoToCard(actualizado) : p,
+        ),
+      )
+      bumpTransactions()
+    }
+  }
+
   const manejarGuardarPresupuesto = async (e: FormEvent) => {
     e.preventDefault()
     if (!nombre.trim() || !limite || !montoRapido) return
@@ -317,15 +426,16 @@ export function PresupuestosPage() {
       }
 
       if (modalMode === 'edit' && editingId !== null) {
-        const actualizado = await updatePresupuesto(editingId, payload, mesParam)
-        setPresupuestos((prev) =>
-          prev.map((p) => (p.id === editingId ? mapPresupuestoToCard(actualizado) : p)),
-        )
+        await updatePresupuesto(editingId, payload, mesParam)
       } else {
-        const creado = await createPresupuesto(payload, mesParam)
-        setPresupuestos((prev) => [...prev, mapPresupuestoToCard(creado)])
+        await createPresupuesto(payload, mesParam)
       }
 
+      bumpTransactions()
+
+      // Mantenerse en el mes consultado y sincronizar con el backend
+      const data = await fetchPresupuestos(mesParam, mostrarInactivos)
+      setPresupuestos(data.map(mapPresupuestoToCard))
       cerrarModal()
     } catch (err) {
       let customError = ''
@@ -416,8 +526,11 @@ export function PresupuestosPage() {
               onRegistrarGasto={registrarGasto}
               onEditar={abrirModalEditar}
               onAlternarActivo={manejarAlternarActivo}
+              onDesactivar={abrirModalDesactivar}
               onReactivar={abrirModalReactivar}
               onEliminar={abrirModalEliminar}
+              onEliminarConsumo={abrirModalEliminarConsumo}
+              onLimpiarConsumos={abrirModalLimpiarConsumos}
               registrandoId={registrandoId}
               procesandoId={procesandoId}
               esMesActual={esMesActual}
@@ -450,6 +563,19 @@ export function PresupuestosPage() {
         onSubmit={manejarGuardarPresupuesto}
       />
 
+      <DesactivarPresupuestoModal
+        open={isDesactivarModalOpen}
+        presupuesto={presupuestoADesactivar}
+        desactivando={desactivando}
+        error={desactivarError}
+        onClose={() => {
+          setIsDesactivarModalOpen(false)
+          setPresupuestoADesactivar(null)
+          setDesactivarError('')
+        }}
+        onConfirm={manejarConfirmarDesactivar}
+      />
+
       <ReactivarPresupuestoModal
         open={isReactivarModalOpen}
         presupuesto={presupuestoAReactivar}
@@ -472,6 +598,16 @@ export function PresupuestosPage() {
           setPresupuestoAEliminar(null)
         }}
         onConfirm={manejarConfirmarEliminar}
+      />
+
+      <EliminarConsumoModal
+        open={isEliminarConsumoModalOpen}
+        target={consumoAEliminar}
+        onClose={() => {
+          setIsEliminarConsumoModalOpen(false)
+          setConsumoAEliminar(null)
+        }}
+        onConfirm={manejarConfirmarEliminarConsumo}
       />
     </section>
   )

@@ -2,6 +2,7 @@ import { PiggyBank, X, Zap } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { ApiCategory } from '../../api/finanzas'
 import { CustomSelect } from '../ui/CustomSelect'
+import { CustomDatePicker } from '../ui/CustomDatePicker'
 
 type MetaModalProps = {
   open: boolean
@@ -145,22 +146,22 @@ export function MetaModal({
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Fecha de inicio (opcional)
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 value={fechaInicio}
-                onChange={(e) => onFechaInicioChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                onChange={onFechaInicioChange}
+                placeholder="Sin fecha inicio"
+                clearable
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                 Fecha límite (opcional)
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 value={fechaLimite}
-                onChange={(e) => onFechaLimiteChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                onChange={onFechaLimiteChange}
+                placeholder="Sin fecha límite"
+                clearable
               />
             </div>
           </div>

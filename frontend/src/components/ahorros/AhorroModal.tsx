@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ApiAhorro } from '../../api/ahorros'
 import { formatSoles } from '../../utils/financeFormat'
+import { CustomDatePicker } from '../ui/CustomDatePicker'
 
 type AhorroModalProps = {
   open: boolean
@@ -98,15 +99,16 @@ export function AhorroModal({ open, disponible, onClose, onSaved, crearAhorro }:
               />
             </label>
 
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">Fecha</span>
-              <input
-                type="date"
+            <div>
+              <label className="mb-1 block text-sm text-slate-600 dark:text-slate-300 font-medium">
+                Fecha
+              </label>
+              <CustomDatePicker
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className={inputClass}
+                onChange={setFecha}
+                placeholder="Seleccionar fecha"
               />
-            </label>
+            </div>
 
             <label className="block text-sm">
               <span className="mb-1 block text-slate-600">Descripción (opcional)</span>

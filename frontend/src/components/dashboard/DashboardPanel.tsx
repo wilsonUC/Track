@@ -43,7 +43,7 @@ export function DashboardPanel() {
   const [allTransactions, setAllTransactions] = useState<EnrichedTransaction[]>([])
   const [recurrentes, setRecurrentes] = useState<RecurrenteCardView[]>([])
 
-  const dateFilter = useDateFilter({ defaultPreset: 'month' })
+  const dateFilter = useDateFilter({ defaultPreset: 'month', storageKey: 'dashboard' })
 
   useEffect(() => {
     let cancelled = false
@@ -174,8 +174,18 @@ export function DashboardPanel() {
     <section className="space-y-6">
       <div className="grid w-full min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <DashboardSummaryCard
-          title={descontarAhorros ? 'Balance disponible' : 'Balance'}
+          title={
+            descontarAhorros
+              ? dateFilter.preset === 'month'
+                ? 'Disponible del mes'
+                : 'Disponible período'
+              : dateFilter.preset === 'month'
+                ? 'Balance del mes'
+                : 'Balance del período'
+          }
           amount={formatSoles(balance)}
+          badge={dateFilter.preset === 'month' ? 'Este mes' : dateFilter.preset === 'total' ? 'Filtrado' : 'Período'}
+          tooltip={`Resultado neto del período (ingresos − gastos${descontarAhorros ? ' − ahorros' : ''})`}
           subtitle={
             descontarAhorros && periodTotals.saving > 0
               ? `Ahorro descontado: -${formatSoles(periodTotals.saving)}`
@@ -186,8 +196,10 @@ export function DashboardPanel() {
           onClick={() => setActiveCard('balance')}
         />
         <DashboardSummaryCard
-          title={descontarAhorros ? 'Balance total disp.' : 'Balance total'}
+          title={descontarAhorros ? 'Saldo total disp.' : 'Balance acumulado'}
           amount={formatSoles(totalBalance)}
+          badge="Histórico"
+          tooltip="Saldo neto total acumulado de todos los meses (patrimonio neto registrado)"
           subtitle={
             descontarAhorros && allTimeTotals.saving > 0
               ? `Ahorro descontado: -${formatSoles(allTimeTotals.saving)}`

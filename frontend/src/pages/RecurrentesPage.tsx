@@ -17,6 +17,7 @@ import {
 import { RecurrenteModal } from '../components/recurrentes/RecurrenteModal'
 import { AbonoRecurrenteModal } from '../components/recurrentes/AbonoRecurrenteModal'
 import { EliminarRecurrenteModal } from '../components/recurrentes/EliminarRecurrenteModal'
+import { DesactivarRecurrenteModal } from '../components/recurrentes/DesactivarRecurrenteModal'
 import { ReactivarRecurrenteModal } from '../components/recurrentes/ReactivarRecurrenteModal'
 import { RecurrentesGrid } from '../components/recurrentes/RecurrentesGrid'
 import { RecurrentesSummaryCard } from '../components/recurrentes/RecurrentesSummaryCard'
@@ -24,6 +25,7 @@ import { ResumenCuentasAtrasadas } from '../components/recurrentes/ResumenCuenta
 import { FiltroMesRecurrentes } from '../components/recurrentes/FiltroMesRecurrentes'
 import type { RecurrenteCardView } from '../components/recurrentes/recurrentesTypes'
 import { mapRecurrenteToCard } from '../utils/recurrentesDisplay'
+import { useStoredMonth } from '../hooks/useStoredMonth'
 
 type OutletContext = {
   transactionsVersion: number
@@ -74,14 +76,31 @@ export function RecurrentesPage() {
   const [reactivando, setReactivando] = useState(false)
   const [reactivarError, setReactivarError] = useState('')
 
-  const [fechaRef, setFechaRef] = useState<Date>(() => {
-    const d = new Date()
-    d.setDate(1)
-    return d
-  })
+  const [isDesactivarModalOpen, setIsDesactivarModalOpen] = useState(false)
+  const [recurrenteADesactivar, setRecurrenteADesactivar] = useState<RecurrenteCardView | null>(null)
+  const [desactivando, setDesactivando] = useState(false)
+  const [desactivarError, setDesactivarError] = useState('')
+
+  const [fechaRef, setFechaRef] = useStoredMonth('recurrentes')
   const [cuentasAtrasadas, setCuentasAtrasadas] = useState<ApiCuentasAtrasadas | null>(null)
   const [procesandoAtrasadaId, setProcesandoAtrasadaId] = useState<string | null>(null)
-  const [mostrarInactivos, setMostrarInactivos] = useState(false)
+
+  const STORAGE_KEY_INACTIVOS_RECURRENTES = 'track_mostrar_inactivos_recurrentes'
+  const [mostrarInactivos, setMostrarInactivos] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_INACTIVOS_RECURRENTES) === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_INACTIVOS_RECURRENTES, String(mostrarInactivos))
+    } catch {
+      // Ignore localStorage write error
+    }
+  }, [mostrarInactivos])
 
   const formatIsoDate = (date: Date) => {
     const y = date.getFullYear()
@@ -377,13 +396,39 @@ export function RecurrentesPage() {
     }
   }
 
+  const abrirModalDesactivar = (recurrente: RecurrenteCardView) => {
+    setRecurrenteADesactivar(recurrente)
+    setDesactivarError('')
+    setIsDesactivarModalOpen(true)
+  }
+
+  const manejarConfirmarDesactivar = async (id: number) => {
+    setDesactivando(true)
+    setDesactivarError('')
+    try {
+      const mesIso = formatIsoDate(fechaRef)
+      const actualizado = await updateRecurrente(id, { activo: false }, mesIso)
+      setRecurrentes((prev) =>
+        prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)),
+      )
+      if (!mostrarInactivos) {
+        setRecurrentes((prev) => prev.filter((r) => r.id !== id))
+      }
+      setIsDesactivarModalOpen(false)
+      setRecurrenteADesactivar(null)
+      bumpTransactions()
+    } catch {
+      setDesactivarError('No se pudo desactivar el recurrente.')
+    } finally {
+      setDesactivando(false)
+    }
+  }
+
   const manejarAlternarActivo = async (id: number, nuevoEstadoActivo: boolean) => {
     if (!nuevoEstadoActivo) {
-      if (
-        !window.confirm(
-          '¿Estás seguro de que deseas desactivar este recurrente? Dejará de figurar como pendiente, pero tus registros de pagos pasados se conservarán.'
-        )
-      ) {
+      const rec = recurrentes.find((r) => r.id === id)
+      if (rec) {
+        abrirModalDesactivar(rec)
         return
       }
     }
@@ -393,7 +438,7 @@ export function RecurrentesPage() {
       const mesIso = formatIsoDate(fechaRef)
       const actualizado = await updateRecurrente(id, { activo: nuevoEstadoActivo }, mesIso)
       setRecurrentes((prev) =>
-        prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r))
+        prev.map((r) => (r.id === id ? mapRecurrenteToCard(actualizado) : r)),
       )
       if (!nuevoEstadoActivo && !mostrarInactivos) {
         setRecurrentes((prev) => prev.filter((r) => r.id !== id))
@@ -403,7 +448,7 @@ export function RecurrentesPage() {
       setError(
         nuevoEstadoActivo
           ? 'No se pudo reactivar el recurrente.'
-          : 'No se pudo desactivar el recurrente.'
+          : 'No se pudo desactivar el recurrente.',
       )
     } finally {
       setProcesandoId(null)
@@ -519,18 +564,16 @@ export function RecurrentesPage() {
           ...payload,
           solo_este_mes: soloEsteMes,
         }
-        const actualizado = await updateRecurrente(editingId, payloadConAlcance, mesIso)
-        setRecurrentes((prev) =>
-          prev.map((r) => (r.id === editingId ? mapRecurrenteToCard(actualizado) : r)),
-        )
-        const atrasadasData = await fetchCuentasAtrasadas()
-        setCuentasAtrasadas(atrasadasData)
-        bumpTransactions()
+        await updateRecurrente(editingId, payloadConAlcance, mesIso)
       } else {
-        const creado = await createRecurrente(payload, mesIso)
-        setRecurrentes((prev) => [...prev, mapRecurrenteToCard(creado)])
+        await createRecurrente(payload, mesIso)
       }
 
+      const data = await fetchRecurrentes(mesIso, mostrarInactivos)
+      setRecurrentes(data.map(mapRecurrenteToCard))
+      const atrasadasData = await fetchCuentasAtrasadas()
+      setCuentasAtrasadas(atrasadasData)
+      bumpTransactions()
       cerrarModal()
     } catch (err) {
       let customError = ''
@@ -691,6 +734,7 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onDesactivar={abrirModalDesactivar}
                 onReactivar={abrirModalReactivar}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
@@ -717,6 +761,7 @@ export function RecurrentesPage() {
                 onAlternarPago={alternarPago}
                 onEditar={abrirModalEditar}
                 onAlternarActivo={manejarAlternarActivo}
+                onDesactivar={abrirModalDesactivar}
                 onReactivar={abrirModalReactivar}
                 onEliminarAbono={manejarEliminarAbono}
                 onDesmarcarTodo={manejarDesmarcarTodo}
@@ -760,6 +805,19 @@ export function RecurrentesPage() {
         onHacerManual={manejarHacerManual}
         onClose={cerrarModal}
         onSubmit={manejarGuardar}
+      />
+
+      <DesactivarRecurrenteModal
+        open={isDesactivarModalOpen}
+        recurrente={recurrenteADesactivar}
+        desactivando={desactivando}
+        error={desactivarError}
+        onClose={() => {
+          setIsDesactivarModalOpen(false)
+          setRecurrenteADesactivar(null)
+          setDesactivarError('')
+        }}
+        onConfirm={manejarConfirmarDesactivar}
       />
 
       <ReactivarRecurrenteModal

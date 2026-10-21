@@ -149,10 +149,24 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
             if hasattr(recurrente.creado_en, "date")
             else recurrente.creado_en
         )
+        fecha_start = recurrente.fecha_inicio if recurrente.fecha_inicio else creado
         vencimiento = fecha_vencimiento_mes(recurrente.dia_pago, today)
-        # Vencido: pasó el día de cobro/pago Y el recurrente ya existía para esa fecha
-        if today > vencimiento and creado <= vencimiento:
+
+        # Determinar si ya venció la fecha de pago/cobro:
+        # - Si se consulta el mes actual real, se compara con la fecha de hoy.
+        # - Si se consulta un mes pasado, ya concluyó el período completo.
+        # - Solo aplica si el recurrente ya estaba vigente a esa fecha de vencimiento.
+        real_today = date.today()
+        if ref_inicio_mes == real_today.replace(day=1):
+            fecha_corte = real_today
+        elif ref_inicio_mes < real_today.replace(day=1):
+            fecha_corte = fin
+        else:
+            fecha_corte = today
+
+        if fecha_corte > vencimiento and fecha_start <= vencimiento:
             vencido = True
+
         prev_inicio, prev_fin = _bounds_mes_anterior(today)
         # Solo avisar si el recurrente ya existía el mes anterior (no recién creado)
         monto_prev = Transaction.objects.filter(
@@ -163,7 +177,7 @@ def calcular_estado_recurrente(recurrente, reference: date | None = None) -> dic
         monto_mes_anterior_esperado = obtener_monto_mes(recurrente, prev_inicio)
         registrado_anterior = Decimal(str(monto_prev)) >= monto_mes_anterior_esperado
 
-        if creado <= prev_fin and not registrado_anterior:
+        if fecha_start <= prev_fin and not registrado_anterior:
             # Solo alertar si el mes anterior estaba dentro del periodo de vigencia
             mes_anterior_activo = True
             if recurrente.fecha_inicio and prev_fin < recurrente.fecha_inicio:

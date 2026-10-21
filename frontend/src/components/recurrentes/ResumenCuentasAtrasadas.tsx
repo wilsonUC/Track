@@ -101,8 +101,8 @@ export function ResumenCuentasAtrasadas({
                         <div className="flex items-center gap-2 text-[10px] text-slate-400">
                           <span className="font-semibold">{item.categoria}</span>
                           <span>·</span>
-                          <span className="flex items-center gap-0.5 text-slate-500">
-                            <Calendar className="h-3 w-3 shrink-0" />
+                          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                            <Calendar className="h-3 w-3 shrink-0 text-indigo-500 dark:text-indigo-400" />
                             {item.mes_atraso}
                           </span>
                         </div>
@@ -181,8 +181,8 @@ export function ResumenCuentasAtrasadas({
                         <div className="flex items-center gap-2 text-[10px] text-slate-400">
                           <span className="font-semibold">{item.categoria}</span>
                           <span>·</span>
-                          <span className="flex items-center gap-0.5 text-slate-500">
-                            <Calendar className="h-3 w-3 shrink-0" />
+                          <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                            <Calendar className="h-3 w-3 shrink-0 text-indigo-500 dark:text-indigo-400" />
                             {item.mes_atraso}
                           </span>
                         </div>

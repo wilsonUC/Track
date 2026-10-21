@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Clock, Lock, Pencil, Plus, Power, Trash2 } from 'lucide-react'
+import { AlertTriangle, Clock, Lock, Pencil, Plus, Power, RotateCcw, Trash2 } from 'lucide-react'
 import { getCategoryDisplay, getCategoryChartColors } from '../../utils/categoryDisplay'
 import type { PresupuestoCardView } from './presupuestosTypes'
 
@@ -8,8 +8,17 @@ type PresupuestoCardProps = {
   onRegistrarGasto: (id: number) => void
   onEditar: (presupuesto: PresupuestoCardView) => void
   onAlternarActivo?: (id: number, activo: boolean) => void
+  onDesactivar?: (presupuesto: PresupuestoCardView) => void
   onReactivar?: (presupuesto: PresupuestoCardView) => void
   onEliminar?: (presupuesto: PresupuestoCardView) => void
+  onEliminarConsumo?: (consumo: {
+    id: number
+    monto: number
+    fecha: string
+    presupuestoId: number
+    presupuestoNombre: string
+  }) => void
+  onLimpiarConsumos?: (presupuesto: PresupuestoCardView) => void
   registrando?: boolean
   procesando?: boolean
   esMesActual?: boolean
@@ -22,8 +31,11 @@ export function PresupuestoCard({
   onRegistrarGasto,
   onEditar,
   onAlternarActivo,
+  onDesactivar,
   onReactivar,
   onEliminar,
+  onEliminarConsumo,
+  onLimpiarConsumos,
   registrando,
   procesando,
   esMesActual = true,
@@ -171,20 +183,35 @@ export function PresupuestoCard({
         </div>
       </div>
 
-      {/* Historial de consumos (Solo lectura) */}
+      {/* Historial de consumos */}
       {consumos && consumos.length > 0 && (
         <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs dark:border-slate-800 dark:bg-slate-800/40">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5 dark:border-slate-800">
             <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
               Historial de consumos
             </span>
-            <button
-              type="button"
-              onClick={() => setMostrarHistorial(!mostrarHistorial)}
-              className="cursor-pointer text-[9px] font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-            >
-              {mostrarHistorial ? 'Ocultar' : `Ver (${consumos.length})`}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMostrarHistorial(!mostrarHistorial)}
+                className="cursor-pointer text-[9px] font-bold uppercase tracking-wide text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+              >
+                {mostrarHistorial ? 'Ocultar' : `Ver (${consumos.length})`}
+              </button>
+              {esMesActual && onLimpiarConsumos && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-600 text-[10px]">|</span>
+                  <button
+                    type="button"
+                    onClick={() => onLimpiarConsumos(presupuesto)}
+                    className="cursor-pointer text-[9px] font-bold uppercase tracking-wide text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition-colors"
+                    title="Quitar todos los consumos del mes"
+                  >
+                    Quitar todo
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {mostrarHistorial && (
@@ -194,9 +221,30 @@ export function PresupuestoCard({
                   <span className="font-bold text-slate-700 dark:text-slate-200">
                     S/ {Number(consumo.monto).toFixed(2)}
                   </span>
-                  <span className="font-medium text-slate-400 dark:text-slate-400 text-[11px]">
-                    {consumo.fecha.slice(8, 10)}/{consumo.fecha.slice(5, 7)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-400 dark:text-slate-400 text-[11px]">
+                      {consumo.fecha.slice(8, 10)}/{consumo.fecha.slice(5, 7)}
+                    </span>
+                    {esMesActual && onEliminarConsumo && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onEliminarConsumo({
+                            id: consumo.id,
+                            monto: Number(consumo.monto),
+                            fecha: consumo.fecha,
+                            presupuestoId: id,
+                            presupuestoNombre: nombre,
+                          })
+                        }
+                        className="rounded p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+                        title="Quitar este gasto"
+                        aria-label="Quitar este gasto"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -317,7 +365,19 @@ export function PresupuestoCard({
 
               {menuEstadoAbierto && (
                 <div className="absolute bottom-full right-0 mb-2 w-48 overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-lg backdrop-blur-sm z-30 dark:border-slate-800 dark:bg-slate-900">
-                  {onAlternarActivo && (
+                  {onDesactivar ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuEstadoAbierto(false)
+                        onDesactivar(presupuesto)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                    >
+                      <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Desactivar</span>
+                    </button>
+                  ) : onAlternarActivo && (
                     <button
                       type="button"
                       onClick={() => {
@@ -406,7 +466,32 @@ export function PresupuestoCard({
 
               {menuEstadoAbierto && (
                 <div className="absolute bottom-full right-0 mb-2 w-48 overflow-hidden rounded-xl border border-slate-100 bg-white p-1 shadow-lg backdrop-blur-sm z-30 dark:border-slate-800 dark:bg-slate-900">
-                  {onAlternarActivo && (
+                  {consumos && consumos.length > 0 && esMesActual && onLimpiarConsumos && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuEstadoAbierto(false)
+                        onLimpiarConsumos(presupuesto)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors border-b border-slate-50 dark:border-slate-800/60 pb-1.5 mb-0.5"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                      <span>Quitar consumos (S/ {gastado.toFixed(2)})</span>
+                    </button>
+                  )}
+                  {onDesactivar ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuEstadoAbierto(false)
+                        onDesactivar(presupuesto)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 transition-colors"
+                    >
+                      <Power className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Desactivar</span>
+                    </button>
+                  ) : onAlternarActivo && (
                     <button
                       type="button"
                       onClick={() => {

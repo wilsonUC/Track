@@ -6,8 +6,17 @@ type PresupuestosGridProps = {
   onRegistrarGasto: (id: number) => void
   onEditar: (presupuesto: PresupuestoCardView) => void
   onAlternarActivo?: (id: number, activo: boolean) => void
+  onDesactivar?: (presupuesto: PresupuestoCardView) => void
   onReactivar?: (presupuesto: PresupuestoCardView) => void
   onEliminar?: (presupuesto: PresupuestoCardView) => void
+  onEliminarConsumo?: (consumo: {
+    id: number
+    monto: number
+    fecha: string
+    presupuestoId: number
+    presupuestoNombre: string
+  }) => void
+  onLimpiarConsumos?: (presupuesto: PresupuestoCardView) => void
   registrandoId?: number | null
   procesandoId?: number | null
   esMesActual?: boolean
@@ -20,8 +29,11 @@ export function PresupuestosGrid({
   onRegistrarGasto,
   onEditar,
   onAlternarActivo,
+  onDesactivar,
   onReactivar,
   onEliminar,
+  onEliminarConsumo,
+  onLimpiarConsumos,
   registrandoId,
   procesandoId,
   esMesActual = true,
@@ -37,8 +49,11 @@ export function PresupuestosGrid({
           onRegistrarGasto={onRegistrarGasto}
           onEditar={onEditar}
           onAlternarActivo={onAlternarActivo}
+          onDesactivar={onDesactivar}
           onReactivar={onReactivar}
           onEliminar={onEliminar}
+          onEliminarConsumo={onEliminarConsumo}
+          onLimpiarConsumos={onLimpiarConsumos}
           registrando={registrandoId === presupuesto.id}
           procesando={procesandoId === presupuesto.id}
           esMesActual={esMesActual}
