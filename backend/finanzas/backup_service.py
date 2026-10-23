@@ -162,6 +162,8 @@ def generar_volcado_db(output_dir=None):
             db_user,
             "-d",
             db_name,
+            "--clean",
+            "--if-exists",
             "--no-owner",
             "--no-acl",
         ]
