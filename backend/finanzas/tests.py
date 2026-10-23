@@ -623,6 +623,45 @@ class AdminUsuariosTests(FinanzasAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class PreferenciasUsuarioTests(FinanzasAPITestCase):
+    def setUp(self):
+        self.user = self.crear_usuario(username="prefs_user", telefono="900000095")
+        self.autenticar(self.user)
+
+    def test_descontar_ahorros_balance_predeterminado_activo(self):
+        # Por defecto, la preferencia debe crearse en True
+        prefs, _ = PreferenciasUsuario.objects.get_or_create(usuario=self.user)
+        self.assertTrue(prefs.descontar_ahorros_balance)
+
+        # La API GET también debe devolver True por defecto
+        response = self.client.get("/api/preferencias/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["descontar_ahorros_balance"])
+
+    def test_usuario_puede_cambiar_descontar_ahorros_balance(self):
+        # Desactivar
+        patch_res = self.client.patch(
+            "/api/preferencias/",
+            {"descontar_ahorros_balance": False},
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, status.HTTP_200_OK)
+        self.assertFalse(patch_res.data["descontar_ahorros_balance"])
+
+        # Verificar persistencia en base de datos
+        self.user.preferencias.refresh_from_db()
+        self.assertFalse(self.user.preferencias.descontar_ahorros_balance)
+
+        # Volver a activar
+        patch_res2 = self.client.patch(
+            "/api/preferencias/",
+            {"descontar_ahorros_balance": True},
+            format="json",
+        )
+        self.assertEqual(patch_res2.status_code, status.HTTP_200_OK)
+        self.assertTrue(patch_res2.data["descontar_ahorros_balance"])
+
+
 class ControlSaldoEstrictoTests(FinanzasAPITestCase):
     def setUp(self):
         self.user = self.crear_usuario(username="saldo_user", telefono="900000090")
@@ -1690,5 +1729,55 @@ class IaChatLimitsAPITestCase(FinanzasAPITestCase):
             )
             self.assertEqual(res.status_code, status.HTTP_200_OK)
             self.assertTrue(res.data["cuota"]["es_ilimitado"])
+
+
+class BackupGDriveTests(APITestCase):
+    def test_generar_volcado_db_local(self):
+        from finanzas.backup_service import generar_volcado_db
+        import os
+        filepath = generar_volcado_db()
+        self.assertTrue(os.path.exists(filepath))
+        self.assertTrue(filepath.endswith(".gz"))
+        self.assertGreater(os.path.getsize(filepath), 0)
+        try:
+            os.remove(filepath)
+        except (PermissionError, OSError):
+            pass
+
+    @mock.patch("finanzas.backup_service.obtener_credenciales_gdrive")
+    @mock.patch("finanzas.backup_service.build")
+    def test_ejecutar_backup_a_gdrive_exitoso(self, mock_build, mock_creds):
+        from finanzas.backup_service import ejecutar_backup_a_gdrive
+        mock_service = mock.MagicMock()
+        mock_build.return_value = mock_service
+
+        mock_files = mock.MagicMock()
+        mock_service.files.return_value = mock_files
+
+        mock_create = mock.MagicMock()
+        mock_files.create.return_value = mock_create
+        mock_create.execute.return_value = {
+            "id": "mock_file_id_123",
+            "name": "backup_track_test.sql.gz",
+            "webViewLink": "https://drive.google.com/file/d/mock_file_id_123",
+        }
+
+        # Mock rotation list
+        mock_list = mock.MagicMock()
+        mock_files.list.return_value = mock_list
+        mock_list.execute.return_value = {"files": []}
+
+        resultado = ejecutar_backup_a_gdrive(folder_id="mock_folder_123")
+        self.assertEqual(resultado["status"], "success")
+        self.assertEqual(resultado["file_id"], "mock_file_id_123")
+        self.assertEqual(resultado["backups_rotados"], 0)
+
+    def test_backup_gdrive_command_local_only(self):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command("backup_gdrive", "--local-only", stdout=out)
+        self.assertIn("Volcado local generado con éxito", out.getvalue())
+
 
 

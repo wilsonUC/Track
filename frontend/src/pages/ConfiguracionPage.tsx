@@ -25,7 +25,7 @@ export function ConfiguracionPage() {
   const [moneda, setMoneda] = useState('PEN')
   const [mostrarDecimales, setMostrarDecimales] = useState(true)
   const [limitarSaldoNegativo, setLimitarSaldoNegativo] = useState(false)
-  const [descontarAhorrosBalance, setDescontarAhorrosBalance] = useState(false)
+  const [descontarAhorrosBalance, setDescontarAhorrosBalance] = useState(true)
   const [saveMessage, setSaveMessage] = useState('')
   const [saveError, setSaveError] = useState('')
 
@@ -36,7 +36,7 @@ export function ConfiguracionPage() {
     setMoneda(preferences.moneda)
     setMostrarDecimales(preferences.mostrar_decimales)
     setLimitarSaldoNegativo(preferences.limitar_saldo_negativo ?? false)
-    setDescontarAhorrosBalance(preferences.descontar_ahorros_balance ?? false)
+    setDescontarAhorrosBalance(preferences.descontar_ahorros_balance ?? true)
   }, [preferences])
 
   async function handleSave() {
@@ -72,7 +72,7 @@ export function ConfiguracionPage() {
       moneda !== preferences?.moneda ||
       mostrarDecimales !== preferences?.mostrar_decimales ||
       limitarSaldoNegativo !== (preferences?.limitar_saldo_negativo ?? false) ||
-      descontarAhorrosBalance !== (preferences?.descontar_ahorros_balance ?? false))
+      descontarAhorrosBalance !== (preferences?.descontar_ahorros_balance ?? true))
 
   return (
     <section className="space-y-6">

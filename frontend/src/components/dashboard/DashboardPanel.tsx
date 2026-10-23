@@ -35,7 +35,7 @@ type OutletContext = {
 
 export function DashboardPanel() {
   const { preferences } = usePreferences()
-  const descontarAhorros = preferences?.descontar_ahorros_balance ?? false
+  const descontarAhorros = preferences?.descontar_ahorros_balance ?? true
   const { transactionsVersion, setHeaderExtra, isAvanzado } = useOutletContext<OutletContext>()
   const [activeCard, setActiveCard] = useState<'balance' | 'income' | 'expense' | 'savings'>('balance')
   const [loading, setLoading] = useState(true)

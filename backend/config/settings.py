@@ -188,6 +188,14 @@ GROQ_MODEL = config("GROQ_MODEL", default="openai/gpt-oss-20b")
 # Google OAuth 2.0
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID", default="541141196828-4b01l6covnl5frka5oq2547c6h1savfh.apps.googleusercontent.com")
 
+# Google Drive Backups
+GDRIVE_BACKUP_FOLDER_ID = config("GDRIVE_BACKUP_FOLDER_ID", default="1g1J-O3OQ9y6_Iif_H73ZAYZpJSLd3JKa")
+GDRIVE_OAUTH_CLIENT_ID = config("GDRIVE_OAUTH_CLIENT_ID", default="")
+GDRIVE_OAUTH_CLIENT_SECRET = config("GDRIVE_OAUTH_CLIENT_SECRET", default="")
+GDRIVE_OAUTH_REFRESH_TOKEN = config("GDRIVE_OAUTH_REFRESH_TOKEN", default="")
+GDRIVE_SERVICE_ACCOUNT_FILE = config("GDRIVE_SERVICE_ACCOUNT_FILE", default="")
+GDRIVE_SERVICE_ACCOUNT_JSON = config("GDRIVE_SERVICE_ACCOUNT_JSON", default="")
+
 # Tests: SQLite en memoria (no requiere PostgreSQL ni toca la DB real)
 import sys
 

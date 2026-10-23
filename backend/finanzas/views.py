@@ -1209,6 +1209,31 @@ class AdminUsuarioDetalleView(APIView):
         return Response({"mensaje": "Usuario eliminado correctamente."}, status=status.HTTP_200_OK)
 
 
+class AdminBackupView(APIView):
+    """
+    POST /api/admin/backup/ejecutar/ — dispara un backup de la DB a Google Drive.
+    Solo accesible para administradores (is_staff).
+    """
+
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        folder_id = request.data.get("folder_id")
+        dias_retencion = int(request.data.get("dias_retencion", 30))
+        from .backup_service import ejecutar_backup_a_gdrive
+
+        try:
+            resultado = ejecutar_backup_a_gdrive(
+                folder_id=folder_id,
+                dias_retencion=dias_retencion,
+            )
+            return Response(resultado, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class RegistroView(APIView):
     """

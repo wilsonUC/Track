@@ -7,6 +7,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AdminBackupView,
     AdminUsuarioDetalleView,
     AdminUsuariosView,
     AhorroViewSet,
@@ -38,6 +39,7 @@ urlpatterns = [
     # Todas las rutas del router van debajo de lo que pongas en config/urls (p. ej. "api/")
     path("admin/usuarios/", AdminUsuariosView.as_view(), name="admin-usuarios"),
     path("admin/usuarios/<int:user_id>/", AdminUsuarioDetalleView.as_view(), name="admin-usuario-detalle"),
+    path("admin/backup/ejecutar/", AdminBackupView.as_view(), name="admin-backup-ejecutar"),
     path("ia/chat/", IaChatView.as_view(), name="ia-chat"),
     path("consejos/", ConsejosView.as_view(), name="consejos"),
     path("perfil/", PerfilView.as_view(), name="perfil"),

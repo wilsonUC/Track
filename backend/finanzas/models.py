@@ -450,7 +450,7 @@ class PreferenciasUsuario(models.Model):
     mostrar_decimales = models.BooleanField(default=True)
     limitar_saldo_negativo = models.BooleanField(default=False)
     permitir_asignacion_directa_metas = models.BooleanField(default=False)
-    descontar_ahorros_balance = models.BooleanField(default=False)
+    descontar_ahorros_balance = models.BooleanField(default=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
 

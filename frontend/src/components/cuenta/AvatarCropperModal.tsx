@@ -167,9 +167,19 @@ export function AvatarCropperModal({
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
-    setImgNaturalSize({ width: img.naturalWidth, height: img.naturalHeight })
+    if (img.naturalWidth && img.naturalHeight) {
+      setImgNaturalSize({ width: img.naturalWidth, height: img.naturalHeight })
+    }
     setImageLoaded(true)
   }
+
+  const handleImageRef = useCallback((node: HTMLImageElement | null) => {
+    imageRef.current = node
+    if (node && node.complete && node.naturalWidth > 0) {
+      setImgNaturalSize({ width: node.naturalWidth, height: node.naturalHeight })
+      setImageLoaded(true)
+    }
+  }, [])
 
   // Calcular dimensiones base de visualización ('cover' exacto)
   const baseScale =
@@ -282,11 +292,16 @@ export function AvatarCropperModal({
           >
             {localBlobUrl && (
               <img
-                ref={imageRef}
+                ref={handleImageRef}
                 src={localBlobUrl}
-                crossOrigin="anonymous"
+                crossOrigin={localBlobUrl.startsWith('blob:') || localBlobUrl.startsWith('data:') ? undefined : 'anonymous'}
                 alt="Ajuste de avatar"
                 onLoad={handleImageLoad}
+                onError={() => {
+                  console.error('Error al renderizar imagen en AvatarCropperModal:', localBlobUrl)
+                  setErrorMsg('No se pudo procesar la imagen para encuadrar')
+                  setImageLoaded(true)
+                }}
                 draggable={false}
                 style={{
                   width: `${currentDisplayWidth}px`,

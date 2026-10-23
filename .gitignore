@@ -7,9 +7,13 @@ __pycache__/
 .venv/
 venv/
 
-# Env
+# Env & Secrets
 .env
 .env.*
+*credentials*.json
+*service_account*.json
+gdrive_key.json
+backups/
 
 # Node / Frontend
 node_modules/
