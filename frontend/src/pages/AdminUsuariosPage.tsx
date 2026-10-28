@@ -33,19 +33,47 @@ import {
 } from '../api/auth'
 import { formatApiError } from '../utils/apiErrors'
 import { CustomSelect, type CustomSelectOption } from '../components/ui/CustomSelect'
+import { CustomDurationModal } from '../components/admin/CustomDurationModal'
 
 const TIPO_CUENTA_OPTIONS: CustomSelectOption<AccountTier>[] = [
   { value: 'basico', label: 'Básico' },
   { value: 'avanzado', label: 'Avanzado' },
 ]
 
-const DURACION_OPTIONS: CustomSelectOption<string>[] = [
+const BASE_DURACION_OPTIONS: CustomSelectOption<string>[] = [
   { value: '1m', label: '⚡ 1 minuto (Prueba)' },
   { value: '1', label: '1 mes (30 d)' },
   { value: '6', label: '6 meses (180 d)' },
   { value: '12', label: '12 meses (1 año)' },
   { value: 'permanente', label: 'Permanente ♾️' },
 ]
+
+function formatCustomDurationLabel(code: string | number): string {
+  const str = String(code).trim().toLowerCase()
+  const match = str.match(/^(\d+)\s*([a-z]+)$/)
+  if (!match) return String(code)
+  const val = match[1]
+  const unit = match[2]
+  if (unit === 'm' || unit === 'min') return `⏱️ ${val} min`
+  if (unit === 'h' || unit === 'hr' || unit === 'hrs') return `⏱️ ${val} hora${val === '1' ? '' : 's'}`
+  if (unit === 'd') return `📅 ${val} día${val === '1' ? '' : 's'}`
+  if (unit === 'w' || unit === 'sem') return `📅 ${val} semana${val === '1' ? '' : 's'}`
+  if (unit === 'meses' || unit === 'mes') return `🗓️ ${val} mes${val === '1' ? '' : 'es'}`
+  return `⏱️ ${str}`
+}
+
+function getDuracionOptions(currentVal?: string | number | null): CustomSelectOption<string>[] {
+  const customOption: CustomSelectOption<string> = { value: 'custom', label: '⏱️ Personalizado…' }
+  const strVal = currentVal !== null && currentVal !== undefined ? String(currentVal) : null
+  if (strVal && !BASE_DURACION_OPTIONS.some((opt) => opt.value === strVal) && strVal !== 'custom') {
+    return [
+      ...BASE_DURACION_OPTIONS,
+      { value: strVal, label: formatCustomDurationLabel(strVal) },
+      customOption,
+    ]
+  }
+  return [...BASE_DURACION_OPTIONS, customOption]
+}
 
 function formatVigencia(fecha?: string | null, isExpired?: boolean, diasRestantes?: number | null) {
   if (!fecha) {
@@ -65,6 +93,7 @@ function formatVigencia(fecha?: string | null, isExpired?: boolean, diasRestante
   const now = Date.now()
   const diffMs = d.getTime() - now
   const diffMinutes = Math.round(diffMs / (1000 * 60))
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60))
 
   if (isExpired || diffMs <= 0 || (diasRestantes !== null && diasRestantes !== undefined && diasRestantes < 0)) {
     return {
@@ -74,9 +103,19 @@ function formatVigencia(fecha?: string | null, isExpired?: boolean, diasRestante
     }
   }
 
-  if (diffMinutes >= 0 && diffMinutes <= 60 && isTimeSpecific) {
+  // Menos de 60 minutos
+  if (diffMinutes >= 0 && diffMinutes < 60) {
     return {
       badgeText: diffMinutes <= 1 ? '< 1 min restante' : `${diffMinutes} min restantes`,
+      subText: `Vence ${dateFormatted}`,
+      color: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    }
+  }
+
+  // Entre 1 hora y 24 horas
+  if (diffHours >= 1 && diffHours < 24) {
+    return {
+      badgeText: diffHours === 1 ? '1 hora restante' : `${diffHours} horas restantes`,
       subText: `Vence ${dateFormatted}`,
       color: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
     }
@@ -121,6 +160,7 @@ export function AdminUsuariosPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [customModalUser, setCustomModalUser] = useState<AdminUser | null>(null)
 
   // Filtros
   const [searchTerm, setSearchTerm] = useState('')
@@ -199,6 +239,14 @@ export function AdminUsuariosPage() {
         [field]: value,
       },
     }))
+  }
+
+  function handleDurationSelect(user: AdminUser, val: string) {
+    if (val === 'custom') {
+      setCustomModalUser(user)
+      return
+    }
+    updateDraft(user.id, 'duracion', val)
   }
 
   function resetDraft(id: number) {
@@ -535,8 +583,8 @@ export function AdminUsuariosPage() {
                       <CustomSelect<string>
                         value={values.duracion ? String(values.duracion) : ''}
                         placeholder={user.estado_cuenta === 'pending' ? '1 mes (por defecto)' : vigenciaInfo.badgeText}
-                        onChange={(val) => updateDraft(user.id, 'duracion', val)}
-                        options={DURACION_OPTIONS}
+                        onChange={(val) => handleDurationSelect(user, val)}
+                        options={getDuracionOptions(values.duracion)}
                         triggerClassName="!py-1.5 !px-2.5 !text-xs !rounded-lg"
                         dropdownClassName="!min-w-full"
                       />
@@ -802,8 +850,8 @@ export function AdminUsuariosPage() {
                             <div>
                               <CustomSelect<string>
                                 value={values.duracion ? String(values.duracion) : '1'}
-                                onChange={(val) => updateDraft(user.id, 'duracion', val)}
-                                options={DURACION_OPTIONS}
+                                onChange={(val) => handleDurationSelect(user, val)}
+                                options={getDuracionOptions(values.duracion || '1')}
                                 triggerClassName="!py-1.5 !px-2 !text-xs !rounded-lg border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20"
                                 dropdownClassName="!min-w-full"
                               />
@@ -814,13 +862,19 @@ export function AdminUsuariosPage() {
                               <CustomSelect<string>
                                 value={values.duracion ? String(values.duracion) : ''}
                                 placeholder={vigenciaInfo.badgeText}
-                                onChange={(val) => updateDraft(user.id, 'duracion', val)}
-                                options={DURACION_OPTIONS}
+                                onChange={(val) => handleDurationSelect(user, val)}
+                                options={getDuracionOptions(values.duracion)}
                                 triggerClassName={`!py-1.5 !px-2 !text-xs !rounded-lg ${values.duracion ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}
                                 dropdownClassName="!min-w-full"
                               />
                               <span className="block text-[10px] text-slate-400 mt-0.5 truncate" title={vigenciaInfo.subText}>
-                                {values.duracion ? 'Cambio pendiente' : vigenciaInfo.subText}
+                                {values.duracion ? (
+                                  <span className="font-semibold text-amber-500">
+                                    Pendiente: {formatCustomDurationLabel(String(values.duracion))}
+                                  </span>
+                                ) : (
+                                  vigenciaInfo.subText
+                                )}
                               </span>
                             </div>
                           )}
@@ -970,6 +1024,19 @@ export function AdminUsuariosPage() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Vigencia Personalizada */}
+      <CustomDurationModal
+        isOpen={customModalUser !== null}
+        username={customModalUser?.username || ''}
+        currentDuracion={customModalUser ? drafts[customModalUser.id]?.duracion : undefined}
+        onClose={() => setCustomModalUser(null)}
+        onApply={(code) => {
+          if (customModalUser) {
+            updateDraft(customModalUser.id, 'duracion', code)
+          }
+        }}
+      />
     </section>
   )
 }

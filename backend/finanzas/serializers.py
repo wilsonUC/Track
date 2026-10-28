@@ -915,6 +915,7 @@ class AdminUsuarioSerializer(serializers.ModelSerializer):
 
 
 def calcular_expiracion(duracion: str, base_date=None):
+    import re
     from datetime import timedelta
     from django.utils import timezone
 
@@ -923,26 +924,53 @@ def calcular_expiracion(duracion: str, base_date=None):
     now = base_date or timezone.now()
     d_str = str(duracion).strip().lower()
 
-    if d_str in ("1m", "1min", "1minuto", "1_min"):
-        return now + timedelta(minutes=1)
-    if d_str in ("5m", "5min"):
-        return now + timedelta(minutes=5)
+    # Patrón con cantidad y unidad (ej: 30m, 45min, 2h, 12horas, 3d, 5dias, 2sem, 3meses)
+    match = re.match(r"^(\d+)\s*([a-záéíóúñ]+)$", d_str)
+    if match:
+        val = int(match.group(1))
+        unit = match.group(2)
 
+        if unit in ("m", "min", "minuto", "minutos"):
+            return now + timedelta(minutes=val)
+        if unit in ("h", "hr", "hrs", "hora", "horas"):
+            return now + timedelta(hours=val)
+        if unit in ("d", "dia", "dias", "día", "días"):
+            return now + timedelta(days=val)
+        if unit in ("s", "sem", "semana", "semanas", "w", "wk", "week", "weeks"):
+            return now + timedelta(weeks=val)
+        if unit in ("mes", "meses", "mth", "month", "months"):
+            return now + timedelta(days=30 * val)
+        if unit in ("a", "ano", "anos", "año", "años", "y", "yr", "year", "years"):
+            return now + timedelta(days=365 * val)
+
+    # Si es solo un número entero, por compatibilidad histórica se interpreta como meses
     try:
         meses = int(d_str)
+        if meses == 1:
+            return now + timedelta(days=30)
+        elif meses == 2:
+            return now + timedelta(days=60)
+        elif meses == 6:
+            return now + timedelta(days=180)
+        elif meses == 12:
+            return now + timedelta(days=365)
+        else:
+            return now + timedelta(days=30 * meses)
     except (ValueError, TypeError):
-        return None
+        pass
 
-    if meses == 1:
-        return now + timedelta(days=30)
-    elif meses == 2:
-        return now + timedelta(days=60)
-    elif meses == 6:
-        return now + timedelta(days=180)
-    elif meses == 12:
-        return now + timedelta(days=365)
-    else:
-        return now + timedelta(days=30 * meses)
+    # Soporte para fecha/hora ISO directa (ej. "2026-10-27T18:00:00")
+    try:
+        from django.utils.dateparse import parse_datetime
+        parsed = parse_datetime(d_str)
+        if parsed:
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed)
+            return parsed
+    except Exception:
+        pass
+
+    return None
 
 
 _MISSING = object()

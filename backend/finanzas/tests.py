@@ -1288,6 +1288,37 @@ class TiposCuentaTests(FinanzasAPITestCase):
         self.assertIsNotNone(res.data["fecha_expiracion"])
         self.assertFalse(res.data["is_expired"])
 
+        # Asignar personalizado: 30 minutos
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "30m"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+
+        # Asignar personalizado: 2 horas
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "2h"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+
+        # Asignar personalizado: 5 días
+        res = self.client.patch(
+            f"/api/admin/usuarios/{self.user_basico.id}/",
+            {"duracion": "5d"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(res.data["fecha_expiracion"])
+        self.assertFalse(res.data["is_expired"])
+        self.assertGreaterEqual(res.data["dias_restantes"], 4)
+
         # Asignar permanente
         res = self.client.patch(
             f"/api/admin/usuarios/{self.user_basico.id}/",
