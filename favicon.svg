@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="finanzasTrackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="50%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#2dd4bf" />
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo completo de borde a borde (sin esquinas redondeadas) -->
+  <!-- Esto garantiza que el círculo de Google se llene al 100% de color sin dejar espacios ni esquinas vacías -->
+  <rect width="512" height="512" fill="url(#finanzasTrackGrad)" />
+
+  <!-- Logo centrado y ampliado (escala 0.65) para ocupar armónicamente el círculo -->
+  <g transform="translate(256, 256) scale(0.65) translate(-208, -330.5)">
+    <path d="M125.435 412.868V481.291L84.2256 445.524V412.868H125.435Z" fill="#FFFFFF"/>
+    <path d="M146.428 499.951L186.082 537.273V376.324H146.428V499.951Z" fill="#FFFFFF"/>
+    <path d="M249.062 448.634L208.63 484.401V335.893H249.062V448.634Z" fill="#FFFFFF"/>
+    <path d="M207.075 660.9V591.7L53.1245 450.967C56.2346 359.53 135.283 319.565 174.419 311.012C246.574 292.973 298.824 331.487 315.93 352.999L373.467 339.781C276.431 221.596 150.575 255.289 99.7763 286.909C13.937 338.537 -2.33925 434.898 0.252512 476.626L207.075 660.9Z" fill="#FFFFFF"/>
+    <path d="M207.853 517.835V587.035L341.588 463.408L375.021 497.619L415.453 361.551L275.498 393.43L309.709 427.641L207.853 517.835Z" fill="#A3D222"/>
+    <circle cx="207.853" cy="153.173" r="125.673" stroke="#FFFFFF" stroke-width="55" fill="none"/>
+  </g>
+</svg>

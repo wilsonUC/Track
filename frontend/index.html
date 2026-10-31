@@ -2,14 +2,42 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- Favicons y PWA -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/pwa-icon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- SEO y Meta Tags -->
+    <meta name="description" content="FinanzasTrack: Sistema inteligente de gestión financiera personal para el control eficiente de ingresos, gastos, presupuestos y metas de ahorro con asistente de IA." />
+    <meta name="author" content="FinanzasTrack" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Redes Sociales -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://app.finanzastrack.site/" />
+    <meta property="og:title" content="FinanzasTrack - Gestión Financiera Inteligente" />
+    <meta property="og:description" content="Sistema inteligente de gestión financiera personal para el control eficiente de ingresos, gastos, presupuestos y metas de ahorro." />
+    <meta property="og:image" content="https://app.finanzastrack.site/favicon-512x512.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FinanzasTrack - Gestión Financiera Inteligente" />
+    <meta name="twitter:description" content="Sistema inteligente de gestión financiera personal para el control eficiente de ingresos, gastos, presupuestos y metas de ahorro." />
+    <meta name="twitter:image" content="https://app.finanzastrack.site/favicon-512x512.png" />
+
     <meta name="theme-color" content="#0f172a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <!-- Inicialización inmediata de tema antes de renderizar (evita parpadeo de modo claro) -->
     <script>
       (function() {
