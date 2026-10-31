@@ -7,12 +7,11 @@
     </linearGradient>
   </defs>
 
-  <!-- Fondo completo de borde a borde (sin esquinas redondeadas) -->
-  <!-- Esto garantiza que el círculo de Google se llene al 100% de color sin dejar espacios ni esquinas vacías -->
-  <rect width="512" height="512" fill="url(#finanzasTrackGrad)" />
+  <!-- Fondo squircle con esquinas suaves y elegantes (Imagen 2) -->
+  <rect width="512" height="512" rx="104" fill="url(#finanzasTrackGrad)" />
 
-  <!-- Logo centrado y ampliado (escala 0.65) para ocupar armónicamente el círculo -->
-  <g transform="translate(256, 256) scale(0.65) translate(-208, -330.5)">
+  <!-- Isotipo centrado con márgenes de respiración perfectos -->
+  <g transform="translate(256, 256) scale(0.48) translate(-208, -330.5)">
     <path d="M125.435 412.868V481.291L84.2256 445.524V412.868H125.435Z" fill="#FFFFFF"/>
     <path d="M146.428 499.951L186.082 537.273V376.324H146.428V499.951Z" fill="#FFFFFF"/>
     <path d="M249.062 448.634L208.63 484.401V335.893H249.062V448.634Z" fill="#FFFFFF"/>
