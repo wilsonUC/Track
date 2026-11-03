@@ -369,7 +369,23 @@ export async function loginWithGoogle(
     return res.json()
   }
 
+  export function clearFilterStorage() {
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('track_date_filter_') || key.startsWith('track_month_ref_'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k))
+    } catch {
+      // Ignorar errores en entornos con localStorage bloqueado
+    }
+  }
+
   export function saveTokens(access: string, refresh: string) {
+    clearFilterStorage()
     localStorage.setItem('access', access)
     localStorage.setItem('refresh', refresh)
   }
@@ -384,6 +400,7 @@ export async function loginWithGoogle(
 
   export function logout() {
     clearIaChatStorage()
+    clearFilterStorage()
     localStorage.removeItem('access')
     localStorage.removeItem('refresh')
   }
@@ -447,4 +464,4 @@ export async function deleteAdminUser(id: number): Promise<void> {
     const err = await res.json().catch(() => ({}))
     throw new Error(JSON.stringify(err))
   }
-}
+}

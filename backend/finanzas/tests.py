@@ -1023,7 +1023,11 @@ class RecurrentesValidacionFechasTests(FinanzasAPITestCase):
         self.assertEqual(res_edit_ok.data["fecha_inicio"], "2026-09-01")
 
     def test_meses_futuros_reflejan_monto_y_activo_en_mes(self):
-        # Crear recurrente válido de Agosto a Diciembre
+        # Mes futuro dinámico relativo a hoy
+        mes_futuro = (date.today().replace(day=28) + timedelta(days=60)).replace(day=1)
+        fecha_fin = (mes_futuro + timedelta(days=60)).strftime("%Y-%m-%d")
+
+        # Crear recurrente válido que cubra el mes futuro
         res = self.client.post(
             "/api/recurrentes/",
             {
@@ -1032,15 +1036,14 @@ class RecurrentesValidacionFechasTests(FinanzasAPITestCase):
                 "tipo": "expense",
                 "dia_pago": 15,
                 "categoria": self.cat_gasto.id,
-                "fecha_inicio": "2026-08-01",
-                "fecha_fin": "2026-12-31",
+                "fecha_inicio": date.today().replace(day=1).strftime("%Y-%m-%d"),
+                "fecha_fin": fecha_fin,
             },
             format="json",
         )
         rec_id = res.data["id"]
 
-        # Consultar un mes del futuro relativo a hoy (ej. Noviembre 2026)
-        mes_futuro = (date.today().replace(day=28) + timedelta(days=60)).replace(day=1)
+        # Consultar el mes futuro
         res_futuro = self.client.get(f"/api/recurrentes/?mes={mes_futuro.strftime('%Y-%m-%d')}")
         self.assertEqual(res_futuro.status_code, status.HTTP_200_OK)
 

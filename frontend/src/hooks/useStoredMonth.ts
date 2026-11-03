@@ -11,7 +11,12 @@ export function useStoredMonth(key: string): [Date, (action: Date | ((prev: Date
       if (raw) {
         const d = new Date(raw)
         if (!isNaN(d.getTime())) {
-          return d
+          const now = new Date()
+          // Si el mes guardado es del mismo mes y año actual, mantenerlo;
+          // si es de un mes anterior/distinto, arrancar en el mes actual
+          if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) {
+            return d
+          }
         }
       }
     } catch {

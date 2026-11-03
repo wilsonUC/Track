@@ -24,10 +24,29 @@ function getStoredFilterState(storageKey?: string, defaultPreset: DatePreset = '
     const preset = validPresets.includes(parsed.preset) ? (parsed.preset as DatePreset) : defaultPreset
 
     let refDate = new Date()
+    const now = new Date()
     if (parsed.refDate && preset !== 'today' && preset !== 'yesterday') {
       const parsedDate = new Date(parsed.refDate)
       if (!isNaN(parsedDate.getTime())) {
-        refDate = parsedDate
+        if (preset === 'month') {
+          // Si el mes guardado pertenece a otro mes o año, iniciar en el mes actual
+          if (parsedDate.getFullYear() === now.getFullYear() && parsedDate.getMonth() === now.getMonth()) {
+            refDate = parsedDate
+          } else {
+            refDate = now
+          }
+        } else if (preset === 'week') {
+          // Si la semana guardada pertenece a otra semana, iniciar en la semana actual
+          const m1 = getMondayOfWeek(parsedDate).toDateString()
+          const m2 = getMondayOfWeek(now).toDateString()
+          if (m1 === m2) {
+            refDate = parsedDate
+          } else {
+            refDate = now
+          }
+        } else {
+          refDate = parsedDate
+        }
       }
     }
 
