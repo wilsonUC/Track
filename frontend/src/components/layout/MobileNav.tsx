@@ -25,7 +25,12 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
   const isPlanesActive =
     pathname.startsWith('/ahorros') ||
     pathname.startsWith('/presupuestos') ||
-    pathname.startsWith('/metas')
+    (Boolean(isAvanzado || isStaff) && pathname.startsWith('/metas'))
+
+  const visiblePlanItems = planItems.filter((plan) => {
+    if (plan.id === 'metas' && !isAvanzado && !isStaff) return false
+    return true
+  })
 
   // Cerrar al cambiar de ruta
   useEffect(() => {
@@ -97,12 +102,12 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Planes & Objetivos</span>
             </div>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              3 opciones
+              {visiblePlanItems.length} {visiblePlanItems.length === 1 ? 'opción' : 'opciones'}
             </span>
           </div>
 
           <div className="mt-1 space-y-1">
-            {planItems.map((plan) => {
+            {visiblePlanItems.map((plan) => {
               const Icon = plan.icon
               const isCurrent = pathname.startsWith(sectionPaths[plan.id])
               return (

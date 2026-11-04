@@ -1,5 +1,6 @@
 import calendar
-from datetime import date
+from datetime import date, timedelta
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
@@ -97,6 +98,7 @@ def perfil_desde_usuario(user, request=None):
         "fecha_expiracion": str(fecha_expiracion) if fecha_expiracion else None,
         "is_expired": is_expired,
         "dias_restantes": dias_restantes,
+        "es_prueba": getattr(perfil, "es_prueba", False),
         "is_staff": user.is_staff,
     }
 
@@ -848,8 +850,10 @@ class RegistroSerializer(serializers.Serializer):
         PerfilUsuario.objects.create(
             usuario=user,
             telefono=telefono,
-            estado_cuenta=PerfilUsuario.EstadoCuenta.PENDIENTE,
+            estado_cuenta=PerfilUsuario.EstadoCuenta.ACTIVA,
             tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+            fecha_expiracion=timezone.now() + timedelta(hours=48),
+            es_prueba=True,
         )
         return user
 
@@ -1055,6 +1059,7 @@ class AdminUsuarioUpdateSerializer(serializers.Serializer):
                 perfil.tipo_cuenta = tipo_cuenta
             if fecha_expiracion is not _MISSING:
                 perfil.fecha_expiracion = fecha_expiracion
+                perfil.es_prueba = False
             perfil.save()
 
         return user
@@ -1182,4 +1187,4 @@ class GoogleAuthSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Debe proporcionar 'credential' o 'access_token' de Google."
             )
-        return attrs
+        return attrs

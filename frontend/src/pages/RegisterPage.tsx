@@ -76,7 +76,7 @@ export function RegisterPage() {
       })
       navigate('/login', {
         replace: true,
-        state: { message: 'Cuenta creada. Tu acceso quedará habilitado cuando un administrador apruebe la cuenta.' },
+        state: { message: '¡Cuenta creada con éxito! Tienes 48 horas de prueba gratuita para explorar la app. Inicia sesión para comenzar.' },
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : ''

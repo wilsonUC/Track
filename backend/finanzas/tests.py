@@ -53,7 +53,7 @@ class FinanzasAPITestCase(APITestCase):
 
 
 class AuthYRegistroTests(FinanzasAPITestCase):
-    def test_registro_crea_cuenta_pendiente(self):
+    def test_registro_crea_cuenta_activa_con_prueba_48h(self):
         response = self.client.post(
             "/api/registro/",
             {
@@ -68,7 +68,11 @@ class AuthYRegistroTests(FinanzasAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username="nuevo")
-        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.PENDIENTE)
+        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.ACTIVA)
+        self.assertEqual(user.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.BASICO)
+        self.assertTrue(user.perfil.es_prueba)
+        self.assertIsNotNone(user.perfil.fecha_expiracion)
+        self.assertFalse(user.perfil.is_expired)
 
     def test_login_rechaza_cuenta_pendiente(self):
         self.crear_usuario(
@@ -1581,7 +1585,7 @@ class TiposCuentaTests(FinanzasAPITestCase):
 
 class GoogleAuthTestCase(FinanzasAPITestCase):
     @mock.patch("google.oauth2.id_token.verify_oauth2_token")
-    def test_google_auth_new_user_created_as_pending(self, mock_verify):
+    def test_google_auth_new_user_created_active_with_trial(self, mock_verify):
         mock_verify.return_value = {
             "email": "newgoogleuser@example.com",
             "given_name": "Google",
@@ -1594,32 +1598,24 @@ class GoogleAuthTestCase(FinanzasAPITestCase):
             {"credential": "mock_google_token"},
             format="json",
         )
-        # Usuario nuevo queda en PENDIENTE y no puede ingresar hasta ser aprobado
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("pendiente de aprobación", str(res.data))
+        # Usuario nuevo queda ACTIVA con 48h de prueba e ingresa de inmediato
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("access", res.data)
+        self.assertIn("refresh", res.data)
+        self.assertEqual(res.data["user"]["email"], "newgoogleuser@example.com")
+        self.assertTrue(res.data["user"]["foto"].startswith("https://lh3.googleusercontent.com/"))
 
-        # Verificar que se creó el usuario en DB con estado PENDIENTE, es_google=True y foto_google URL
+        # Verificar que se creó el usuario en DB con estado ACTIVA, 48h de prueba, es_google=True
         user = User.objects.get(email="newgoogleuser@example.com")
         self.assertEqual(user.first_name, "Google")
-        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.PENDIENTE)
+        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.ACTIVA)
+        self.assertEqual(user.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.BASICO)
+        self.assertTrue(user.perfil.es_prueba)
+        self.assertIsNotNone(user.perfil.fecha_expiracion)
+        self.assertFalse(user.perfil.is_expired)
         self.assertTrue(user.perfil.es_google)
         self.assertTrue(user.perfil.foto_google.startswith("https://lh3.googleusercontent.com/"))
-        self.assertFalse(bool(user.perfil.foto))  # No se crean archivos en disco
-
-        # Si el admin lo aprueba (estado ACTIVA), ahora sí puede iniciar sesión
-        user.perfil.estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA
-        user.perfil.save()
-
-        res_approved = self.client.post(
-            "/api/auth/google/",
-            {"credential": "mock_google_token"},
-            format="json",
-        )
-        self.assertEqual(res_approved.status_code, status.HTTP_200_OK)
-        self.assertIn("access", res_approved.data)
-        self.assertIn("refresh", res_approved.data)
-        self.assertEqual(res_approved.data["user"]["email"], "newgoogleuser@example.com")
-        self.assertTrue(res_approved.data["user"]["foto"].startswith("https://lh3.googleusercontent.com/"))
+        self.assertFalse(bool(user.perfil.foto))
 
     @mock.patch("google.oauth2.id_token.verify_oauth2_token")
     def test_google_auth_existing_user_blocked(self, mock_verify):
@@ -1671,22 +1667,15 @@ class GoogleAuthTestCase(FinanzasAPITestCase):
             {"access_token": "valid_oauth_access_token"},
             format="json",
         )
-        # Usuario nuevo queda en PENDIENTE
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("pendiente de aprobación", str(res.data))
-
-        # Aprobar usuario y reintentar
+        # Usuario nuevo queda ACTIVA con 48h de prueba e ingresa de inmediato
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["user"]["email"], "access_token_user@example.com")
         user = User.objects.get(email="access_token_user@example.com")
-        user.perfil.estado_cuenta = PerfilUsuario.EstadoCuenta.ACTIVA
-        user.perfil.save()
-
-        res2 = self.client.post(
-            "/api/auth/google/",
-            {"access_token": "valid_oauth_access_token"},
-            format="json",
-        )
-        self.assertEqual(res2.status_code, status.HTTP_200_OK)
-        self.assertEqual(res2.data["user"]["email"], "access_token_user@example.com")
+        self.assertEqual(user.perfil.estado_cuenta, PerfilUsuario.EstadoCuenta.ACTIVA)
+        self.assertEqual(user.perfil.tipo_cuenta, PerfilUsuario.TipoCuenta.BASICO)
+        self.assertTrue(user.perfil.es_prueba)
+        self.assertIsNotNone(user.perfil.fecha_expiracion)
+        self.assertFalse(user.perfil.is_expired)
 
 
 class IaChatLimitsAPITestCase(FinanzasAPITestCase):

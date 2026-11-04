@@ -9,6 +9,7 @@ type ReportesTabSelectorProps = {
   onExportPdf?: () => void
   exportingPdf?: boolean
   exportLabel?: string
+  isAvanzado?: boolean
 }
 
 const tabs: { id: ReportTab; label: string; icon: typeof BarChart3 }[] = [
@@ -26,8 +27,16 @@ export function ReportesTabSelector({
   onExportPdf,
   exportingPdf = false,
   exportLabel = 'Exportar CSV',
+  isAvanzado = false,
 }: ReportesTabSelectorProps) {
-  const selectOptions = tabs.map((tab) => {
+  const visibleTabs = tabs.filter((tab) => {
+    if ((tab.id === 'metas' || tab.id === 'recurrentes') && !isAvanzado) {
+      return false
+    }
+    return true
+  })
+
+  const selectOptions = visibleTabs.map((tab) => {
     const Icon = tab.icon
     return {
       value: tab.id,
@@ -55,7 +64,7 @@ export function ReportesTabSelector({
         role="tablist"
         aria-label="Secciones de reportes"
       >
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
           return (

@@ -378,6 +378,10 @@ class PerfilUsuario(models.Model):
         blank=True,
         help_text="Fecha y hora límite de acceso. Null significa acceso permanente.",
     )
+    es_prueba = models.BooleanField(
+        default=False,
+        help_text="Indica si la cuenta está en su periodo inicial de prueba de 48 horas.",
+    )
 
     @property
     def is_expired(self) -> bool:
@@ -547,4 +551,4 @@ class UsoIaDiario(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.fecha}: {self.total_mensajes} msgs"
+        return f"{self.usuario.username} - {self.fecha}: {self.total_mensajes} msgs"

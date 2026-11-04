@@ -48,6 +48,7 @@ import { buildCategoryMap, enrichTransactions, filterByDateRange } from '../util
 type OutletContext = {
   transactionsVersion: number
   setHeaderExtra?: (extra: React.ReactNode | null) => void
+  isAvanzado?: boolean
 }
 
 const GENERAL_FILTER_OPTIONS: { id: ReportFilter; label: string }[] = [
@@ -57,13 +58,19 @@ const GENERAL_FILTER_OPTIONS: { id: ReportFilter; label: string }[] = [
 ]
 
 export function ReportesPage() {
-  const { transactionsVersion, setHeaderExtra } = useOutletContext<OutletContext>()
+  const { transactionsVersion, setHeaderExtra, isAvanzado = false } = useOutletContext<OutletContext>()
   const [activeTab, setActiveTab] = useState<ReportTab>('general')
   const [generalFilter, setGeneralFilter] = useState<ReportFilter>('todos')
   const [metaFilter, setMetaFilter] = useState<MetaReportFilter>('todas')
   const [initialLoading, setInitialLoading] = useState(true)
   const [exportingPdf, setExportingPdf] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isAvanzado && (activeTab === 'metas' || activeTab === 'recurrentes')) {
+      setActiveTab('general')
+    }
+  }, [isAvanzado, activeTab])
 
   const reportContentRef = useRef<HTMLDivElement>(null)
   const dateFilter = useDateFilter({ defaultPreset: 'month', storageKey: 'reportes' })
@@ -91,10 +98,10 @@ export function ReportesPage() {
       fetchTransactions(),
       fetchCategories(),
       fetchPresupuestos(mesIso).catch(() => []),
-      fetchMetas().catch(() => []),
+      isAvanzado ? fetchMetas().catch(() => []) : Promise.resolve([]),
       fetchAhorros().catch(() => []),
       fetchResumenAhorros().catch(() => null),
-      fetchRecurrentes(mesIso).catch(() => []),
+      isAvanzado ? fetchRecurrentes(mesIso).catch(() => []) : Promise.resolve([]),
     ])
       .then(([txs, cats, pres, mts, ahs, resAh, recs]) => {
         if (cancelled) return
@@ -315,6 +322,7 @@ export function ReportesPage() {
         onExport={handleExport}
         onExportPdf={handleExportPdf}
         exportingPdf={exportingPdf}
+        isAvanzado={isAvanzado}
         exportLabel={`Exportar ${
           activeTab === 'general'
             ? 'General'

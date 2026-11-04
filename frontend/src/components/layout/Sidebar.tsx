@@ -6,6 +6,7 @@ import { menuItems } from '../../constants/navigation'
 import { cuentaPath, sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
 import { NavIcon } from './navIcons'
+import { TrialCountdownWidget } from './TrialCountdownWidget'
 
 type SidebarProps = {
   onLogout: () => void
@@ -15,6 +16,8 @@ type SidebarProps = {
   foto?: string | null
   isStaff: boolean
   isAvanzado?: boolean
+  esPrueba?: boolean
+  fechaExpiracion?: string | null
 }
 
 function navClassName(isActive: boolean) {
@@ -29,7 +32,7 @@ function disabledNavClassName() {
   return 'flex w-full min-w-0 cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm text-indigo-300/50 opacity-70 dark:text-slate-600'
 }
 
-export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, isAvanzado = false }: SidebarProps) {
+export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, isAvanzado = false, esPrueba = false, fechaExpiracion }: SidebarProps) {
   const [imgError, setImgError] = useState(false)
   const visibleMenuItems = menuItems.filter((item) => {
     if (item.adminOnly && !isStaff) return false
@@ -84,6 +87,10 @@ export function Sidebar({ onLogout, displayName, email, initial, foto, isStaff, 
             ),
           )}
         </nav>
+
+        {esPrueba && fechaExpiracion && (
+          <TrialCountdownWidget variant="sidebar" fechaExpiracion={fechaExpiracion} />
+        )}
 
         <NavLink
           to={cuentaPath}

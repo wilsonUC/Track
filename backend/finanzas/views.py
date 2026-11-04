@@ -1263,6 +1263,8 @@ class GoogleAuthView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from datetime import timedelta
+        from django.utils import timezone
         from django.conf import settings
         from rest_framework.exceptions import AuthenticationFailed
         from rest_framework_simplejwt.tokens import RefreshToken
@@ -1340,10 +1342,13 @@ class GoogleAuthView(APIView):
             user.set_unusable_password()
             user.save()
 
+
             perfil = PerfilUsuario.objects.create(
                 usuario=user,
-                estado_cuenta=PerfilUsuario.EstadoCuenta.PENDIENTE,
+                estado_cuenta=PerfilUsuario.EstadoCuenta.ACTIVA,
                 tipo_cuenta=PerfilUsuario.TipoCuenta.BASICO,
+                fecha_expiracion=timezone.now() + timedelta(hours=48),
+                es_prueba=True,
                 es_google=True,
             )
             PreferenciasUsuario.objects.get_or_create(usuario=user)
@@ -1351,8 +1356,10 @@ class GoogleAuthView(APIView):
             perfil, _ = PerfilUsuario.objects.get_or_create(
                 usuario=user,
                 defaults={
-                    "estado_cuenta": PerfilUsuario.EstadoCuenta.PENDIENTE,
+                    "estado_cuenta": PerfilUsuario.EstadoCuenta.ACTIVA,
                     "tipo_cuenta": PerfilUsuario.TipoCuenta.BASICO,
+                    "fecha_expiracion": timezone.now() + timedelta(hours=48),
+                    "es_prueba": True,
                     "es_google": True,
                 },
             )

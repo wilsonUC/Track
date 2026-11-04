@@ -23,6 +23,7 @@ export type UserProfile = {
   fecha_expiracion?: string | null
   is_expired?: boolean
   dias_restantes?: number | null
+  es_prueba?: boolean
   es_google?: boolean
   is_staff: boolean
 }

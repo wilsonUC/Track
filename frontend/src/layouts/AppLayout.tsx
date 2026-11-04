@@ -6,6 +6,7 @@ import { sectionFromPath } from '../constants/routes'
 import { MainHeader } from '../components/layout/MainHeader'
 import { MobileNav } from '../components/layout/MobileNav'
 import { Sidebar } from '../components/layout/Sidebar'
+import { TrialCountdownWidget } from '../components/layout/TrialCountdownWidget'
 import { NewTransactionModal } from '../components/transactions/NewTransactionModal'
 import type { MovementType } from '../types/finance'
 
@@ -151,6 +152,8 @@ export function AppLayout() {
         foto={userFoto}
         isStaff={isStaff}
         isAvanzado={isAvanzado}
+        esPrueba={profile?.es_prueba}
+        fechaExpiracion={profile?.fecha_expiracion}
       />
 
       <div className="flex h-full min-h-0 flex-col md:pl-64">
@@ -176,6 +179,9 @@ export function AppLayout() {
 
           {/* Contenido principal que se desliza por debajo del header con blur */}
           <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:px-8 md:pb-8">
+            {profile?.es_prueba && profile?.fecha_expiracion && (
+              <TrialCountdownWidget variant="mobile" fechaExpiracion={profile.fecha_expiracion} />
+            )}
             <Outlet
               context={{
                 transactionsVersion,

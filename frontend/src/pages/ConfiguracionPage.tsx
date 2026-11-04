@@ -1,6 +1,4 @@
 import {
-  Bell,
-  Brain,
   Coins,
   ExternalLink,
   FileText,
@@ -180,23 +178,6 @@ export function ConfiguracionPage() {
             />
           </ConfigRow>
           <ConfigRow
-            label="Moneda principal"
-            hint="Moneda en la que se calculan y muestran todos tus registros."
-          >
-            <ConfigSelect
-              value={moneda}
-              onChange={(v) => {
-                setMoneda(v as 'PEN' | 'USD')
-                setSaveMessage('')
-              }}
-              options={[
-                { value: 'PEN', label: 'Soles (S/)' },
-                { value: 'USD', label: 'Dólares (US$) — próximamente' },
-              ]}
-              disabled
-            />
-          </ConfigRow>
-          <ConfigRow
             label="Evitar saldo negativo"
             hint="Impide registrar gastos o recurrentes si superan tus ingresos disponibles actuales."
           >
@@ -225,86 +206,6 @@ export function ConfiguracionPage() {
         </ConfigSection>
 
         <ConfigSection
-          icon={Bell}
-          iconClass="bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400"
-          title="Notificaciones"
-          subtitle="Alertas y recordatorios por correo o en la app."
-          badge="Próximamente"
-        >
-          <ConfigRow
-            label="Presupuestos superados"
-            hint="Aviso cuando un gasto supere el límite mensual."
-            disabled
-          >
-            <ConfigToggle checked disabled onChange={() => undefined} label="Presupuestos superados" />
-          </ConfigRow>
-          <ConfigRow
-            label="Recurrentes pendientes"
-            hint="Recordatorio si un pago o cobro del mes no está registrado."
-            disabled
-          >
-            <ConfigToggle checked disabled onChange={() => undefined} label="Recurrentes pendientes" />
-          </ConfigRow>
-          <ConfigRow
-            label="Resumen semanal"
-            hint="Email con ingresos, gastos y balance de la semana."
-            disabled
-          >
-            <ConfigToggle checked={false} disabled onChange={() => undefined} label="Resumen semanal" />
-          </ConfigRow>
-        </ConfigSection>
-
-        <ConfigSection
-          icon={Brain}
-          iconClass="bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400"
-          title="IA y consejos"
-          subtitle="Comportamiento del asistente y sugerencias automáticas."
-          badge="Próximamente"
-        >
-          <ConfigRow
-            label="Consejos automáticos (24 h)"
-            hint="Regenerar consejos una vez al día con tus datos actualizados."
-            disabled
-          >
-            <ConfigToggle checked disabled onChange={() => undefined} label="Consejos automáticos" />
-          </ConfigRow>
-          <ConfigRow
-            label="Cantidad de consejos"
-            hint="La IA elige entre 4 y 6 según tus hallazgos."
-            disabled
-          >
-            <ConfigSelect
-              value="auto"
-              onChange={() => undefined}
-              disabled
-              options={[
-                { value: 'auto', label: 'Automático (4–6)' },
-                { value: '4', label: 'Siempre 4' },
-                { value: '6', label: 'Siempre 6' },
-              ]}
-            />
-          </ConfigRow>
-        </ConfigSection>
-
-        <ConfigSection
-          icon={Sparkles}
-          iconClass="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400"
-          title="Dashboard y listas"
-          subtitle="Qué datos destacar en el resumen principal."
-        >
-          <ConfigRow label="Mostrar decimales" hint="Ej.: S/ 1,250.50 en lugar de S/ 1,251.">
-            <ConfigToggle
-              checked={mostrarDecimales}
-              onChange={(v) => {
-                setMostrarDecimales(v)
-                setSaveMessage('')
-              }}
-              label="Mostrar decimales"
-            />
-          </ConfigRow>
-        </ConfigSection>
-
-        <ConfigSection
           icon={Shield}
           iconClass="bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
           title="Cuenta y datos"
@@ -321,19 +222,6 @@ export function ConfiguracionPage() {
               Ir a Mi Cuenta
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </Link>
-          </ConfigRow>
-          <ConfigRow
-            label="Exportar mis datos"
-            hint="Descargar transacciones y reportes en CSV o PDF."
-            disabled
-          >
-            <button
-              type="button"
-              disabled
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-800/40 sm:min-w-[200px]"
-            >
-              Exportar — próximamente
-            </button>
           </ConfigRow>
           <ConfigRow
             label="Comenzar desde cero"
