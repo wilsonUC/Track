@@ -107,13 +107,28 @@ User = get_user_model()
 
 
 class FinanzasTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Login JWT con control de aprobación/bloqueo y expiración para usuarios normales."""
+    """Login JWT con soporte para usuario o correo, control de aprobación/bloqueo y expiración."""
 
     default_error_messages = {
-        "no_active_account": "Usuario o contraseña incorrectos.",
+        "no_active_account": "Usuario, correo o contraseña incorrectos.",
     }
 
     def validate(self, attrs):
+        login_input = (attrs.get(self.username_field) or "").strip()
+        if login_input:
+            if "@" in login_input:
+                user_found = (
+                    User.objects.filter(email__iexact=login_input).first()
+                    or User.objects.filter(**{f"{self.username_field}__iexact": login_input}).first()
+                )
+            else:
+                user_found = (
+                    User.objects.filter(**{f"{self.username_field}__iexact": login_input}).first()
+                    or User.objects.filter(email__iexact=login_input).first()
+                )
+            if user_found:
+                attrs[self.username_field] = getattr(user_found, self.username_field)
+
         data = super().validate(attrs)
         user = self.user
 

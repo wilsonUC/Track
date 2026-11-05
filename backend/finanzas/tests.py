@@ -98,6 +98,45 @@ class AuthYRegistroTests(FinanzasAPITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
 
+    def test_login_con_correo_exitoso(self):
+        self.crear_usuario(username="correouser", telefono="900000003")
+        response = self.client.post(
+            "/api/token/",
+            {"username": "correouser@test.com", "password": "clavesegura1"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+
+    def test_login_con_correo_case_insensitive(self):
+        self.crear_usuario(username="caseuser", telefono="900000004")
+        response = self.client.post(
+            "/api/token/",
+            {"username": "CASEUSER@TEST.COM", "password": "clavesegura1"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+
+    def test_login_con_usuario_case_insensitive(self):
+        self.crear_usuario(username="minuscuser", telefono="900000005")
+        response = self.client.post(
+            "/api/token/",
+            {"username": "MINUSCUSER", "password": "clavesegura1"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+
+    def test_login_correo_password_incorrecta(self):
+        self.crear_usuario(username="badpassuser", telefono="900000006")
+        response = self.client.post(
+            "/api/token/",
+            {"username": "badpassuser@test.com", "password": "clave_erronea"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_endpoint_protegido_sin_token(self):
         response = self.client.get("/api/transacciones/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

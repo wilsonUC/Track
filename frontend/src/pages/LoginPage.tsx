@@ -67,7 +67,7 @@ export function LoginPage() {
         }
         setError(err.detail)
       } else {
-        setError(err instanceof Error ? err.message : 'Usuario o contraseña incorrectos.')
+        setError(err instanceof Error ? err.message : 'Usuario, correo o contraseña incorrectos.')
       }
     } finally {
       setLoading(false)
@@ -220,11 +220,11 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="mt-5 space-y-4 sm:mt-6 sm:space-y-5">
             <AuthField
               id="login-username"
-              label="USUARIO"
+              label="CORREO O USUARIO"
               value={username}
               onChange={setUsername}
               icon={Mail}
-              placeholder="Ingrese su usuario"
+              placeholder="Ingrese su correo o usuario"
               required
               autoComplete="username"
             />
