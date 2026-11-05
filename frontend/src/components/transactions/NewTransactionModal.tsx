@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   createTransaction,
@@ -9,6 +9,7 @@ import {
 } from '../../api/finanzas'
 import type { MovementType } from '../../types/finance'
 import { formatSoles } from '../../utils/financeFormat'
+import { CategoryModal } from '../configuracion/CategoryModal'
 import { CustomSelect } from '../ui/CustomSelect'
 import { CustomDatePicker } from '../ui/CustomDatePicker'
 
@@ -50,6 +51,7 @@ export function NewTransactionModal({
   const [loadingCategories, setLoadingCategories] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
 
   // Estado para manejar alerta/modal de saldo insuficiente con ahorros
   const [insuficienteData, setInsuficienteData] = useState<SaldoInsuficienteAhorrosError | null>(null)
@@ -240,9 +242,19 @@ export function NewTransactionModal({
 
             {/* Categoría */}
             <div>
-              <label htmlFor="tx-category" className="mb-1 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">
-                Categoría
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label htmlFor="tx-category" className="block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">
+                  Categoría
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 transition"
+                >
+                  <Plus className="h-3 w-3" />
+                  Nueva categoría
+                </button>
+              </div>
               {loadingCategories ? (
                 <div className="text-xs text-slate-400">Cargando categorías…</div>
               ) : (
@@ -252,7 +264,7 @@ export function NewTransactionModal({
                   onChange={(val) => onCategoryIdChange(Number(val))}
                   options={filteredCategories.map((c) => ({
                     value: c.id,
-                    label: c.nombre,
+                    label: c.es_personalizada ? `${c.nombre} (Personalizada)` : c.nombre,
                   }))}
                   placeholder="Selecciona una categoría"
                 />
@@ -441,6 +453,16 @@ export function NewTransactionModal({
           </div>
         </div>
       )}
+
+      <CategoryModal
+        open={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        defaultTipo={movementType}
+        onSaved={(newCat) => {
+          setCategories((prev) => [...prev, newCat])
+          onCategoryIdChange(newCat.id)
+        }}
+      />
     </div>
   )
 }

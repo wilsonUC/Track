@@ -1,9 +1,13 @@
 import { authFetch } from './auth'
+import { registerCategories } from '../utils/categoryDisplay'
 
 export type ApiCategory = {
   id: number
   nombre: string
   tipo: 'income' | 'expense'
+  icono?: string
+  color?: string
+  es_personalizada?: boolean
 }
 
 export type ApiTransaction = {
@@ -62,7 +66,59 @@ export function parseSaldoInsuficienteError(err: unknown): SaldoInsuficienteAhor
 export async function fetchCategories(): Promise<ApiCategory[]> {
   const res = await authFetch('/api/categorias/')
   if (!res.ok) throw new Error('No se pudieron cargar categorías')
-  return res.json()
+  const data: ApiCategory[] = await res.json()
+  registerCategories(data)
+  return data
+}
+
+export async function createCategory(data: {
+  nombre: string
+  tipo: 'income' | 'expense'
+  icono?: string
+  color?: string
+}): Promise<ApiCategory> {
+  const res = await authFetch('/api/categorias/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatApiError(err, 'No se pudo crear la categoría.'))
+  }
+  const created: ApiCategory = await res.json()
+  registerCategories([created])
+  return created
+}
+
+export async function updateCategory(
+  id: number,
+  data: Partial<{
+    nombre: string
+    icono?: string
+    color?: string
+  }>,
+): Promise<ApiCategory> {
+  const res = await authFetch(`/api/categorias/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatApiError(err, 'No se pudo actualizar la categoría.'))
+  }
+  const updated: ApiCategory = await res.json()
+  registerCategories([updated])
+  return updated
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  const res = await authFetch(`/api/categorias/${id}/`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(formatApiError(err, 'No se pudo eliminar la categoría.'))
+  }
 }
 
 export async function fetchTransactions(): Promise<ApiTransaction[]> {

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import DecimalField, Q, Sum, Exists, OuterRef
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser
@@ -80,15 +81,50 @@ class FinanzasTokenRefreshView(TokenRefreshView):
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    """Categorías globales: todos los usuarios ven la misma lista."""
+    """
+    Categorías:
+    - Globales del sistema (usuario=None): visibles por todos, nadie las puede editar ni borrar.
+    - Personalizadas (usuario=request.user): solo visibles, editables y borrables por su creador.
+    """
 
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        return Category.objects.all()
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Category.objects.filter(usuario__isnull=True).order_by("nombre")
+        return Category.objects.filter(
+            Q(usuario__isnull=True) | Q(usuario=user)
+        ).order_by("usuario_id", "nombre")
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if instance.usuario is None:
+            raise PermissionDenied("No se pueden editar las categorías predeterminadas del sistema.")
+        if instance.usuario != self.request.user:
+            raise PermissionDenied("No tienes permiso para editar esta categoría.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.usuario is None:
+            raise PermissionDenied("No se pueden eliminar las categorías predeterminadas del sistema.")
+        if instance.usuario != self.request.user:
+            raise PermissionDenied("No tienes permiso para eliminar esta categoría.")
+        if (
+            instance.transacciones.exists()
+            or instance.recurrentes.exists()
+            or instance.presupuestos_referencia.exists()
+            or instance.metas_referencia.exists()
+        ):
+            raise ValidationError(
+                {"detail": "No puedes eliminar esta categoría porque está siendo usada en tus movimientos, presupuestos o recurrentes."}
+            )
+        instance.delete()
 
     def get_serializer_context(self):
-
         context = super().get_serializer_context()
         context["request"] = self.request
         return context

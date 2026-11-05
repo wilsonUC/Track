@@ -1803,4 +1803,159 @@ class BackupGDriveTests(APITestCase):
         self.assertIn("Volcado local generado con éxito", out.getvalue())
 
 
+class CategoriasPersonalizadasTests(FinanzasAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.crear_categorias()
+        self.user1 = self.crear_usuario(username="user1", telefono="999111001")
+        self.user2 = self.crear_usuario(username="user2", telefono="999111002")
+
+    def test_listar_categorias_incluye_globales_y_propias_pero_no_ajenas(self):
+        Category.objects.create(
+            usuario=self.user1,
+            nombre="Gimnasio",
+            tipo=Category.Tipo.GASTO,
+            icono="dumbbell",
+            color="violet",
+        )
+        Category.objects.create(
+            usuario=self.user2,
+            nombre="Crossfit",
+            tipo=Category.Tipo.GASTO,
+            icono="flame",
+            color="orange",
+        )
+
+        self.autenticar(self.user1)
+        res = self.client.get("/api/categorias/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        nombres = [c["nombre"] for c in res.data]
+        self.assertIn("Comida", nombres)
+        self.assertIn("Sueldo", nombres)
+        self.assertIn("Gimnasio", nombres)
+        self.assertNotIn("Crossfit", nombres)
+
+        cat_gimnasio = next(c for c in res.data if c["nombre"] == "Gimnasio")
+        self.assertTrue(cat_gimnasio["es_personalizada"])
+        self.assertEqual(cat_gimnasio["icono"], "dumbbell")
+        self.assertEqual(cat_gimnasio["color"], "violet")
+
+        cat_comida = next(c for c in res.data if c["nombre"] == "Comida")
+        self.assertFalse(cat_comida["es_personalizada"])
+
+    def test_crear_categoria_personalizada_con_icono_y_color(self):
+        self.autenticar(self.user1)
+        payload = {
+            "nombre": "Mascotas",
+            "tipo": "expense",
+            "icono": "paw-print",
+            "color": "emerald",
+        }
+        res = self.client.post("/api/categorias/", payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res.data["es_personalizada"])
+        self.assertEqual(res.data["nombre"], "Mascotas")
+        self.assertEqual(res.data["icono"], "paw-print")
+        self.assertEqual(res.data["color"], "emerald")
+
+        cat_db = Category.objects.get(id=res.data["id"])
+        self.assertEqual(cat_db.usuario, self.user1)
+
+    def test_no_permite_duplicado_con_global_o_propia(self):
+        self.autenticar(self.user1)
+        # Intento de duplicar nombre de global existente
+        res = self.client.post(
+            "/api/categorias/",
+            {"nombre": "Comida", "tipo": "expense", "icono": "tag", "color": "rose"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("nombre", res.data)
+
+        # Crear una propia
+        res2 = self.client.post(
+            "/api/categorias/",
+            {"nombre": "Mascotas", "tipo": "expense", "icono": "paw-print", "color": "emerald"},
+            format="json",
+        )
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)
+
+        # Intento de duplicar su propia categoría
+        res3 = self.client.post(
+            "/api/categorias/",
+            {"nombre": "mascotas", "tipo": "expense", "icono": "paw-print", "color": "sky"},
+            format="json",
+        )
+        self.assertEqual(res3.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_editar_categoria_propia_permitido_y_global_prohibido(self):
+        self.autenticar(self.user1)
+        cat_propia = Category.objects.create(
+            usuario=self.user1,
+            nombre="Gimnasio",
+            tipo=Category.Tipo.GASTO,
+        )
+
+        # Editar propia exitoso
+        res = self.client.patch(
+            f"/api/categorias/{cat_propia.id}/",
+            {"nombre": "Fitness", "color": "sky"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        cat_propia.refresh_from_db()
+        self.assertEqual(cat_propia.nombre, "Fitness")
+        self.assertEqual(cat_propia.color, "sky")
+
+        # Intentar editar global (Comida)
+        res_global = self.client.patch(
+            f"/api/categorias/{self.cat_gasto.id}/",
+            {"nombre": "Alimentos"},
+            format="json",
+        )
+        self.assertEqual(res_global.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Usuario 2 intenta editar categoría de Usuario 1
+        self.autenticar(self.user2)
+        res_ajena = self.client.patch(
+            f"/api/categorias/{cat_propia.id}/",
+            {"nombre": "Hacker"},
+            format="json",
+        )
+        self.assertEqual(res_ajena.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_eliminar_categoria_propia_con_y_sin_transacciones(self):
+        self.autenticar(self.user1)
+        cat_propia = Category.objects.create(
+            usuario=self.user1,
+            nombre="Veterinaria",
+            tipo=Category.Tipo.GASTO,
+        )
+
+        # Intentar borrar global
+        res_global = self.client.delete(f"/api/categorias/{self.cat_gasto.id}/")
+        self.assertEqual(res_global.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Asociar una transacción a la categoría propia
+        tx = Transaction.objects.create(
+            usuario=self.user1,
+            categoria=cat_propia,
+            tipo=Transaction.Tipo.GASTO,
+            monto=Decimal("50.00"),
+            fecha=date.today(),
+        )
+
+        # Intentar borrar teniendo transacciones
+        res_bloqueado = self.client.delete(f"/api/categorias/{cat_propia.id}/")
+        self.assertEqual(res_bloqueado.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("detail", res_bloqueado.data)
+
+        # Borrar la transacción y volver a intentar
+        tx.delete()
+        res_ok = self.client.delete(f"/api/categorias/{cat_propia.id}/")
+        self.assertEqual(res_ok.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Category.objects.filter(id=cat_propia.id).exists())
+
+
 

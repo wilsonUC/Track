@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { TemaPreferencia } from '../api/preferencias'
+import { CategoriasConfigSection } from '../components/configuracion/CategoriasConfigSection'
 import { ConfigRow, ConfigSelect, ConfigToggle } from '../components/configuracion/ConfigControls'
 import { ConfigSection } from '../components/configuracion/ConfigSection'
 import { cuentaPath } from '../constants/routes'
@@ -204,6 +205,8 @@ export function ConfiguracionPage() {
             />
           </ConfigRow>
         </ConfigSection>
+
+        <CategoriasConfigSection />
 
         <ConfigSection
           icon={Shield}

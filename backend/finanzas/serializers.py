@@ -1,5 +1,6 @@
 import calendar
 from datetime import date, timedelta
+from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -178,23 +179,40 @@ class IaChatSerializer(serializers.Serializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    """Categoría global: nombre y si es ingreso o gasto."""
+    """Categoría: global del sistema o personalizada del usuario."""
+
+    es_personalizada = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        # Estos son los datos que se envían y reciben por la API
-        fields = ["id", "nombre", "tipo"]
-        # El número id lo pone la base de datos; el usuario no puede inventárselo al crear
-        read_only_fields = ["id"]
+        fields = ["id", "nombre", "tipo", "icono", "color", "es_personalizada"]
+        read_only_fields = ["id", "es_personalizada"]
+
+    def get_es_personalizada(self, obj) -> bool:
+        return obj.usuario_id is not None
 
     def validate(self, attrs):
-        """No permitir dos categorías globales con el mismo nombre y tipo."""
+        nombre = (attrs.get("nombre") or (self.instance.nombre if self.instance else "")).strip()
+        tipo = attrs.get("tipo") or (self.instance.tipo if self.instance else None)
+        if not nombre:
+            raise serializers.ValidationError({"nombre": "El nombre no puede estar vacío."})
+        attrs["nombre"] = nombre
+
+        request = self.context.get("request")
+        user = request.user if request and request.user.is_authenticated else None
+
+        filtro = models.Q(usuario__isnull=True)
+        if user:
+            filtro = filtro | models.Q(usuario=user)
+
         ya_existe = Category.objects.filter(
-            nombre=attrs["nombre"],
-            tipo=attrs["tipo"],
+            filtro,
+            nombre__iexact=nombre,
+            tipo=tipo,
         )
         if self.instance:
             ya_existe = ya_existe.exclude(pk=self.instance.pk)
+
         if ya_existe.exists():
             raise serializers.ValidationError(
                 {"nombre": "Ya existe una categoría con ese nombre y tipo."}

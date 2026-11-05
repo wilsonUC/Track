@@ -54,26 +54,42 @@ def procesar_imagen_original_webp(imagen_file, max_size=(1600, 1600), quality=90
 # Create your models here.
 
 class Category(models.Model):
-    """Categoría global de ingresos o gastos (compartida por todos los usuarios)."""
+    """Categoría de ingresos o gastos: global (predeterminada del sistema) o personalizada por usuario."""
 
     class Tipo(models.TextChoices):
         INGRESO = "income", "Ingreso"
         GASTO = "expense", "Gasto"
 
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="categorias_personalizadas",
+    )
+    nombre = models.CharField(max_length=120)
+    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    icono = models.CharField(max_length=50, blank=True, default="")
+    color = models.CharField(max_length=50, blank=True, default="")
 
-    nombre = models.CharField(max_length = 120)
-    tipo = models.CharField(max_length = 10, choices = Tipo.choices)
-
-    class Meta: 
+    class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields = ["nombre", "tipo"],
-                name = "uniq_finanzas_category_nombre_tipo",
+                fields=["nombre", "tipo"],
+                condition=models.Q(usuario__isnull=True),
+                name="uniq_finanzas_category_global_nombre_tipo",
+            ),
+            models.UniqueConstraint(
+                fields=["usuario", "nombre", "tipo"],
+                condition=models.Q(usuario__isnull=False),
+                name="uniq_finanzas_category_usuario_nombre_tipo",
             ),
         ]
+        ordering = ["nombre"]
 
     def __str__(self):
-        return f"{self.nombre} ({self.get_tipo_display()})"
+        prefijo = f"[{self.usuario.username}] " if self.usuario else "[Sistema] "
+        return f"{prefijo}{self.nombre} ({self.get_tipo_display()})"
 
 class Presupuesto(models.Model):
     """Dinero apartado por el usuario para un gasto concreto (ej. pasajes)."""
