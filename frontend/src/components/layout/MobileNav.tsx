@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Check, CreditCard, FileBarChart, PiggyBank, Sparkles, Target } from 'lucide-react'
+import { ChevronDown, CreditCard, FileBarChart, PiggyBank, Sparkles, Target } from 'lucide-react'
 import { menuItems } from '../../constants/navigation'
 import { sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
@@ -21,7 +21,35 @@ const planItems = [
 export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
   const { pathname } = useLocation()
   const [isPlanesOpen, setIsPlanesOpen] = useState(false)
+  const [shouldRenderDock, setShouldRenderDock] = useState(false)
+  const [isAnimatingIn, setIsAnimatingIn] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Controlar ciclo de animación de entrada y salida
+  useEffect(() => {
+    let animTimer: ReturnType<typeof setTimeout>
+    let unmountTimer: ReturnType<typeof setTimeout>
+
+    if (isPlanesOpen) {
+      setShouldRenderDock(true)
+      // 30ms asegura que el DOM pinte el frame inicial (oculto) antes de iniciar la transición
+      animTimer = setTimeout(() => {
+        setIsAnimatingIn(true)
+      }, 30)
+    } else {
+      setIsAnimatingIn(false)
+      // 340ms da tiempo completo para que termine la animación en cascada de salida
+      unmountTimer = setTimeout(() => {
+        setShouldRenderDock(false)
+      }, 340)
+    }
+
+    return () => {
+      clearTimeout(animTimer)
+      clearTimeout(unmountTimer)
+    }
+  }, [isPlanesOpen])
 
   const isPlanesActive =
     pathname.startsWith('/ahorros') ||
@@ -39,18 +67,31 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
     setIsPlanesOpen(false)
   }, [pathname])
 
-  // Cerrar al hacer clic fuera
+  // Cerrar al hacer clic o tocar fuera del dock y del botón
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        setIsPlanesOpen(false)
+    if (!isPlanesOpen) return
+
+    function handleOutsideClick(event: MouseEvent | TouchEvent) {
+      const target = event.target as Node | null
+      if (!target) return
+      // Ignorar si el clic fue dentro del dock flotante o en el propio botón de planes
+      if (
+        popupRef.current?.contains(target) ||
+        buttonRef.current?.contains(target)
+      ) {
+        return
       }
+      setIsPlanesOpen(false)
     }
-    if (isPlanesOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+
+    // Retraso de 50ms para evitar que el mismo clic que abrió el menú lo cierre
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleOutsideClick)
+    }, 50)
+
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      clearTimeout(timer)
+      document.removeEventListener('click', handleOutsideClick)
     }
   }, [isPlanesOpen])
 
@@ -90,67 +131,83 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
       style={{ paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >
-      {/* Menú flotante emergente para el grupo de Planes (Ahorros, Presupuestos, Metas, Reportes) */}
-      {isPlanesOpen && (
+      {/* Telón sutil con micro-desenfoque para cerrar al tocar fuera (solo cubre arriba de la barra inferior) */}
+      {shouldRenderDock && (
         <div
-          ref={popupRef}
-          className="animate-in fade-in slide-in-from-bottom-3 duration-200 absolute bottom-full left-3 right-3 mx-auto z-50 mb-2.5 max-w-sm rounded-3xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
-        >
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800/80">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400">
-                <Target className="h-4 w-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Planes & Objetivos</span>
-            </div>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              {visiblePlanItems.length} {visiblePlanItems.length === 1 ? 'opción' : 'opciones'}
-            </span>
-          </div>
-
-          <div className="mt-1 space-y-1">
-            {visiblePlanItems.map((plan) => {
-              const Icon = plan.icon
-              const isCurrent = pathname.startsWith(sectionPaths[plan.id])
-              return (
-                <Link
-                  key={plan.id}
-                  to={sectionPaths[plan.id]}
-                  onClick={() => setIsPlanesOpen(false)}
-                  className={`flex items-center justify-between rounded-2xl p-2.5 transition-all active:scale-98 ${
-                    isCurrent
-                      ? 'bg-indigo-50 text-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-200'
-                      : 'text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
-                        isCurrent
-                          ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold">{plan.label}</div>
-                      <div className="text-[10px] text-slate-400 dark:text-slate-400">{plan.desc}</div>
-                    </div>
-                  </div>
-                  {isCurrent && <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
+          className={`fixed inset-x-0 top-0 z-40 bg-slate-950/20 backdrop-blur-[2px] md:hidden transition-opacity duration-200 ease-out ${
+            isAnimatingIn ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{ bottom: 'max(3.75rem, calc(3.5rem + env(safe-area-inset-bottom)))' }}
+          onClick={() => setIsPlanesOpen(false)}
+          aria-hidden
+        />
       )}
 
-      <div className="scrollbar-none mx-auto flex w-full max-w-md items-center justify-around gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative mx-auto w-full max-w-md">
+        {/* Action Dock flotante para Planes (Nubank / Revolut Style) */}
+        {shouldRenderDock && (
+          <div
+            ref={popupRef}
+            className="absolute bottom-full mb-3 right-12 sm:right-16 z-50 flex flex-col items-end gap-2.5 pointer-events-auto"
+          >
+            {(() => {
+              const reversedItems = visiblePlanItems.slice().reverse()
+              const total = reversedItems.length
+              return reversedItems.map((plan, index) => {
+                const Icon = plan.icon
+                const isCurrent = pathname.startsWith(sectionPaths[plan.id])
+                const entryDelay = index * 70
+                const exitDelay = (total - 1 - index) * 55
+                const currentDelay = isAnimatingIn ? `${entryDelay}ms` : `${exitDelay}ms`
+                return (
+                  <Link
+                    key={plan.id}
+                    to={sectionPaths[plan.id]}
+                    onClick={() => setIsPlanesOpen(false)}
+                    className={`group flex items-center gap-2.5 rounded-full py-1.5 pl-3.5 pr-1.5 shadow-lg backdrop-blur-xl transition-all duration-200 active:scale-95 whitespace-nowrap ${
+                      isAnimatingIn
+                        ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+                        : 'opacity-0 translate-y-4 scale-75 pointer-events-none'
+                    } ${
+                      isCurrent
+                        ? 'bg-indigo-600 text-white border border-indigo-500 shadow-indigo-500/35 ring-2 ring-indigo-400/30'
+                        : 'bg-white/95 dark:bg-slate-900/95 text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-slate-900/10'
+                    }`}
+                    style={{
+                      transitionDelay: currentDelay,
+                      transitionTimingFunction: isAnimatingIn
+                        ? 'cubic-bezier(0.34, 1.4, 0.64, 1)'
+                        : 'cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs font-semibold tracking-tight">
+                      <span>{plan.label}</span>
+                      {isCurrent && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      )}
+                    </span>
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs shadow-xs transition-colors ${
+                        isCurrent
+                          ? 'bg-white text-indigo-600'
+                          : 'bg-indigo-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-slate-700'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    </span>
+                  </Link>
+                )
+              })
+            })()}
+          </div>
+        )}
+
+        <div className="scrollbar-none flex w-full items-center justify-around gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {navElements.map((el) => {
           if (el.type === 'group') {
             return (
               <button
+                ref={buttonRef}
                 key={el.id}
                 type="button"
                 onClick={() => setIsPlanesOpen((prev) => !prev)}
@@ -171,8 +228,14 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
                 >
                   <Target className="h-5 w-5 shrink-0" aria-hidden />
                 </span>
-                <span className="truncate w-full text-center">
-                  {el.shortLabel} ▾
+                <span className="flex items-center justify-center gap-0.5 truncate w-full text-center">
+                  <span>{el.shortLabel}</span>
+                  <ChevronDown
+                    className={`h-3 w-3 shrink-0 transition-transform duration-200 ease-out ${
+                      isPlanesOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : 'rotate-0 text-slate-400 dark:text-slate-500'
+                    }`}
+                    aria-hidden
+                  />
                 </span>
               </button>
             )
@@ -273,6 +336,7 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
             </NavLink>
           )
         })}
+        </div>
       </div>
     </nav>
   )
