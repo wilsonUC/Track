@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { Check, CreditCard, PiggyBank, Target } from 'lucide-react'
+import { Check, CreditCard, FileBarChart, PiggyBank, Sparkles, Target } from 'lucide-react'
 import { menuItems } from '../../constants/navigation'
 import { sectionPaths } from '../../constants/routes'
 import type { Section } from '../../types/finance'
@@ -15,6 +15,7 @@ const planItems = [
   { id: 'ahorros' as Section, label: 'Ahorros', icon: PiggyBank, desc: 'Fondos y depósitos de ahorro' },
   { id: 'presupuestos' as Section, label: 'Presupuestos', icon: CreditCard, desc: 'Límites mensuales de gasto' },
   { id: 'metas' as Section, label: 'Metas', icon: Target, desc: 'Objetivos de ahorro a plazo' },
+  { id: 'reportes' as Section, label: 'Reportes', icon: FileBarChart, desc: 'Gráficos y análisis financiero' },
 ]
 
 export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
@@ -25,7 +26,8 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
   const isPlanesActive =
     pathname.startsWith('/ahorros') ||
     pathname.startsWith('/presupuestos') ||
-    (Boolean(isAvanzado || isStaff) && pathname.startsWith('/metas'))
+    (Boolean(isAvanzado || isStaff) && pathname.startsWith('/metas')) ||
+    pathname.startsWith('/reportes')
 
   const visiblePlanItems = planItems.filter((plan) => {
     if (plan.id === 'metas' && !isAvanzado && !isStaff) return false
@@ -74,7 +76,7 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
         label: 'Planes',
         shortLabel: 'Planes',
       })
-    } else if (item.id === 'presupuestos' || item.id === 'metas') {
+    } else if (item.id === 'presupuestos' || item.id === 'metas' || item.id === 'reportes') {
       // Se omiten porque están dentro del grupo "planes"
       continue
     } else {
@@ -84,15 +86,15 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white py-2 shadow-sm dark:border-slate-800 dark:bg-slate-950 md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white py-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950 md:hidden"
       style={{ paddingBottom: 'max(0.35rem, env(safe-area-inset-bottom))' }}
       aria-label="Navegación principal"
     >
-      {/* Menú flotante emergente para el grupo de Planes (Ahorros, Presupuestos, Metas) */}
+      {/* Menú flotante emergente para el grupo de Planes (Ahorros, Presupuestos, Metas, Reportes) */}
       {isPlanesOpen && (
         <div
           ref={popupRef}
-          className="animate-in fade-in slide-in-from-bottom-3 duration-200 absolute bottom-full left-3 right-3 z-50 mb-2.5 max-w-sm rounded-3xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 sm:left-auto sm:right-auto"
+          className="animate-in fade-in slide-in-from-bottom-3 duration-200 absolute bottom-full left-3 right-3 mx-auto z-50 mb-2.5 max-w-sm rounded-3xl border border-slate-200/90 bg-white/95 p-2 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95"
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-800/80">
             <div className="flex items-center gap-2">
@@ -144,7 +146,7 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
         </div>
       )}
 
-      <div className="scrollbar-none flex gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="scrollbar-none mx-auto flex w-full max-w-md items-center justify-around gap-1 overflow-x-auto px-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {navElements.map((el) => {
           if (el.type === 'group') {
             return (
@@ -152,12 +154,12 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
                 key={el.id}
                 type="button"
                 onClick={() => setIsPlanesOpen((prev) => !prev)}
-                className={`flex min-w-17 max-w-23 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition active:scale-95 ${
+                className={`flex flex-1 min-w-[3.5rem] max-w-24 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition active:scale-95 ${
                   isPlanesActive || isPlanesOpen
                     ? 'bg-indigo-100 font-semibold text-indigo-900 dark:bg-slate-800 dark:text-slate-100'
                     : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-slate-800'
                 }`}
-                aria-label="Abrir planes y presupuestos"
+                aria-label="Abrir planes, presupuestos y reportes"
                 aria-expanded={isPlanesOpen}
               >
                 <span
@@ -169,7 +171,7 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
                 >
                   <Target className="h-5 w-5 shrink-0" aria-hidden />
                 </span>
-                <span className="line-clamp-2 w-full text-center font-bold">
+                <span className="truncate w-full text-center">
                   {el.shortLabel} ▾
                 </span>
               </button>
@@ -184,23 +186,70 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
                 key={item.id}
                 type="button"
                 disabled
-                className="flex min-w-17 max-w-23 shrink-0 cursor-not-allowed flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight text-slate-300"
+                className="flex flex-1 min-w-[3.5rem] max-w-24 shrink-0 cursor-not-allowed flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight text-slate-300"
                 title="Sección bloqueada por ahora"
               >
                 <span className="text-slate-300">
                   <NavIcon section={item.id} />
                 </span>
-                <span className="line-clamp-2 w-full text-center">{label}</span>
+                <span className="truncate w-full text-center">{label}</span>
               </button>
             )
           }
+          if (item.id === 'ia') {
+            return (
+              <NavLink
+                key={item.id}
+                to={sectionPaths[item.id as Section]}
+                className={({ isActive }) =>
+                  `relative flex flex-1 min-w-[3.5rem] max-w-24 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] leading-tight transition active:scale-95 ${
+                    isActive
+                      ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/35 ring-2 ring-purple-300/50 dark:ring-purple-400/50 font-bold'
+                      : 'border border-indigo-200/90 bg-gradient-to-br from-indigo-50/90 via-purple-50/80 to-pink-50/70 shadow-xs shadow-indigo-500/10 active:opacity-90 dark:border-purple-700/60 dark:from-indigo-950/60 dark:via-purple-950/50 dark:to-pink-950/40'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className="absolute top-1 right-1.5 flex h-1.5 w-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink-400 opacity-75"></span>
+                      <span
+                        className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                          isActive ? 'bg-white' : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                        }`}
+                      ></span>
+                    </span>
+                    <span
+                      className={
+                        isActive
+                          ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
+                          : 'text-indigo-600 drop-shadow-[0_1px_3px_rgba(99,102,241,0.35)] dark:text-purple-300'
+                      }
+                    >
+                      <Sparkles className="h-5 w-5 shrink-0" aria-hidden />
+                    </span>
+                    <span
+                      className={`truncate w-full text-center tracking-wide ${
+                        isActive
+                          ? 'font-black text-white'
+                          : 'font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent dark:from-indigo-300 dark:via-purple-300 dark:to-pink-300'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            )
+          }
+
           return (
             <NavLink
               key={item.id}
               to={sectionPaths[item.id as Section]}
               end={item.id === 'dashboard'}
               className={({ isActive }) =>
-                `flex min-w-17 max-w-23 shrink-0 flex-col items-center gap-0.5 rounded-lg px-1.5 py-2 text-[10px] font-medium leading-tight transition ${
+                `flex flex-1 min-w-[3.5rem] max-w-24 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition ${
                   isActive
                     ? 'bg-indigo-100 font-semibold text-indigo-900 dark:bg-slate-800 dark:text-slate-100'
                     : 'text-slate-500 active:bg-slate-100 dark:text-slate-400 dark:active:bg-slate-800'
@@ -218,7 +267,7 @@ export function MobileNav({ isStaff, isAvanzado = false }: MobileNavProps) {
                   >
                     <NavIcon section={item.id} />
                   </span>
-                  <span className="line-clamp-2 w-full text-center">{label}</span>
+                  <span className="truncate w-full text-center">{label}</span>
                 </>
               )}
             </NavLink>
