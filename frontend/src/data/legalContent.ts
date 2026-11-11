@@ -26,8 +26,8 @@ export const TERMINOS_CONDICIONES: LegalDocument = {
       id: 'objeto',
       title: '1. Objeto y Alcance de la Plataforma',
       content: [
-        'FinanzasTrack es una plataforma digital de gestión, planificación y seguimiento financiero personal y empresarial.',
-        'La plataforma permite registrar transacciones (ingresos, gastos, ahorros), formular presupuestos, monitorear deudas y compromisos recurrentes, fijar metas de ahorro y consultar análisis automáticos mediante modelos de inteligencia artificial.',
+        'FinanzasTrack es una plataforma digital de gestión, planificación y seguimiento financiero personal.',
+        'La plataforma permite registrar transacciones (ingresos, gastos, ahorros), formular presupuestos y consultar análisis automáticos mediante modelos de inteligencia artificial.',
       ],
     },
     {
@@ -42,12 +42,12 @@ export const TERMINOS_CONDICIONES: LegalDocument = {
       ],
     },
     {
-      id: 'cuentas-planes',
-      title: '3. Cuentas de Usuario, Planes y Vigencias',
+      id: 'cuentas-vigencias',
+      title: '3. Cuentas de Usuario y Vigencias',
       content: [
         'Para acceder a los servicios, el usuario debe crear una cuenta proporcionando datos verídicos y actualizados.',
-        'FinanzasTrack ofrece distintos tipos de cuenta (Básico y Avanzado). Cada plan tiene asignadas cuotas de uso (por ejemplo, límites en mensajes diarios con la IA, acceso a metas vinculadas o recurrentes).',
-        'Las cuentas pueden estar sujetas a fechas de vigencia o periodos de suscripción autorizados por el administrador. Al expirar dicho periodo, el acceso a las funciones interactivas se suspenderá hasta su renovación.',
+        'El servicio incluye herramientas para la gestión de transacciones, presupuestos y una cuota diaria para consultas con el Asistente de IA a fin de asegurar la estabilidad del sistema.',
+        'Las cuentas pueden estar sujetas a periodos de vigencia autorizados por la administración. Al expirar dicho periodo, el acceso se suspenderá hasta su correspondiente renovación.',
       ],
     },
     {
@@ -82,7 +82,7 @@ export const POLITICA_PRIVACIDAD: LegalDocument = {
       title: '1. Datos que Recopilamos',
       content: [
         'Datos de Identificación y Contacto: Nombre, apellido, nombre de usuario, dirección de correo electrónico, número de teléfono y fotografía de perfil.',
-        'Datos Financieros del Usuario: Registros de transacciones (ingresos, gastos, categorías, descripciones), metas de ahorro, presupuestos mensuales y compromisos recurrentes.',
+        'Datos Financieros del Usuario: Registros de transacciones (ingresos, gastos, categorías, descripciones) y presupuestos mensuales.',
         'Datos de Interacción con la IA: Historial de mensajes y consultas remitidas al asistente de inteligencia artificial dentro de la sesión activa.',
       ],
     },
@@ -102,7 +102,7 @@ export const POLITICA_PRIVACIDAD: LegalDocument = {
         'Nunca vendemos ni comercializamos tus datos personales o financieros con terceros anunciantes.',
       content: [
         'Google OAuth: Si eliges registrarte o iniciar sesión con Google, recibimos tu identificador, nombre y correo electrónico bajo los protocolos seguros de Google.',
-        'Procesamiento de IA (Modelos de Lenguaje Avanzados): Las consultas dirigidas al asistente son procesadas mediante conexiones seguras cifradas exclusivamente para formular la respuesta solicitada.',
+        'Procesamiento de IA (Modelos de Lenguaje): Las consultas dirigidas al asistente son procesadas mediante conexiones seguras cifradas exclusivamente para formular la respuesta solicitada.',
       ],
     },
     {

@@ -22,7 +22,7 @@ export function IaChatInput({ value, onChange, onSubmit, disabled, cuota }: IaCh
           <div>
             <p className="font-semibold">Límite diario alcanzado (6 de 6 mensajes)</p>
             <p className="mt-0.5 text-amber-700/90 dark:text-amber-400/90">
-              Has agotado tus consultas gratuitas de hoy para el Plan Básico. Tu cuota se reiniciará mañana o puedes solicitar un Plan Avanzado para mensajes ilimitados.
+              Has agotado tus consultas de hoy. Tu cuota diaria se reiniciará mañana.
             </p>
           </div>
         </div>

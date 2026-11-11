@@ -1059,8 +1059,8 @@ class IaChatView(APIView):
             return Response(
                 {
                     "detalle": (
-                        f"Has alcanzado el límite diario de {cuota['limite_diario']} mensajes "
-                        "de tu plan básico. Actualiza al plan Avanzado para disfrutar de consultas ilimitadas."
+                        f"Has alcanzado el límite diario de {cuota['limite_diario']} mensajes. "
+                        "Tu cuota diaria se reiniciará mañana."
                     ),
                     "limite_alcanzado": True,
                     "cuota": cuota,

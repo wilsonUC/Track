@@ -556,8 +556,9 @@ def _system_prompt(context: str, is_avanzado: bool = True) -> str:
     tier_note = ""
     if not is_avanzado:
         tier_note = (
-            "NIVEL: PLAN BÁSICO. No tiene acceso a Recurrentes ni Metas de Ahorro. "
-            "No le sugieras esas funciones. Si pregunta, indícale amablemente comunicarse con el Administrador.\n\n"
+            "El usuario dispone de las funciones esenciales de la plataforma (Ingresos, Gastos, Ahorros y Presupuestos). "
+            "No menciones funciones avanzadas de compromisos recurrentes ni metas de ahorro. "
+            "Céntrate exclusivamente en responder con base en sus transacciones y presupuestos.\n\n"
         )
 
     return (

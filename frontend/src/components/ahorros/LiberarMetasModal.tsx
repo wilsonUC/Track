@@ -91,9 +91,7 @@ export function LiberarMetasModal({
         )}
 
         <p className="mt-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-          {!isAvanzado
-            ? 'En el Plan Básico no tienes acceso al módulo de Metas. Puedes retirar o devolver estos fondos a tu ahorro libre para disponer de ellos.'
-            : 'Fondos vinculados a tus metas de ahorro. Puedes liberar montos de vuelta a tu fondo de ahorro libre.'}
+          Puedes retirar o devolver estos fondos a tu ahorro libre para disponer de ellos.
         </p>
 
         {metasAsignadas.length > 0 && (

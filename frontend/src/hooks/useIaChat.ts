@@ -61,12 +61,12 @@ export function useIaChat() {
       e.preventDefault()
       if (!input.trim() || estaCargando) return
 
-      // Si es plan básico y ya no quedan mensajes
+      // Si ya no quedan mensajes en la cuota diaria
       if (cuota && !cuota.es_ilimitado && cuota.restantes_hoy !== null && cuota.restantes_hoy <= 0) {
         const mensajeAviso: IaMensaje = {
           id: Date.now(),
           remitente: 'IA',
-          texto: 'Has alcanzado el límite diario de 6 mensajes de tu plan básico. Pásate al plan Avanzado para consultas ilimitadas.',
+          texto: 'Has alcanzado el límite diario de mensajes. Tu cuota diaria se reiniciará mañana.',
           fecha: formatIaTime(),
         }
         setMensajes((prev) => [...prev, mensajeAviso])
