@@ -1,4 +1,4 @@
-import { History, TrendingDown, TrendingUp } from 'lucide-react'
+import { FileSpreadsheet, History, TrendingDown, TrendingUp } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { deleteTransaction, fetchCategories, fetchTransactions, type ApiCategory } from '../../api/finanzas'
@@ -15,6 +15,7 @@ import {
   sortByDateDesc,
   type EnrichedTransaction,
 } from '../../utils/dashboardMetrics'
+import { exportTransactionsToExcel } from '../../utils/excelExport'
 import { formatShortDate, formatSignedSoles } from '../../utils/financeFormat'
 
 type TransactionsPageContentProps = {
@@ -199,11 +200,24 @@ export function TransactionsPageContent({ variant }: TransactionsPageContentProp
       </article>
 
       <article className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-            <History className="h-5 w-5" aria-hidden />
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <History className="h-5 w-5" aria-hidden />
+            </div>
+            <h3 className="font-semibold text-slate-800">{historyTitle}</h3>
           </div>
-          <h3 className="font-semibold text-slate-800">{historyTitle}</h3>
+
+          <button
+            type="button"
+            onClick={() => exportTransactionsToExcel(transactions, variant, dateFilter.label)}
+            disabled={transactions.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-xs transition hover:bg-emerald-100 hover:text-emerald-900 active:scale-[0.98] disabled:opacity-40 cursor-pointer"
+            title={`Exportar ${isIncome ? 'ingresos' : 'gastos'} a Excel`}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+            <span>Exportar Excel</span>
+          </button>
         </div>
 
         <div className="p-4">

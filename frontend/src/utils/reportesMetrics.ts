@@ -15,6 +15,24 @@ import type {
   ReportCategoryRow,
   ReportFilter,
 } from '../components/reportes/reportesTypes'
+
+export type {
+  AhorroMovimientoRow,
+  AhorrosCompositionSegment,
+  AhorrosKpis,
+  AhorrosMonthlyPoint,
+  GeneralKpis,
+  MetaReportFilter,
+  MetaReportItem,
+  MetasKpis,
+  MonthlyBarData,
+  PresupuestoReportItem,
+  PresupuestosKpis,
+  RecurrenteReportItem,
+  RecurrentesKpis,
+  ReportCategoryRow,
+  ReportFilter,
+}
 import type { ApiAhorro, ResumenAhorros } from '../api/ahorros'
 import type { ApiPresupuesto } from '../api/presupuestos'
 import type { ApiMeta } from '../api/metas'

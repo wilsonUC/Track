@@ -29,17 +29,19 @@ import { ReportesMetasHeader } from '../components/reportes/metas/ReportesMetasH
 import { useDateFilter } from '../hooks/useDateFilter'
 import { exportElementToPdf } from '../utils/exportPdf'
 import {
+  exportReportAhorrosExcel,
+  exportReportGeneralExcel,
+  exportReportMetasExcel,
+  exportReportPresupuestosExcel,
+  exportReportRecurrentesExcel,
+} from '../utils/excelExport'
+import {
   buildDonutSegments,
   calculateAhorrosReport,
   calculateGeneralKpis,
   calculateMetasReport,
   calculatePresupuestosReport,
   calculateRecurrentesReport,
-  downloadAhorrosCsv,
-  downloadMetasCsv,
-  downloadPresupuestosCsv,
-  downloadRecurrentesCsv,
-  downloadReportCsv,
   filterReportCategories,
   prepareReportData,
 } from '../utils/reportesMetrics'
@@ -190,11 +192,11 @@ export function ReportesPage() {
     return calculateRecurrentesReport(recurrentes)
   }, [recurrentes])
 
-  // Export handler CSV
+  // Export handler Excel
   function handleExport() {
     switch (activeTab) {
       case 'general':
-        downloadReportCsv(
+        exportReportGeneralExcel(
           generalData.categoryRows,
           generalData.monthlyBars,
           generalFilter,
@@ -202,7 +204,7 @@ export function ReportesPage() {
         )
         break
       case 'ahorros':
-        downloadAhorrosCsv(
+        exportReportAhorrosExcel(
           ahorrosData.kpis,
           ahorrosData.rows,
           ahorrosData.composition,
@@ -210,13 +212,13 @@ export function ReportesPage() {
         )
         break
       case 'presupuestos':
-        downloadPresupuestosCsv(presupuestosData.kpis, presupuestosData.items, dateFilter.label)
+        exportReportPresupuestosExcel(presupuestosData.kpis, presupuestosData.items, dateFilter.label)
         break
       case 'metas':
-        downloadMetasCsv(metasData.kpis, metasData.items)
+        exportReportMetasExcel(metasData.kpis, metasData.items)
         break
       case 'recurrentes':
-        downloadRecurrentesCsv(recurrentesData.kpis, recurrentesData.items, dateFilter.label)
+        exportReportRecurrentesExcel(recurrentesData.kpis, recurrentesData.items, dateFilter.label)
         break
     }
   }
@@ -333,7 +335,7 @@ export function ReportesPage() {
                 : activeTab === 'metas'
                   ? 'Metas'
                   : 'Recurrentes'
-        } CSV`}
+        } Excel`}
       />
 
       {/* Contenedor capturable para exportación a PDF */}

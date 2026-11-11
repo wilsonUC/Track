@@ -1,4 +1,4 @@
-import { BarChart3, CreditCard, Download, FileDown, Loader2, PiggyBank, Repeat, Target } from 'lucide-react'
+import { BarChart3, CreditCard, FileDown, FileSpreadsheet, Loader2, PiggyBank, Repeat, Target } from 'lucide-react'
 import type { ReportTab } from './reportesTypes'
 import { CustomSelect } from '../ui/CustomSelect'
 
@@ -26,7 +26,7 @@ export function ReportesTabSelector({
   onExport,
   onExportPdf,
   exportingPdf = false,
-  exportLabel = 'Exportar CSV',
+  exportLabel = 'Exportar Excel',
   isAvanzado = false,
 }: ReportesTabSelectorProps) {
   const visibleTabs = tabs.filter((tab) => {
@@ -114,10 +114,11 @@ export function ReportesTabSelector({
         <button
           type="button"
           onClick={onExport}
-          className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-slate-700 shadow-xs transition-all hover:bg-slate-50 hover:text-indigo-600 active:scale-[0.98] dark:border-slate-800/80 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800/80 dark:hover:text-indigo-400"
+          className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-2xl sm:rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-emerald-800 shadow-xs transition-all hover:bg-emerald-100 hover:text-emerald-900 active:scale-[0.98] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60"
+          title="Exportar datos a Excel formateado"
         >
-          <Download className="h-3.5 w-3.5" aria-hidden />
-          {exportLabel}
+          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <span>{exportLabel}</span>
         </button>
       </div>
     </div>

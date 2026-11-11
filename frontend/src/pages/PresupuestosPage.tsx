@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Power, PowerOff } from 'lucide-react'
+import { FileSpreadsheet, Power, PowerOff } from 'lucide-react'
 import { deleteTransaction, fetchCategories } from '../api/finanzas'
 import {
   createPresupuesto,
@@ -11,6 +11,7 @@ import {
   registrarGastoRapido,
   updatePresupuesto,
 } from '../api/presupuestos'
+import { exportPresupuestosToExcel } from '../utils/excelExport'
 import { PresupuestoModal } from '../components/presupuestos/PresupuestoModal'
 import { ReactivarPresupuestoModal } from '../components/presupuestos/ReactivarPresupuestoModal'
 import { DesactivarPresupuestoModal } from '../components/presupuestos/DesactivarPresupuestoModal'
@@ -487,7 +488,18 @@ export function PresupuestosPage() {
             mesLabel={mesTexto}
           />
 
-          <div className="flex items-center justify-end pr-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 pr-1">
+            <button
+              type="button"
+              onClick={() => exportPresupuestosToExcel(presupuestos, mesTexto)}
+              disabled={presupuestos.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-xs transition hover:bg-emerald-100 hover:text-emerald-900 active:scale-[0.98] disabled:opacity-40 cursor-pointer"
+              title="Exportar presupuestos a Excel"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              <span>Exportar Excel</span>
+            </button>
+
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-slate-500">
                 Mostrar presupuestos desactivados
