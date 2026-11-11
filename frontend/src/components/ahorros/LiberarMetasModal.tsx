@@ -18,7 +18,6 @@ export function LiberarMetasModal({
   onSuccess,
   metasAsignadas,
   totalAsignado,
-  isAvanzado = false,
 }: LiberarMetasModalProps) {
   const [liberandoMetaId, setLiberandoMetaId] = useState<number | null>(null)
   const [liberandoTodo, setLiberandoTodo] = useState(false)
